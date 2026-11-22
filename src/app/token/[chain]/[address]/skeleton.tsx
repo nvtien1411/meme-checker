@@ -49,7 +49,7 @@ export function ResultSkeleton() {
         </div>
       </div>
 
-      <p className="mt-4 flex items-center gap-2 font-mono text-[11px] text-mute-500">
+      <p className="mt-4 flex items-center gap-2 font-mono t-meta text-mute-500">
         <span className="pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-brand-500" />
         resolving chain · reading market, holders, contract, trades
       </p>

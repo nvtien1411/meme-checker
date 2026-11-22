@@ -83,10 +83,10 @@ const CHECK_DOCS = [
 export default function FaqPage() {
   return (
     <div className="mx-auto w-full max-w-[880px] px-4 py-10 sm:px-6">
-      <h1 className="text-[22px] font-semibold tracking-tight text-slate-50">
+      <h1 className="t-display text-slate-50">
         How the checks work
       </h1>
-      <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed text-mute-400">
+      <p className="mt-1.5 max-w-2xl t-body leading-relaxed text-mute-400">
         Every verdict on this site comes from these eight checks. Here is exactly
         what each one reads, where the line is, and what it cannot see.
       </p>
@@ -95,10 +95,10 @@ export default function FaqPage() {
         {CHECK_DOCS.map((c, i) => (
           <article key={c.id} id={c.id} className="py-4">
             <div className="flex items-baseline gap-2.5">
-              <span className="font-mono text-[10.5px] tabular-nums text-mute-500">
+              <span className="font-mono t-meta tabular-nums text-mute-500">
                 {String(i + 1).padStart(2, "0")}
               </span>
-              <h2 className="text-[14px] font-medium text-slate-100">{c.q}</h2>
+              <h2 className="t-title font-medium text-slate-100">{c.q}</h2>
             </div>
             <dl className="mt-2 space-y-1.5 pl-[30px]">
               {[
@@ -106,12 +106,12 @@ export default function FaqPage() {
                 ["Passes", c.passes],
                 ["Fails", c.fails],
               ].map(([k, v]) => (
-                <div key={k} className="flex gap-2 text-[12px] leading-relaxed">
+                <div key={k} className="flex gap-2 t-small leading-relaxed">
                   <dt className="w-[52px] shrink-0 text-mute-500">{k}</dt>
                   <dd className="min-w-0 text-mute-300">{v}</dd>
                 </div>
               ))}
-              <div className="flex gap-2 border-l-2 border-warn-600/40 pl-2.5 text-[11.5px] leading-relaxed">
+              <div className="flex gap-2 border-l-2 border-warn-600/40 pl-2.5 t-small leading-relaxed">
                 <span className="text-mute-500">Caveat</span>
                 <span className="min-w-0 text-mute-400">{c.caveat}</span>
               </div>
@@ -121,10 +121,10 @@ export default function FaqPage() {
       </div>
 
       <section id="risk" className="mt-8 border border-ink-700 bg-ink-900 p-4">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-mute-400">
+        <h2 className="t-label text-mute-400">
           Risk disclosure
         </h2>
-        <div className="mt-2 space-y-2 text-[12px] leading-relaxed text-mute-300">
+        <div className="mt-2 space-y-2 t-small leading-relaxed text-mute-300">
           <p>
             Meme Checker is a research aid. It is not financial advice, not a
             recommendation, and not a guarantee that a token is safe. Tokens that
@@ -145,10 +145,10 @@ export default function FaqPage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-mute-400">
+        <h2 className="t-label text-mute-400">
           Data sources
         </h2>
-        <ul className="mt-2.5 space-y-1.5 text-[12px] text-mute-300">
+        <ul className="mt-2.5 space-y-1.5 t-small text-mute-300">
           {[
             ["DexScreener", "pairs, price, liquidity, volume, age"],
             ["GeckoTerminal", "trade tape, pool discovery for chains DexScreener does not index"],
@@ -166,7 +166,7 @@ export default function FaqPage() {
       <div className="mt-8 border-t border-ink-800 pt-4">
         <Link
           href="/check"
-          className="inline-flex rounded bg-brand-500 px-3 py-2 text-[12.5px] font-semibold text-ink-950 transition hover:bg-brand-400"
+          className="inline-flex rounded bg-brand-500 px-3 py-2 t-body font-semibold text-ink-950 transition hover:bg-brand-400"
         >
           Check a token
         </Link>

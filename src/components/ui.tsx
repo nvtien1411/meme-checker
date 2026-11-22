@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 /* ------------------------------------------------------------------ *
  * Primitives
@@ -26,23 +26,19 @@ export function Panel({
   id?: string;
 }) {
   return (
-    <section id={id} className={`border border-ink-700 bg-ink-900 ${className}`}>
+    <section id={id} className={`scroll-mt-[112px] border border-ink-700 bg-ink-900 ${className}`}>
       {(title || right) && (
-        <header className="flex flex-wrap items-start gap-x-3 gap-y-1 border-b border-ink-700 px-3.5 py-2.5">
+        <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-ink-700 px-4 py-2.5">
           <div className="min-w-0 flex-1">
-            {title && (
-              <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-mute-400">
-                {title}
-              </h2>
-            )}
+            {title && <h2 className="t-section">{title}</h2>}
             {subtitle && (
-              <p className="mt-0.5 text-[11.5px] leading-snug text-mute-500">{subtitle}</p>
+              <p className="mt-1 t-meta leading-snug text-mute-500">{subtitle}</p>
             )}
           </div>
-          {right}
+          {right && <div className="shrink-0 t-meta text-mute-500">{right}</div>}
         </header>
       )}
-      <div className="px-3.5 py-3">{children}</div>
+      <div className="px-4 py-3">{children}</div>
     </section>
   );
 }
@@ -70,16 +66,16 @@ export function Stat({
           : "text-slate-100";
   return (
     <div className="min-w-0 px-3 py-2.5">
-      <div className="truncate text-[10px] font-medium uppercase tracking-[0.1em] text-mute-500">
+      <div className="truncate t-label font-medium  text-mute-500">
         {label}
       </div>
       <div
-        className={`mt-1 truncate text-[15px] font-medium leading-none ${mono ? "tnum font-mono" : ""} ${toneCls}`}
+        className={`mt-1 truncate t-num font-medium leading-none ${mono ? "tnum font-mono" : ""} ${toneCls}`}
         title={value}
       >
         {value}
       </div>
-      {sub && <div className="mt-1 truncate text-[11px] text-mute-500">{sub}</div>}
+      {sub && <div className="mt-1 truncate t-meta text-mute-500">{sub}</div>}
     </div>
   );
 }
@@ -103,43 +99,14 @@ export function Badge({
   } as const;
   return (
     <span
-      className={`inline-flex shrink-0 items-center gap-1 rounded border px-1.5 py-0.5 text-[10.5px] font-medium leading-none ${map[tone]} ${className}`}
+      className={`inline-flex shrink-0 items-center gap-1 rounded border px-1.5 py-0.5 t-meta font-medium leading-none ${map[tone]} ${className}`}
     >
       {children}
     </span>
   );
 }
 
-export function Copyable({
-  text,
-  display,
-  className = "",
-  title,
-}: {
-  text: string;
-  display?: string;
-  className?: string;
-  title?: string;
-}) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <button
-      type="button"
-      title={title ?? `Copy ${text}`}
-      onClick={() => {
-        void navigator.clipboard?.writeText(text);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1200);
-      }}
-      className={`group inline-flex items-center gap-1 font-mono text-[11.5px] text-mute-400 transition hover:text-brand-400 ${className}`}
-    >
-      <span>{copied ? "copied" : (display ?? text)}</span>
-      <span className="text-[10px] opacity-50 group-hover:opacity-100">
-        {copied ? "✓" : "⧉"}
-      </span>
-    </button>
-  );
-}
+export { CopyButton as Copyable } from "./feedback";
 
 export function Empty({
   title,
@@ -152,8 +119,8 @@ export function Empty({
 }) {
   return (
     <div className="border border-dashed border-ink-700 px-4 py-5">
-      <p className="text-[12.5px] font-medium text-mute-300">{title}</p>
-      {body && <p className="mt-1 text-[12px] leading-relaxed text-mute-500">{body}</p>}
+      <p className="t-body font-medium text-mute-300">{title}</p>
+      {body && <p className="mt-1 t-small leading-relaxed text-mute-500">{body}</p>}
       {action && <div className="mt-3">{action}</div>}
     </div>
   );
@@ -169,7 +136,7 @@ export function Tooltip({ label, children }: { label: string; children: ReactNod
       {children}
       <span
         role="tooltip"
-        className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1.5 w-56 -translate-x-1/2 rounded border border-ink-600 bg-ink-850 px-2 py-1.5 text-[11px] leading-snug text-mute-300 opacity-0 shadow-lg transition group-hover/tt:opacity-100"
+        className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1.5 w-56 -translate-x-1/2 rounded border border-ink-600 bg-ink-850 px-2 py-1.5 t-meta leading-snug text-mute-300 opacity-0 shadow-lg transition group-hover/tt:opacity-100"
       >
         {label}
       </span>
@@ -185,7 +152,7 @@ export function QualityTag({ quality }: { quality: "observed" | "derived" | "inf
   } as const;
   const m = map[quality];
   return (
-    <span className={`font-mono text-[9.5px] uppercase tracking-[0.08em] ${m.cls}`} title={
+    <span className={`font-mono t-label ${m.cls}`} title={
       quality === "observed"
         ? "Read directly from a source"
         : quality === "derived"

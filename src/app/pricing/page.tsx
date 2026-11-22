@@ -85,14 +85,14 @@ const TIERS: Tier[] = [
 export default function PricingPage() {
   return (
     <div className="mx-auto w-full max-w-[1100px] px-4 py-10 sm:px-6">
-      <h1 className="text-[22px] font-semibold tracking-tight text-slate-50">Pricing</h1>
-      <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed text-mute-400">
+      <h1 className="t-display text-slate-50">Pricing</h1>
+      <p className="mt-1.5 max-w-2xl t-body leading-relaxed text-mute-400">
         The checks that stop you losing money are free and always will be. Premium
         is for deeper wallet work, not for hiding the basics behind a wall.
       </p>
 
       <div className="mt-6 border border-warn-600/40 bg-warn-600/8 px-3.5 py-2.5">
-        <p className="text-[12px] leading-relaxed text-warn-500">
+        <p className="t-small leading-relaxed text-warn-500">
           <span className="font-semibold">Premium and Group are not built yet.</span>{" "}
           <span className="text-mute-300">
             Prices are proposals and can change before launch. Nothing on this site
@@ -112,28 +112,28 @@ export default function PricingPage() {
           >
             <div className="border-b border-ink-700 px-3.5 py-3">
               <div className="flex items-center gap-2">
-                <h2 className="text-[13px] font-semibold text-slate-100">{t.name}</h2>
+                <h2 className="t-title text-slate-100">{t.name}</h2>
                 {t.status === "planned" && (
-                  <span className="rounded border border-warn-600/50 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.06em] text-warn-500">
+                  <span className="rounded border border-warn-600/50 px-1.5 py-0.5 font-mono t-label text-warn-500">
                     planned
                   </span>
                 )}
               </div>
               <div className="mt-1.5 flex items-baseline gap-1.5">
-                <span className="font-mono text-[24px] font-semibold tabular-nums text-slate-50">
+                <span className="font-mono t-display tabular-nums text-slate-50">
                   {t.price}
                 </span>
-                <span className="text-[11px] text-mute-500">{t.cadence}</span>
+                <span className="t-meta text-mute-500">{t.cadence}</span>
               </div>
-              <p className="mt-1.5 text-[11.5px] leading-relaxed text-mute-400">{t.blurb}</p>
+              <p className="mt-1.5 t-small leading-relaxed text-mute-400">{t.blurb}</p>
             </div>
 
             <ul className="flex-1 space-y-1.5 px-3.5 py-3">
               {t.features.map((f) => (
-                <li key={f.label} className="flex items-start gap-2 text-[12px]">
+                <li key={f.label} className="flex items-start gap-2 t-small">
                   <span
                     aria-hidden
-                    className={`mt-[2px] text-[10px] ${
+                    className={`mt-[2px] t-label ${
                       f.included ? "text-ok-500" : "text-ink-500"
                     }`}
                   >
@@ -149,7 +149,7 @@ export default function PricingPage() {
             <div className="border-t border-ink-700 px-3.5 py-3">
               <Link
                 href={t.href}
-                className={`block rounded px-3 py-2 text-center text-[12.5px] font-semibold transition ${
+                className={`block rounded px-3 py-2 text-center t-body font-semibold transition ${
                   t.status === "available"
                     ? "bg-brand-500 text-ink-950 hover:bg-brand-400"
                     : "border border-ink-600 text-mute-300 hover:border-ink-500 hover:text-slate-100"
@@ -163,7 +163,7 @@ export default function PricingPage() {
       </div>
 
       <section className="mt-9 border-t border-ink-800 pt-6">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-mute-400">
+        <h2 className="t-label text-mute-400">
           Billing questions
         </h2>
         <dl className="mt-3 grid gap-4 sm:grid-cols-2">
@@ -186,8 +186,8 @@ export default function PricingPage() {
             },
           ].map((f) => (
             <div key={f.q}>
-              <dt className="text-[12.5px] font-medium text-slate-200">{f.q}</dt>
-              <dd className="mt-1 text-[11.5px] leading-relaxed text-mute-500">{f.a}</dd>
+              <dt className="t-body font-medium text-slate-200">{f.q}</dt>
+              <dd className="mt-1 t-small leading-relaxed text-mute-500">{f.a}</dd>
             </div>
           ))}
         </dl>

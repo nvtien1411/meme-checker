@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
+import { ToastProvider } from "@/components/feedback";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -34,12 +35,22 @@ export default function RootLayout({
       className={`${inter.variable} ${mono.variable}`}
       suppressHydrationWarning
     >
-      <body className="min-h-dvh bg-ink-950 font-sans text-[14px] antialiased">
-        <div className="flex min-h-dvh flex-col">
-          <SiteHeader />
-          <main className="flex-1">{children}</main>
-          <SiteFooter />
-        </div>
+      <body className="min-h-dvh bg-ink-950 font-sans t-title antialiased">
+        <ToastProvider>
+          <a
+            href="#main"
+            className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-brand-500 focus:px-3 focus:py-1.5 focus:text-small focus:font-semibold focus:text-ink-950"
+          >
+            Skip to content
+          </a>
+          <div className="flex min-h-dvh flex-col">
+            <SiteHeader />
+            <main id="main" className="flex-1">
+              {children}
+            </main>
+            <SiteFooter />
+          </div>
+        </ToastProvider>
       </body>
     </html>
   );

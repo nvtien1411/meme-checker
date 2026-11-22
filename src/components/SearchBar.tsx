@@ -53,34 +53,34 @@ export function SearchBar({
     setError(null);
     setHint(null);
 
-    const target = chain === "auto" ? (guess?.kind === "solana" ? "solana" : "ethereum") : chain;
-
-    // Pre-resolve the chain server-side so the result URL is always shareable
-    // and canonical, rather than guessing and redirecting twice.
     try {
-      const res = await fetch("/api/analyze", {
+      // Resolve the chain only. Running the full analysis here and again on the
+      // result page doubled every upstream call and the user's wait for one
+      // piece of information.
+      const res = await fetch("/api/resolve", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ address: trimmed, chain: chain === "auto" ? null : chain }),
+        body: JSON.stringify({ address: trimmed }),
       });
       const json = (await res.json()) as {
-        data?: { token: { chain: string } };
+        chain?: string;
         error?: string;
         hint?: string;
       };
 
-      if (!res.ok) {
+      if (!res.ok || !json.chain) {
         setPhase("idle");
-        setError(json.error ?? "Analysis failed.");
+        setError(json.error ?? "Could not resolve this address.");
         setHint(json.hint ?? null);
         return;
       }
 
-      const resolved = json.data?.token.chain ?? target;
-      router.push(`/token/${resolved}/${trimmed}`);
+      // An explicit chain choice from the dropdown wins over detection.
+      const target = chain === "auto" ? json.chain : chain;
+      router.push(`/token/${target}/${trimmed}`);
     } catch {
       setPhase("idle");
-      setError("Could not reach the analyser.");
+      setError("Could not reach the resolver.");
       setHint("Check your connection and try again. Nothing was saved.");
     }
   }
@@ -97,7 +97,7 @@ export function SearchBar({
         <div className="relative flex min-w-0 flex-1 items-center">
           <span
             aria-hidden
-            className="pointer-events-none absolute left-2.5 font-mono text-[12px] text-mute-500"
+            className="pointer-events-none absolute left-2.5 font-mono t-small text-mute-500"
           >
             CA
           </span>
@@ -116,7 +116,7 @@ export function SearchBar({
             aria-invalid={phase === "invalid" || !!error}
             placeholder="Paste a contract address"
             className={`w-full bg-transparent py-2.5 pl-10 pr-2 font-mono text-mute-300 outline-none placeholder:text-mute-500 ${
-              big ? "text-[13px] sm:text-[13.5px]" : "text-[12.5px]"
+              big ? "t-body sm:t-body" : "t-body"
             }`}
           />
           {trimmed && (
@@ -129,7 +129,7 @@ export function SearchBar({
                 setHint(null);
                 setPhase("idle");
               }}
-              className="mr-1 rounded px-1.5 py-0.5 text-[12px] text-mute-500 transition hover:text-slate-200"
+              className="mr-1 rounded px-1.5 py-0.5 t-small text-mute-500 transition hover:text-slate-200"
             >
               ×
             </button>
@@ -141,7 +141,7 @@ export function SearchBar({
             value={chain}
             onChange={(e) => setChain(e.target.value as ChainId | "auto")}
             aria-label="Blockchain"
-            className="min-h-[38px] rounded border border-ink-700 bg-ink-850 px-2 text-[12px] text-mute-300 outline-none transition hover:border-ink-600"
+            className="min-h-[38px] rounded border border-ink-700 bg-ink-850 px-2 t-small text-mute-300 outline-none transition hover:border-ink-600"
           >
             <option value="auto">Auto-detect</option>
             {CHAINS.map((c) => (
@@ -154,7 +154,7 @@ export function SearchBar({
           <button
             type="submit"
             disabled={phase === "submitting"}
-            className={`min-h-[38px] flex-1 whitespace-nowrap rounded px-4 text-[12.5px] font-semibold transition sm:flex-none ${
+            className={`min-h-[38px] flex-1 whitespace-nowrap rounded px-4 t-body font-semibold transition sm:flex-none ${
               phase === "submitting"
                 ? "cursor-wait bg-ink-700 text-mute-400"
                 : "bg-brand-500 text-ink-950 hover:bg-brand-400"
@@ -167,7 +167,7 @@ export function SearchBar({
 
       {/* Status line. One place for validation, chain mismatch and failure —
           never three separate red boxes competing for attention. */}
-      <div className="mt-1.5 min-h-[18px] px-0.5 text-[11.5px] leading-snug">
+      <div className="mt-1.5 min-h-[18px] px-0.5 t-small leading-snug">
         {error ? (
           <p className="text-bad-500">
             {error}
@@ -204,7 +204,7 @@ export function SearchBar({
 
       {size === "lg" && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          <span className="text-[10.5px] uppercase tracking-[0.1em] text-mute-500">
+          <span className="t-meta  text-mute-500">
             Example contracts
           </span>
           {EXAMPLES.map((ex) => (
@@ -217,12 +217,12 @@ export function SearchBar({
                 setError(null);
                 setPhase("typing");
               }}
-              className="rounded border border-ink-700 px-2 py-0.5 font-mono text-[11px] text-mute-400 transition hover:border-ink-500 hover:text-slate-200"
+              className="rounded border border-ink-700 px-2 py-0.5 font-mono t-meta text-mute-400 transition hover:border-ink-500 hover:text-slate-200"
             >
               {ex.label}
             </button>
           ))}
-          <span className="ml-auto text-[10.5px] text-mute-500">no API key · free</span>
+          <span className="ml-auto t-meta text-mute-500">no API key · free</span>
         </div>
       )}
     </form>

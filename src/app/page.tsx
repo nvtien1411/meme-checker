@@ -19,22 +19,22 @@ export default function LandingPage() {
       <section className="border-b border-ink-800 py-10 sm:py-14">
         <div className="max-w-3xl">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-mute-500">
+            <span className="font-mono t-meta  text-mute-500">
               Solana · BNB Chain · Ethereum · Base · Robinhood
             </span>
-            <span className="font-mono text-[10.5px] text-mute-500">
+            <span className="font-mono t-meta text-mute-500">
               free · no API key · no wallet
             </span>
           </div>
 
-          <h1 className="mt-4 text-[26px] font-semibold leading-[1.15] tracking-tight text-slate-50 sm:text-[34px]">
+          <h1 className="mt-4 t-display leading-[1.15] tracking-tight text-slate-50 sm:t-display">
             Paste a contract address.
             <br />
             Find out what would actually
             <span className="text-brand-400"> cost you money</span>.
           </h1>
 
-          <p className="mt-3 max-w-[62ch] text-[13.5px] leading-relaxed text-mute-300">
+          <p className="mt-3 max-w-[62ch] t-body leading-relaxed text-mute-300">
             Eight checks in the order that matters. Every answer carries its
             source; anything we cannot verify says{" "}
             <span className="text-mute-400">unknown</span> instead of quietly
@@ -46,7 +46,7 @@ export default function LandingPage() {
           <SearchBar size="lg" autoFocus />
         </div>
 
-        <p className="mt-3 text-[11px] text-mute-500">
+        <p className="mt-3 t-meta text-mute-500">
           Research tool, not a signal service. It cannot tell you what a token
           will do — only which rules it breaks.
         </p>
@@ -55,10 +55,10 @@ export default function LandingPage() {
       {/* the eight checks */}
       <section className="border-b border-ink-800 py-9">
         <div className="flex items-baseline justify-between gap-3">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-mute-400">
+          <h2 className="t-label text-mute-400">
             What gets checked
           </h2>
-          <span className="font-mono text-[10.5px] text-mute-500">8 checks</span>
+          <span className="font-mono t-meta text-mute-500">8 checks</span>
         </div>
 
         <div className="mt-4 grid gap-x-8 gap-y-0 border-t border-ink-800 sm:grid-cols-2">
@@ -67,12 +67,12 @@ export default function LandingPage() {
               key={c.q}
               className="flex gap-3 border-b border-ink-800 py-2.5"
             >
-              <span className="mt-[2px] w-4 shrink-0 font-mono text-[10.5px] tabular-nums text-mute-500">
+              <span className="mt-[2px] w-4 shrink-0 font-mono t-meta tabular-nums text-mute-500">
                 {String(i + 1).padStart(2, "0")}
               </span>
               <div className="min-w-0">
-                <p className="text-[12.5px] font-medium text-slate-200">{c.q}</p>
-                <p className="mt-0.5 text-[11.5px] leading-relaxed text-mute-500">{c.d}</p>
+                <p className="t-body font-medium text-slate-200">{c.q}</p>
+                <p className="mt-0.5 t-small leading-relaxed text-mute-500">{c.d}</p>
               </div>
             </div>
           ))}
@@ -81,7 +81,7 @@ export default function LandingPage() {
 
       {/* how it works */}
       <section className="border-b border-ink-800 py-9">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-mute-400">
+        <h2 className="t-label text-mute-400">
           How it works
         </h2>
         <ol className="mt-4 grid gap-4 sm:grid-cols-3">
@@ -103,9 +103,9 @@ export default function LandingPage() {
             },
           ].map((s) => (
             <li key={s.n} className="border-l-2 border-ink-700 pl-3">
-              <div className="font-mono text-[10.5px] text-mute-500">{s.n}</div>
-              <div className="mt-0.5 text-[12.5px] font-medium text-slate-200">{s.t}</div>
-              <p className="mt-1 text-[11.5px] leading-relaxed text-mute-500">{s.d}</p>
+              <div className="font-mono t-meta text-mute-500">{s.n}</div>
+              <div className="mt-0.5 t-body font-medium text-slate-200">{s.t}</div>
+              <p className="mt-1 t-small leading-relaxed text-mute-500">{s.d}</p>
             </li>
           ))}
         </ol>
@@ -115,7 +115,7 @@ export default function LandingPage() {
       <section className="border-b border-ink-800 py-9">
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <div>
-            <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-mute-400">
+            <h2 className="t-label text-mute-400">
               What this will not do
             </h2>
             <ul className="mt-3 space-y-2">
@@ -125,8 +125,8 @@ export default function LandingPage() {
                 "Fill gaps with guesses. Missing data renders as unknown and is excluded from the score.",
                 "Label a wallet as dev, insider or smart money without evidence from the provider.",
               ].map((t) => (
-                <li key={t} className="flex gap-2 text-[12px] leading-relaxed text-mute-300">
-                  <span aria-hidden className="mt-[3px] text-[10px] text-bad-500">
+                <li key={t} className="flex gap-2 t-small leading-relaxed text-mute-300">
+                  <span aria-hidden className="mt-[3px] t-label text-bad-500">
                     ✕
                   </span>
                   <span>{t}</span>
@@ -136,7 +136,7 @@ export default function LandingPage() {
           </div>
 
           <div>
-            <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-mute-400">
+            <h2 className="t-label text-mute-400">
               What it is good at
             </h2>
             <ul className="mt-3 space-y-2">
@@ -146,8 +146,8 @@ export default function LandingPage() {
                 "Separating measured data from our own calculations from model output.",
                 "Telling you when it does not know, instead of implying safety.",
               ].map((t) => (
-                <li key={t} className="flex gap-2 text-[12px] leading-relaxed text-mute-300">
-                  <span aria-hidden className="mt-[3px] text-[10px] text-ok-500">
+                <li key={t} className="flex gap-2 t-small leading-relaxed text-mute-300">
+                  <span aria-hidden className="mt-[3px] t-label text-ok-500">
                     ✓
                   </span>
                   <span>{t}</span>
@@ -161,10 +161,10 @@ export default function LandingPage() {
       {/* telegram + pricing preview */}
       <section className="grid gap-5 border-b border-ink-800 py-9 lg:grid-cols-2">
         <div className="border border-ink-700 bg-ink-900 p-4">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-mute-400">
+          <h2 className="t-label text-mute-400">
             Same checks, inside Telegram
           </h2>
-          <p className="mt-2 text-[12.5px] leading-relaxed text-mute-300">
+          <p className="mt-2 t-body leading-relaxed text-mute-300">
             Drop a contract address in a group and get the same verdict without
             leaving the chat. Same backend, same sources, same rules about
             unknown data.
@@ -173,17 +173,17 @@ export default function LandingPage() {
             href="https://t.me/"
             target="_blank"
             rel="noreferrer"
-            className="mt-3 inline-flex items-center gap-1.5 rounded border border-ink-600 px-2.5 py-1.5 text-[12px] text-mute-300 transition hover:border-ink-500 hover:text-slate-100"
+            className="mt-3 inline-flex items-center gap-1.5 rounded border border-ink-600 px-2.5 py-1.5 t-small text-mute-300 transition hover:border-ink-500 hover:text-slate-100"
           >
             Open the bot <span aria-hidden>↗</span>
           </a>
         </div>
 
         <div className="border border-ink-700 bg-ink-900 p-4">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-mute-400">
+          <h2 className="t-label text-mute-400">
             Free, and what sits behind it
           </h2>
-          <ul className="mt-2 space-y-1.5 text-[12px]">
+          <ul className="mt-2 space-y-1.5 t-small">
             {[
               ["8 checks + verdict", "Free"],
               ["Top 10 holders + labels", "Free"],
@@ -195,7 +195,7 @@ export default function LandingPage() {
               <li key={f} className="flex items-baseline gap-2">
                 <span className="text-mute-300">{f}</span>
                 <span
-                  className={`ml-auto font-mono text-[10px] uppercase tracking-[0.06em] ${
+                  className={`ml-auto font-mono t-label ${
                     tier === "Free" ? "text-ok-500" : "text-mute-500"
                   }`}
                 >
@@ -206,7 +206,7 @@ export default function LandingPage() {
           </ul>
           <Link
             href="/pricing"
-            className="mt-3 inline-flex items-center gap-1.5 text-[12px] text-brand-400 underline decoration-brand-600/40 decoration-dotted underline-offset-2 hover:text-brand-400/80"
+            className="mt-3 inline-flex items-center gap-1.5 t-small text-brand-400 underline decoration-brand-600/40 decoration-dotted underline-offset-2 hover:text-brand-400/80"
           >
             See what premium includes
           </Link>
@@ -216,10 +216,10 @@ export default function LandingPage() {
       {/* closing cta */}
       <section className="py-10">
         <div className="max-w-2xl">
-          <h2 className="text-[18px] font-semibold tracking-tight text-slate-100">
+          <h2 className="t-display text-slate-100">
             Check one now.
           </h2>
-          <p className="mt-1.5 text-[12.5px] leading-relaxed text-mute-400">
+          <p className="mt-1.5 t-body leading-relaxed text-mute-400">
             No signup, no wallet connection, no rate-limit wall on the free tier.
           </p>
           <div className="mt-4">

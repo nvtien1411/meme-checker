@@ -15,6 +15,7 @@ import {
   VerdictBanner,
 } from "@/components/report";
 import { Panel } from "@/components/ui";
+import { SectionNav } from "@/components/SectionNav";
 import { ResultSkeleton } from "./skeleton";
 
 const VALID = CHAINS.map((c) => c.id);
@@ -51,10 +52,10 @@ async function Report({ chain, address }: { chain: ChainId; address: string }) {
     return (
       <div className="mx-auto w-full max-w-[880px] px-4 py-10 sm:px-6">
         <div className="border border-bad-600/50 bg-bad-600/8 px-4 py-3.5">
-          <h1 className="text-[14px] font-semibold text-bad-500">Could not analyse this token</h1>
-          <p className="mt-1.5 text-[12.5px] leading-relaxed text-slate-300">{message}</p>
-          {hint && <p className="mt-1 text-[11.5px] leading-relaxed text-mute-400">{hint}</p>}
-          <p className="mt-3 text-[11.5px] text-mute-500">
+          <h1 className="t-title text-bad-500">Could not analyse this token</h1>
+          <p className="mt-1.5 t-body leading-relaxed text-slate-300">{message}</p>
+          {hint && <p className="mt-1 t-small leading-relaxed text-mute-400">{hint}</p>}
+          <p className="mt-3 t-small text-mute-500">
             A failed lookup is not a verdict. Nothing here should be read as
             evidence that the token is safe or unsafe.
           </p>
@@ -67,60 +68,66 @@ async function Report({ chain, address }: { chain: ChainId; address: string }) {
     <div className="mx-auto w-full max-w-[1240px] px-4 py-6 sm:px-6">
       <VerdictBanner data={data} />
 
-      <div className="mt-4 grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="mt-4">
+        <SectionNav />
+      </div>
+
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
         {/* main column */}
         <div className="min-w-0 space-y-4">
           <Panel
+            id="checks"
             title="Checks"
             subtitle="Ordered worst-first. Expand any row for the number behind it and what would flip it."
             right={
-              <span className="font-mono text-[10.5px] text-mute-500">
+              <span className="font-mono t-meta text-mute-500">
                 {data.checks.length} total
               </span>
             }
           >
-            <div className="-mx-3.5 -mb-3">
+            <div className="-mx-4 -mb-3">
               <CheckList checks={data.checks} />
             </div>
           </Panel>
 
           <Panel
+            id="holders"
             title="Top 10 holders"
             subtitle="Percentages exclude liquidity pools, burns and launch curves."
             right={
               data.holders.totalHolders !== null ? (
-                <span className="font-mono text-[10.5px] tabular-nums text-mute-500">
+                <span className="font-mono t-meta tabular-nums text-mute-500">
                   of {data.holders.totalHolders.toLocaleString()}
                 </span>
               ) : undefined
             }
           >
-            <div className="-mx-3.5 -mb-3 min-w-0 overflow-hidden">
+            <div className="-mx-4 -mb-3 min-w-0 overflow-hidden">
               <HolderTable data={data} />
             </div>
           </Panel>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Panel title="Exit liquidity" subtitle="Single-pool estimate">
-              <div className="-mx-3.5 -mb-3">
+            <Panel id="exit" title="Exit liquidity" subtitle="Single-pool estimate">
+              <div className="-mx-4 -mb-3">
                 <ExitPanel data={data} />
               </div>
             </Panel>
-            <Panel title="Flow quality" subtitle="From the recent trade tape">
-              <div className="-mx-3.5 -mb-3">
+            <Panel id="flow" title="Flow quality" subtitle="From the recent trade tape">
+              <div className="-mx-4 -mb-3">
                 <FlowPanel data={data} />
               </div>
             </Panel>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Panel title="Narrative" subtitle="Model output, not a measurement">
-              <div className="-mx-3.5 -mb-3">
+            <Panel id="narrative" title="Narrative" subtitle="Model output, not a measurement">
+              <div className="-mx-4 -mb-3">
                 <NarrativePanel data={data} />
               </div>
             </Panel>
             <Panel title="Project" subtitle="Links published by the token">
-              <div className="-mx-3.5 -mb-3">
+              <div className="-mx-4 -mb-3">
                 <ProjectPanel data={data} />
               </div>
             </Panel>
@@ -129,19 +136,19 @@ async function Report({ chain, address }: { chain: ChainId; address: string }) {
 
         {/* side column */}
         <aside className="min-w-0 space-y-4">
-          <Panel title="Creator">
-            <div className="-mx-3.5 -mb-3">
+          <Panel id="creator" title="Creator">
+            <div className="-mx-4 -mb-3">
               <DeployerPanel data={data} />
             </div>
           </Panel>
 
           <Panel title="Data provenance" subtitle="Every source, and whether it answered">
-            <div className="-mx-3.5 -mb-3">
+            <div className="-mx-4 -mb-3">
               <ProvenancePanel data={data} />
             </div>
           </Panel>
 
-          <p className="border border-ink-800 px-3 py-2 text-[11px] leading-relaxed text-mute-500">
+          <p className="border border-ink-800 px-3 py-2 t-meta leading-relaxed text-mute-500">
             <span className="text-mute-400">Free report.</span> Wallet cluster map,
             dev-wallet investigation, bundle analysis, KOL intelligence and alerts
             are planned and not built. Nothing above is withheld behind them.

@@ -17,9 +17,9 @@ const BAND = {
   },
   risky: {
     label: "HIGH RISK",
-    ring: "border-orange-600/60 bg-orange-600/10",
-    text: "text-orange-400",
-    bar: "bg-orange-600",
+    ring: "border-orange-700/70 bg-orange-950/40",
+    text: "text-orange-300",
+    bar: "bg-orange-700",
   },
   watch: {
     label: "WATCH",
@@ -44,7 +44,7 @@ export function VerdictBanner({ data }: { data: AnalysisResult }) {
   return (
     <div className="border border-ink-700 bg-ink-900">
       {/* identity row */}
-      <div className="flex flex-wrap items-center gap-3 border-b border-ink-700 px-3.5 py-3">
+      <div className="flex flex-wrap items-center gap-3 border-b border-ink-700 px-4 py-3">
         {data.token.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -53,24 +53,24 @@ export function VerdictBanner({ data }: { data: AnalysisResult }) {
             className="h-9 w-9 shrink-0 rounded-full border border-ink-600 object-cover"
           />
         ) : (
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-ink-600 bg-ink-800 font-mono text-[10px] text-mute-400">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-ink-600 bg-ink-800 font-mono t-label text-mute-400">
             {(data.token.symbol ?? "?").slice(0, 3).toUpperCase()}
           </div>
         )}
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-            <h1 className="truncate text-[17px] font-semibold leading-tight tracking-tight text-slate-50">
+            <h1 className="truncate t-display leading-tight tracking-tight text-slate-50">
               {data.token.name ?? "Unknown token"}
             </h1>
             {data.token.symbol && (
-              <span className="font-mono text-[12.5px] text-brand-400">
+              <span className="font-mono t-body text-brand-400">
                 {data.token.symbol.toUpperCase()}
               </span>
             )}
             <Badge tone="mute">{chain.label}</Badge>
             {data.token.dexId && (
-              <span className="font-mono text-[11px] text-mute-500">{data.token.dexId}</span>
+              <span className="font-mono t-meta text-mute-500">{data.token.dexId}</span>
             )}
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-2.5">
@@ -79,32 +79,32 @@ export function VerdictBanner({ data }: { data: AnalysisResult }) {
               href={data.token.explorerUrl}
               target="_blank"
               rel="noreferrer"
-              className="font-mono text-[11px] text-mute-500 underline decoration-ink-600 decoration-dotted underline-offset-2 transition hover:text-brand-400"
+              className="font-mono t-meta text-mute-500 underline decoration-ink-600 decoration-dotted underline-offset-2 transition hover:text-brand-400"
             >
               explorer ↗
             </a>
-            <span className="font-mono text-[10.5px] text-mute-500">
+            <span className="font-mono t-meta text-mute-500">
               snapshot {fmtAgo(data.generatedAt)}
             </span>
           </div>
         </div>
 
         <div className={`shrink-0 rounded border px-3 py-2 ${band.ring}`}>
-          <div className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-mute-500">
+          <div className="font-mono t-label text-mute-500">
             verdict
           </div>
-          <div className={`mt-0.5 text-[13.5px] font-bold uppercase leading-none tracking-[0.08em] ${band.text}`}>
+          <div className={`mt-0.5 t-body font-semibold uppercase leading-none tracking-[0.08em] ${band.text}`}>
             {band.label}
           </div>
-          <div className="mt-1 font-mono text-[10.5px] tabular-nums text-mute-400">
+          <div className="mt-1 font-mono t-meta tabular-nums text-mute-400">
             {v.score}/100 risk
           </div>
         </div>
       </div>
 
       {/* tldr + counters */}
-      <div className="flex flex-col gap-y-2 border-b border-ink-700 px-3.5 py-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4">
-        <p className="w-full min-w-0 text-[12.5px] leading-relaxed text-slate-300 sm:flex-1">
+      <div className="flex flex-col gap-y-2 border-b border-ink-700 px-4 py-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4">
+        <p className="w-full min-w-0 t-body leading-relaxed text-slate-300 sm:flex-1">
           {v.tldr}
         </p>
         <div className="flex shrink-0 items-center gap-1.5">
@@ -198,10 +198,10 @@ function CountChip({ n, label, tone }: { n: number; label: string; tone: "bad" |
             : "border-ink-600 text-mute-400";
   return (
     <span
-      className={`inline-flex items-baseline gap-1 rounded border px-1.5 py-0.5 font-mono text-[10.5px] ${cls}`}
+      className={`inline-flex items-baseline gap-1 rounded border px-1.5 py-0.5 font-mono t-meta ${cls}`}
     >
       <span className="tnum font-semibold">{n}</span>
-      <span className="text-[9.5px] uppercase tracking-[0.06em] opacity-70">{label}</span>
+      <span className="t-label opacity-70">{label}</span>
     </span>
   );
 }
@@ -234,35 +234,35 @@ export function CheckList({ checks }: { checks: Check[] }) {
               type="button"
               onClick={() => setOpen(expanded ? null : c.id)}
               aria-expanded={expanded}
-              className="flex w-full min-w-0 items-start gap-2.5 px-3.5 py-2.5 text-left transition hover:bg-ink-850/60"
+              className="flex w-full min-w-0 items-start gap-2.5 px-4 py-2.5 text-left transition hover:bg-ink-850/60"
             >
               <span
                 aria-hidden
-                className={`mt-[3px] grid h-4 w-4 shrink-0 place-items-center rounded-full text-[9px] font-bold text-ink-950 ${m.dot}`}
+                className={`mt-[3px] grid h-4 w-4 shrink-0 place-items-center rounded-full t-label font-semibold text-ink-950 ${m.dot}`}
               >
                 {m.glyph}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                  <span className="text-[12.5px] font-medium text-slate-200">{c.label}</span>
-                  <span className={`min-w-0 break-words font-mono text-[11.5px] tabular-nums ${m.text}`}>
+                <span className="flex items-baseline justify-between gap-3">
+                  <span className="min-w-0 t-body-strong text-slate-100">{c.label}</span>
+                  <span
+                    className={`shrink-0 text-right font-mono t-small tabular-nums ${m.text}`}
+                  >
                     {c.reading}
                   </span>
                 </span>
-                <span className="mt-0.5 flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-[9.5px] uppercase tracking-[0.06em] text-mute-500">
-                    {c.source}
-                  </span>
+                <span className="mt-1 flex flex-wrap items-center gap-2">
+                  <span className="font-mono t-meta lowercase text-mute-500">{c.source}</span>
                   <QualityTag quality={c.quality} />
                 </span>
               </span>
-              <span aria-hidden className="mt-0.5 text-[11px] text-mute-500">
+              <span aria-hidden className="mt-0.5 t-meta text-mute-500">
                 {expanded ? "−" : "+"}
               </span>
             </button>
             {expanded && (
-              <div className="border-t border-ink-800 bg-ink-850/40 px-3.5 py-2.5 pl-[38px]">
-                <p className="text-[12px] leading-relaxed text-mute-300">{c.detail}</p>
+              <div className="border-t border-ink-800 bg-ink-850/40 px-4 py-2.5 pl-[42px]">
+                <p className="t-small leading-relaxed text-mute-300">{c.detail}</p>
               </div>
             )}
           </li>
@@ -287,12 +287,13 @@ const LABEL_TEXT: Record<string, string> = {
 export function HolderTable({ data }: { data: AnalysisResult }) {
   const { holders } = data;
   const chain = CHAIN_BY_ID[data.token.chain];
+  const hasLabels = holders.rows.some((h) => h.label !== null);
 
   if (holders.rows.length === 0) {
     return (
-      <div className="px-3.5 py-4">
-        <p className="text-[12.5px] text-mute-300">No holder list available for this token.</p>
-        <p className="mt-1 text-[11.5px] leading-relaxed text-mute-500">
+      <div className="px-4 py-4">
+        <p className="t-body text-mute-300">No holder list available for this token.</p>
+        <p className="mt-1 t-small leading-relaxed text-mute-500">
           Neither provider returned holders. This is a coverage gap — it is not
           evidence that the distribution is healthy.
         </p>
@@ -303,20 +304,22 @@ export function HolderTable({ data }: { data: AnalysisResult }) {
   return (
     <div>
       <div className="w-full min-w-0 max-w-full overflow-x-auto scroll-thin">
-        <table className="w-full border-collapse text-[12px] sm:min-w-[520px]">
+        <table className="w-full border-collapse t-small sm:min-w-[520px]">
           <thead>
-            <tr className="border-b border-ink-700 text-left text-[10px] uppercase tracking-[0.1em] text-mute-500">
+            <tr className="border-b border-ink-700 text-left t-label text-mute-500">
               <th className="px-3 py-1.5 font-medium">#</th>
               <th className="px-2 py-1.5 font-medium">Wallet</th>
               <th className="hidden px-2 py-1.5 text-right font-medium sm:table-cell">Balance</th>
               <th className="px-2 py-1.5 text-right font-medium">Share</th>
-              <th className="hidden px-3 py-1.5 font-medium sm:table-cell">Tag</th>
+              {hasLabels && (
+                <th className="hidden px-3 py-2 font-medium sm:table-cell">Tag</th>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-ink-800">
             {holders.rows.map((h) => (
               <tr key={h.address} className="transition hover:bg-ink-850/60">
-                <td className="px-3 py-1.5 font-mono text-[11px] tabular-nums text-mute-500">
+                <td className="px-3 py-1.5 font-mono t-meta tabular-nums text-mute-500">
                   {h.rank}
                 </td>
                 <td className="px-2 py-1.5">
@@ -325,18 +328,18 @@ export function HolderTable({ data }: { data: AnalysisResult }) {
                       href={chain.explorer(h.address)}
                       target="_blank"
                       rel="noreferrer"
-                      className="font-mono text-[11.5px] text-mute-300 transition hover:text-brand-400"
+                      className="font-mono t-small text-mute-300 transition hover:text-brand-400"
                       title={h.address}
                     >
                       {shorten(h.address, 5)}
                     </a>
-                    <Copyable text={h.address} display="" title="Copy wallet" />
+                    <Copyable text={h.address} title="Copy wallet address" />
                   </div>
                 </td>
-                <td className="hidden px-2 py-1.5 text-right font-mono text-[11.5px] tabular-nums text-mute-300 sm:table-cell">
+                <td className="hidden px-2 py-1.5 text-right font-mono t-small tabular-nums text-mute-300 sm:table-cell">
                   {h.balance === null ? "—" : compactNum(h.balance)}
                 </td>
-                <td className="px-2 py-1.5 text-right font-mono text-[11.5px] tabular-nums">
+                <td className="px-2 py-1.5 text-right font-mono t-small tabular-nums">
                   <span
                     className={
                       h.pct === null
@@ -351,29 +354,31 @@ export function HolderTable({ data }: { data: AnalysisResult }) {
                     {h.pct === null ? "—" : `${h.pct.toFixed(2)}%`}
                   </span>
                 </td>
-                <td className="hidden px-3 py-1.5 sm:table-cell">
-                  {h.label ? (
-                    <Tooltip label={h.labelBasis ?? "Labelled by the data provider"}>
-                      <Badge tone="mute">{LABEL_TEXT[h.label] ?? h.label}</Badge>
-                    </Tooltip>
-                  ) : (
-                    <span className="text-[10.5px] text-mute-500">—</span>
-                  )}
-                </td>
+                {hasLabels && (
+                  <td className="hidden px-3 py-2 sm:table-cell">
+                    {h.label ? (
+                      <Tooltip label={h.labelBasis ?? "Labelled by the data provider"}>
+                        <Badge tone="mute">{LABEL_TEXT[h.label] ?? h.label}</Badge>
+                      </Tooltip>
+                    ) : (
+                      <span className="t-meta text-mute-500">—</span>
+                    )}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      <div className="border-t border-ink-800 px-3.5 py-2.5">
+      <div className="border-t border-ink-800 px-4 py-2.5">
         {!holders.meaningful && holders.note && (
-          <p className="mb-1.5 text-[11.5px] leading-relaxed text-warn-500">{holders.note}</p>
+          <p className="mb-1.5 t-small leading-relaxed text-warn-500">{holders.note}</p>
         )}
-        <p className="text-[11px] leading-relaxed text-mute-500">
+        <p className="t-meta leading-relaxed text-mute-500">
           <span className="text-mute-400">How share is computed:</span> {holders.method}{" "}
-          Snapshot {fmtAgo(holders.snapshotAt)}. Labels come from the data provider;
-          wallets without a label are unclassified, not suspicious.
+          Labels come from the data provider; wallets without one are
+          unclassified, not suspicious.
         </p>
       </div>
     </div>
@@ -386,16 +391,16 @@ export function NarrativePanel({ data }: { data: AnalysisResult }) {
   const n = data.narrative;
 
   return (
-    <div className="px-3.5 py-3">
+    <div className="px-4 py-3">
       <div className="flex flex-wrap items-center gap-2">
         <Badge tone="warn">inferred — not a measurement</Badge>
         {n.theme && <Badge tone="brand">{n.theme}</Badge>}
       </div>
 
       {n.summary ? (
-        <p className="mt-2.5 text-[12.5px] leading-relaxed text-slate-300">{n.summary}</p>
+        <p className="mt-2.5 t-body leading-relaxed text-slate-300">{n.summary}</p>
       ) : (
-        <p className="mt-2.5 text-[12.5px] leading-relaxed text-mute-400">
+        <p className="mt-2.5 t-body leading-relaxed text-mute-400">
           No theme matched this token&apos;s name or symbol.
         </p>
       )}
@@ -405,7 +410,7 @@ export function NarrativePanel({ data }: { data: AnalysisResult }) {
           {n.keywords.map((k) => (
             <span
               key={k}
-              className="rounded border border-ink-700 px-1.5 py-0.5 font-mono text-[10.5px] text-mute-400"
+              className="rounded border border-ink-700 px-1.5 py-0.5 font-mono t-meta text-mute-400"
             >
               {k}
             </span>
@@ -413,7 +418,7 @@ export function NarrativePanel({ data }: { data: AnalysisResult }) {
         </div>
       )}
 
-      <p className="mt-3 border-t border-ink-800 pt-2 text-[11px] leading-relaxed text-mute-500">
+      <p className="mt-3 border-t border-ink-800 pt-2 t-meta leading-relaxed text-mute-500">
         {n.disclaimer}
       </p>
     </div>
@@ -431,22 +436,22 @@ export function ProjectPanel({ data }: { data: AnalysisResult }) {
   ].filter((r) => r.value);
 
   return (
-    <div className="px-3.5 py-3">
+    <div className="px-4 py-3">
       {rows.length === 0 ? (
-        <p className="text-[12.5px] leading-relaxed text-mute-400">
+        <p className="t-body leading-relaxed text-mute-400">
           No website or social links were published for this token in the data we
           read. We do not guess them.
         </p>
       ) : (
         <ul className="space-y-1.5">
           {rows.map((r) => (
-            <li key={r.label} className="flex items-baseline gap-2 text-[12px]">
+            <li key={r.label} className="flex items-baseline gap-2 t-small">
               <span className="w-[86px] shrink-0 text-mute-500">{r.label}</span>
               <a
                 href={r.value!}
                 target="_blank"
                 rel="noreferrer"
-                className="min-w-0 truncate font-mono text-[11.5px] text-brand-400 underline decoration-brand-600/40 decoration-dotted underline-offset-2 hover:text-brand-400/80"
+                className="min-w-0 truncate font-mono t-small text-brand-400 underline decoration-brand-600/40 decoration-dotted underline-offset-2 hover:text-brand-400/80"
               >
                 {r.value!.replace(/^https?:\/\//, "").replace(/\/$/, "")}
               </a>
@@ -455,9 +460,9 @@ export function ProjectPanel({ data }: { data: AnalysisResult }) {
         </ul>
       )}
       {p.description && (
-        <p className="mt-2.5 text-[12px] leading-relaxed text-mute-300">{p.description}</p>
+        <p className="mt-2.5 t-small leading-relaxed text-mute-300">{p.description}</p>
       )}
-      <p className="mt-2.5 border-t border-ink-800 pt-2 text-[11px] text-mute-500">
+      <p className="mt-2.5 border-t border-ink-800 pt-2 t-meta text-mute-500">
         {p.source ? `Source: ${p.source}.` : "No source returned links."} Links are
         user-supplied by the project and are not verified by us.
       </p>
@@ -470,9 +475,9 @@ export function ProjectPanel({ data }: { data: AnalysisResult }) {
 export function ExitPanel({ data }: { data: AnalysisResult }) {
   const e = data.exit;
   return (
-    <div className="px-3.5 py-3">
+    <div className="px-4 py-3">
       {!e.available ? (
-        <p className="text-[12.5px] leading-relaxed text-mute-400">{e.note}</p>
+        <p className="t-body leading-relaxed text-mute-400">{e.note}</p>
       ) : (
         <>
           <div className="grid grid-cols-3 divide-x divide-ink-700 border border-ink-700">
@@ -481,22 +486,22 @@ export function ExitPanel({ data }: { data: AnalysisResult }) {
               { k: "5% slip", v: e.maxSellUsd.slip5 },
               { k: "10% slip", v: e.maxSellUsd.slip10 },
             ].map((x) => (
-              <div key={x.k} className="px-2.5 py-2">
-                <div className="text-[9.5px] uppercase tracking-[0.08em] text-mute-500">
+              <div key={x.k} className="px-3 py-2.5">
+                <div className="t-label text-mute-500">
                   {x.k}
                 </div>
-                <div className="mt-0.5 font-mono text-[13px] tabular-nums text-slate-100">
+                <div className="mt-0.5 font-mono t-body tabular-nums text-slate-100">
                   {fmtUsd(x.v)}
                 </div>
               </div>
             ))}
           </div>
-          <p className="mt-2 text-[11.5px] leading-relaxed text-mute-400">
+          <p className="mt-2 t-small leading-relaxed text-mute-400">
             Amount you can sell before price impact reaches that level. Your
             position should be a fraction of these, not near them.
           </p>
           {e.liquidityCoverage !== null && (
-            <p className="mt-1.5 text-[11.5px] text-mute-500">
+            <p className="mt-1.5 t-small text-mute-500">
               Pool holds{" "}
               <span
                 className={
@@ -508,7 +513,7 @@ export function ExitPanel({ data }: { data: AnalysisResult }) {
               of the reported market cap.
             </p>
           )}
-          <p className="mt-2 border-t border-ink-800 pt-2 text-[11px] leading-relaxed text-mute-500">
+          <p className="mt-2 border-t border-ink-800 pt-2 t-meta leading-relaxed text-mute-500">
             {e.note}
           </p>
         </>
@@ -522,9 +527,9 @@ export function ExitPanel({ data }: { data: AnalysisResult }) {
 export function FlowPanel({ data }: { data: AnalysisResult }) {
   const f = data.flow;
   return (
-    <div className="px-3.5 py-3">
+    <div className="px-4 py-3">
       {!f.dataAvailable && f.note && (
-        <p className="mb-2.5 rounded border border-ink-700 bg-ink-850 px-2.5 py-2 text-[11.5px] leading-relaxed text-mute-400">
+        <p className="mb-2.5 rounded border border-ink-700 bg-ink-850 px-2.5 py-2 t-small leading-relaxed text-mute-400">
           {f.note}
         </p>
       )}
@@ -537,12 +542,12 @@ export function FlowPanel({ data }: { data: AnalysisResult }) {
           tone={f.imbalance === null ? "default" : f.imbalance >= 0 ? "up" : "down"}
         />
         <MiniStat
-          label="Distinct wallets"
-          value={f.distinctTraders === null ? "—" : f.distinctTraders.toLocaleString()}
+          label="Trades sampled"
+          value={f.windowTrades > 0 ? f.windowTrades.toLocaleString() : "—"}
         />
       </div>
       {f.dataAvailable && f.buyVolumeUsd !== null && (
-        <p className="mt-2 font-mono text-[11px] text-mute-500">
+        <p className="mt-2 font-mono t-meta text-mute-500">
           {fmtUsd(f.buyVolumeUsd)} in / {fmtUsd(f.sellVolumeUsd)} out over{" "}
           {f.windowTrades} trades
         </p>
@@ -562,9 +567,9 @@ function MiniStat({
 }) {
   return (
     <div>
-      <div className="text-[9.5px] uppercase tracking-[0.08em] text-mute-500">{label}</div>
+      <div className="t-label text-mute-500">{label}</div>
       <div
-        className={`mt-0.5 font-mono text-[13px] tabular-nums ${
+        className={`mt-0.5 font-mono t-body tabular-nums ${
           tone === "up" ? "text-ok-500" : tone === "down" ? "text-bad-500" : "text-slate-100"
         }`}
       >
@@ -581,16 +586,16 @@ export function DeployerPanel({ data }: { data: AnalysisResult }) {
   const chain = CHAIN_BY_ID[data.token.chain];
 
   return (
-    <div className="px-3.5 py-3">
+    <div className="px-4 py-3">
       {!d.dataAvailable ? (
-        <p className="text-[12.5px] leading-relaxed text-mute-400">
+        <p className="t-body leading-relaxed text-mute-400">
           The creator wallet could not be identified for this token, so its
           history is unknown — not clean.
         </p>
       ) : (
         <>
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <span className="text-[10px] uppercase tracking-[0.08em] text-mute-500">
+            <span className="t-label text-mute-500">
               Creator
             </span>
             {d.address ? (
@@ -598,27 +603,27 @@ export function DeployerPanel({ data }: { data: AnalysisResult }) {
                 href={chain.explorer(d.address)}
                 target="_blank"
                 rel="noreferrer"
-                className="font-mono text-[11.5px] text-mute-300 hover:text-brand-400"
+                className="font-mono t-small text-mute-300 hover:text-brand-400"
               >
                 {shorten(d.address, 5)}
               </a>
             ) : (
-              <span className="font-mono text-[11.5px] text-mute-500">unknown</span>
+              <span className="font-mono t-small text-mute-500">unknown</span>
             )}
-            <span className="text-[10px] uppercase tracking-[0.08em] text-mute-500">
+            <span className="t-label text-mute-500">
               holds
             </span>
-            <span className="font-mono text-[11.5px] tabular-nums text-mute-300">
+            <span className="font-mono t-small tabular-nums text-mute-300">
               {d.balancePct === null ? "unknown" : `${d.balancePct.toFixed(2)}%`}
             </span>
           </div>
 
           <div className="mt-2.5 border-t border-ink-800 pt-2">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] uppercase tracking-[0.08em] text-mute-500">
+              <span className="t-label text-mute-500">
                 Prior launches
               </span>
-              <span className="font-mono text-[11px] tabular-nums text-mute-400">
+              <span className="font-mono t-meta tabular-nums text-mute-400">
                 {d.priorTokens.length}
                 {d.ruggedCount > 0 && (
                   <span className="ml-1.5 text-bad-500">{d.ruggedCount} rugged</span>
@@ -627,13 +632,13 @@ export function DeployerPanel({ data }: { data: AnalysisResult }) {
             </div>
 
             {d.priorTokens.length === 0 ? (
-              <p className="mt-1.5 text-[11.5px] leading-relaxed text-mute-500">
+              <p className="mt-1.5 t-small leading-relaxed text-mute-500">
                 Fresh wallet. No rug history — and no track record either.
               </p>
             ) : (
               <ul className="mt-1.5 space-y-1">
                 {d.priorTokens.slice(0, 6).map((t) => (
-                  <li key={t.address} className="flex items-center gap-2 text-[11.5px]">
+                  <li key={t.address} className="flex items-center gap-2 t-small">
                     <span
                       className={`h-1.5 w-1.5 shrink-0 rounded-full ${
                         t.rugged ? "bg-bad-600" : "bg-ok-600"
@@ -647,7 +652,7 @@ export function DeployerPanel({ data }: { data: AnalysisResult }) {
                     >
                       {t.symbol ?? shorten(t.address, 4)}
                     </a>
-                    <span className={`ml-auto text-[10.5px] ${t.rugged ? "text-bad-500" : "text-mute-500"}`}>
+                    <span className={`ml-auto t-meta ${t.rugged ? "text-bad-500" : "text-mute-500"}`}>
                       {t.rugged ? "rugged" : "survived"}
                     </span>
                   </li>
@@ -664,18 +669,30 @@ export function DeployerPanel({ data }: { data: AnalysisResult }) {
 /* ----------------------------- provenance ---------------------------- */
 
 export function ProvenancePanel({ data }: { data: AnalysisResult }) {
+  const failed = data.provenance.filter((p) => !p.ok).length;
   return (
-    <div className="px-3.5 py-3">
-      <ul className="space-y-1">
+    <div className="px-4 py-3">
+      <details open={failed > 0}>
+        <summary className="cursor-pointer list-none t-meta text-mute-400 transition hover:text-slate-200">
+          {failed > 0 ? (
+            <span className="text-bad-500">
+              {failed} source{failed > 1 ? "s" : ""} did not answer
+            </span>
+          ) : (
+            <span>All {data.provenance.length} sources answered</span>
+          )}
+          <span className="ml-1 text-mute-500">· details</span>
+        </summary>
+      <ul className="mt-2 space-y-1.5">
         {data.provenance.map((p, i) => (
-          <li key={`${p.source}-${i}`} className="flex min-w-0 items-center gap-2 text-[11.5px]">
+          <li key={`${p.source}-${i}`} className="flex min-w-0 items-center gap-2 t-meta leading-relaxed">
             <span
               aria-hidden
               className={`h-1.5 w-1.5 shrink-0 rounded-full ${p.ok ? "bg-ok-600" : "bg-bad-600"}`}
             />
             <span className="truncate font-mono text-mute-300">{p.source}</span>
             <span
-              className="ml-auto max-w-[52%] shrink-0 truncate text-right font-mono text-[10.5px] text-mute-500"
+              className="ml-auto max-w-[52%] shrink-0 truncate text-right font-mono t-meta text-mute-500"
               title={p.ok ? undefined : (p.error ?? "failed")}
             >
               {p.ok ? (p.note === "cached" ? "cached" : `${p.ms}ms`) : (p.error ?? "failed")}
@@ -683,7 +700,8 @@ export function ProvenancePanel({ data }: { data: AnalysisResult }) {
           </li>
         ))}
       </ul>
-      <p className="mt-2.5 border-t border-ink-800 pt-2 text-[11px] leading-relaxed text-mute-500">
+      </details>
+      <p className="mt-2.5 border-t border-ink-800 pt-2 t-meta leading-relaxed text-mute-500">
         {data.disclaimer}
       </p>
     </div>

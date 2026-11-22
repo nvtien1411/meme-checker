@@ -9,20 +9,20 @@ export function SiteFooter() {
             <div className="flex items-center gap-2">
               <span
                 aria-hidden
-                className="grid h-5 w-5 place-items-center rounded-[3px] border border-ink-600 font-mono text-[9.5px] font-bold text-mute-400"
+                className="grid h-5 w-5 place-items-center rounded-[3px] border border-ink-600 font-mono t-label font-semibold text-mute-400"
               >
                 MC
               </span>
-              <span className="text-[12.5px] font-semibold text-slate-200">Meme Checker</span>
+              <span className="t-body font-semibold text-slate-200">Meme Checker</span>
             </div>
-            <p className="mt-2 text-[11.5px] leading-relaxed text-mute-500">
+            <p className="mt-2 t-small leading-relaxed text-mute-500">
               A research aid for contract addresses. Not financial advice, not a
               guarantee, and not a substitute for your own judgement. Public data
               can be wrong, late or incomplete.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-x-10 gap-y-1.5 text-[12px] sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-x-10 gap-y-1.5 t-small sm:grid-cols-3">
             <Link href="/check" className="text-mute-400 transition hover:text-slate-200">
               Checker
             </Link>
@@ -49,7 +49,7 @@ export function SiteFooter() {
           </div>
         </div>
 
-        <p className="mt-6 border-t border-ink-800 pt-3 text-[10.5px] text-mute-500">
+        <p className="mt-6 border-t border-ink-800 pt-3 t-meta text-mute-500">
           Data from DexScreener, GeckoTerminal, RugCheck and GoPlus. Free tier,
           no key required. Values are snapshotted at request time and may already
           be stale.

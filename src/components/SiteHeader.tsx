@@ -20,11 +20,11 @@ export function SiteHeader() {
         <Link href="/" className="mr-2 flex items-center gap-2 py-3">
           <span
             aria-hidden
-            className="grid h-6 w-6 place-items-center rounded-[3px] border border-brand-600/60 bg-brand-600/15 font-mono text-[11px] font-bold text-brand-400"
+            className="grid h-6 w-6 place-items-center rounded-[3px] border border-brand-600/60 bg-brand-600/15 font-mono t-meta font-semibold text-brand-400"
           >
             MC
           </span>
-          <span className="text-[13.5px] font-semibold tracking-tight text-slate-100">
+          <span className="t-body font-semibold tracking-tight text-slate-100">
             Meme<span className="text-mute-400"> Checker</span>
           </span>
         </Link>
@@ -36,7 +36,7 @@ export function SiteHeader() {
               <Link
                 key={n.href}
                 href={n.href}
-                className={`rounded px-2.5 py-1.5 text-[12.5px] transition ${
+                className={`rounded px-2.5 py-1.5 t-body transition ${
                   active
                     ? "bg-ink-800 font-medium text-slate-100"
                     : "text-mute-400 hover:bg-ink-850 hover:text-slate-200"
@@ -50,7 +50,7 @@ export function SiteHeader() {
             href="https://t.me/"
             target="_blank"
             rel="noreferrer"
-            className="rounded px-2.5 py-1.5 text-[12.5px] text-mute-400 transition hover:bg-ink-850 hover:text-slate-200"
+            className="rounded px-2.5 py-1.5 t-body text-mute-400 transition hover:bg-ink-850 hover:text-slate-200"
           >
             Telegram bot
           </a>
@@ -59,13 +59,13 @@ export function SiteHeader() {
         <div className="ml-auto flex items-center gap-2">
           <Link
             href="/login"
-            className="hidden rounded border border-ink-600 px-2.5 py-1.5 text-[12.5px] text-mute-300 transition hover:border-ink-500 hover:text-slate-100 sm:block"
+            className="hidden rounded border border-ink-600 px-2.5 py-1.5 t-body text-mute-300 transition hover:border-ink-500 hover:text-slate-100 sm:block"
           >
             Log in
           </Link>
           <Link
             href="/check"
-            className="rounded bg-brand-500 px-3 py-1.5 text-[12.5px] font-semibold text-ink-950 transition hover:bg-brand-400"
+            className="rounded bg-brand-500 px-3 py-1.5 t-body font-semibold text-ink-950 transition hover:bg-brand-400"
           >
             Check token
           </Link>
@@ -76,7 +76,7 @@ export function SiteHeader() {
             onClick={() => setOpen((v) => !v)}
             className="grid h-8 w-8 place-items-center rounded border border-ink-700 text-mute-300 sm:hidden"
           >
-            <span aria-hidden className="text-[14px] leading-none">
+            <span aria-hidden className="t-title leading-none">
               {open ? "×" : "≡"}
             </span>
           </button>
@@ -90,12 +90,12 @@ export function SiteHeader() {
               key={n.href}
               href={n.href}
               onClick={() => setOpen(false)}
-              className="block py-2 text-[13px] text-mute-300"
+              className="block py-2 t-body text-mute-300"
             >
               {n.label}
             </Link>
           ))}
-          <Link href="/login" onClick={() => setOpen(false)} className="block py-2 text-[13px] text-mute-300">
+          <Link href="/login" onClick={() => setOpen(false)} className="block py-2 t-body text-mute-300">
             Log in
           </Link>
         </nav>
