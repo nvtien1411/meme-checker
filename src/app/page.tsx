@@ -2,6 +2,8 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { SearchBar } from "@/components/SearchBar";
 import { LiveSample, LiveSampleSkeleton } from "@/components/HeroReport";
+import { ChainMark } from "@/components/ChainMark";
+import { CHAINS } from "@/lib/chains";
 
 /* ==================================================================== *
  * LANDING
@@ -62,10 +64,24 @@ export default function Home() {
       <section className="border-b border-ink-800">
         <div className="grid grid-cols-1 gap-y-10 px-4 pb-10 pt-9 sm:px-6 lg:grid-cols-[minmax(0,1fr)_372px] lg:gap-x-14 lg:px-8 lg:pb-12 lg:pt-12">
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[9.5px] uppercase tracking-[0.14em] text-mute-600">
-              <span className="text-mute-400">on-chain risk intelligence</span>
-              <span aria-hidden className="h-[3px] w-[3px] bg-ink-600" />
-              <span className="hidden sm:inline">solana · bnb chain · ethereum · base · robinhood chain</span><span className="sm:hidden">solana · bnb · ethereum · base · robinhood</span>
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+              <span className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-mute-400">
+                on-chain risk intelligence
+              </span>
+              <span aria-hidden className="h-[3px] w-[3px] shrink-0 bg-ink-600" />
+              <ul className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                {CHAINS.map((c) => (
+                  <li key={c.id} className="flex items-center gap-1.5">
+                    <ChainMark chain={c.id} size={12} />
+                    <span
+                      className="font-mono text-[9.5px] uppercase tracking-[0.12em]"
+                      style={{ color: `color-mix(in srgb, ${c.tint} 62%, var(--color-mute-400))` }}
+                    >
+                      {c.short}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </div>
 
             <h1 className="mt-5 max-w-[17ch] t-hero text-lit-50">

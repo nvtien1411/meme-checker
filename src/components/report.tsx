@@ -6,6 +6,7 @@ import type { AnalysisResult, Check, CheckState } from "@/lib/types";
 import { CHAIN_BY_ID } from "@/lib/chains";
 import { fmtAgo, fmtAge, fmtChange, fmtPct, fmtPrice, fmtUsd } from "@/lib/http";
 import { CopyButton } from "./feedback";
+import { ChainChip } from "./ChainMark";
 import { Metric, Note, QualityDot, Tag } from "./ui";
 import {
   CheckRibbon,
@@ -61,7 +62,6 @@ const CHECK_TONE: Record<CheckState, string> = {
 
 export function VerdictMasthead({ data }: { data: AnalysisResult }) {
   const v = data.verdict;
-  const chain = CHAIN_BY_ID[data.token.chain];
   const band = BAND[v.band];
   const change = fmtChange(data.market.priceChange24h, data.market.ageHours);
 
@@ -91,21 +91,7 @@ export function VerdictMasthead({ data }: { data: AnalysisResult }) {
               {data.token.symbol}
             </span>
           )}
-          <span
-            className="inline-flex items-center gap-1.5 border px-1.5 py-[1px] font-mono text-[9px] uppercase tracking-[0.1em]"
-            style={{
-              color: chain.tint,
-              borderColor: `color-mix(in srgb, ${chain.tint} 35%, transparent)`,
-              backgroundColor: `color-mix(in srgb, ${chain.tint} 8%, transparent)`,
-            }}
-          >
-            <span
-              aria-hidden
-              className="h-[4px] w-[4px] rounded-full"
-              style={{ backgroundColor: chain.tint }}
-            />
-            {chain.label}
-          </span>
+<ChainChip chain={data.token.chain} />
         </div>
 
         <div className="flex w-full items-center gap-x-3 gap-y-1 sm:ml-auto sm:w-auto">

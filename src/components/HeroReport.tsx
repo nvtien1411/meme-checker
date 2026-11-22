@@ -4,7 +4,7 @@ import { analyzeToken } from "@/lib/analyze";
 import type { AnalysisResult } from "@/lib/types";
 import { fmtPct, fmtPrice, fmtUsd } from "@/lib/http";
 import { RiskArc } from "@/components/viz";
-import { CHAIN_BY_ID } from "@/lib/chains";
+import { ChainChip } from "@/components/ChainMark";
 import { sortBySeverity } from "@/lib/check-order";
 
 /* ==================================================================== *
@@ -119,15 +119,7 @@ export async function LiveSample() {
         <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-mute-500">
           {token.symbol}
         </span>
-        <span
-          className="hidden shrink-0 border px-1.5 py-[1px] font-mono text-[8.5px] uppercase tracking-[0.1em] sm:inline"
-          style={{
-            color: CHAIN_BY_ID[token.chain].tint,
-            borderColor: `color-mix(in srgb, ${CHAIN_BY_ID[token.chain].tint} 35%, transparent)`,
-          }}
-        >
-          {CHAIN_BY_ID[token.chain].short}
-        </span>
+<ChainChip chain={token.chain} short className="hidden sm:inline-flex" />
         <span className="ml-auto inline-flex shrink-0 items-center gap-1.5">
           <span aria-hidden className="live-dot h-1.5 w-1.5 rounded-full bg-ok-500" />
           <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-ok-400">
