@@ -24,10 +24,35 @@ export function fmtUsd(v: number | null | undefined, opts?: { compact?: boolean 
 export function fmtPrice(v: number | null | undefined): string {
   if (v === null || v === undefined || !Number.isFinite(v)) return DASH;
   if (v === 0) return "$0";
-  if (Math.abs(v) >= 0.01) return `$${v.toFixed(4)}`;
-  const exp = Math.floor(Math.log10(Math.abs(v)));
-  const mantissa = v / Math.pow(10, exp);
-  return `$${mantissa.toFixed(3)}e${exp}`;
+
+  const a = Math.abs(v);
+
+  // Whole-dollar tokens: two decimals, because four is noise at that scale.
+  if (a >= 1) return `$${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  // Cents to dollars: four decimals, trailing zeros trimmed, never fewer than two.
+  if (a >= 0.01) {
+    const [h, t] = v.toFixed(4).split(".");
+    const trimmed = t.replace(/0+$/, "").padEnd(2, "0");
+    return `$${h}.${trimmed}`;
+  }
+
+  // Sub-cent: print the decimal with four significant digits. Memecoin prices
+  // are the most-read number in the product, and "3.993e-5" is not a price a
+  // person can compare to another price.
+  const decimals = Math.min(12, Math.max(2, 3 - Math.floor(Math.log10(a))));
+  let fixed = v.toFixed(decimals);
+  const [head, tail] = fixed.split(".");
+  const trimmed = tail.replace(/0+$/, "");
+  if (trimmed.length >= 2) fixed = `${head}.${trimmed}`;
+
+  // A token priced below 1e-12 would round to zero at the cap; fall back to
+  // scientific notation rather than print a misleading $0.000000000000.
+  if (/^0\.0*$/.test(fixed)) {
+    const exp = Math.floor(Math.log10(a));
+    return `$${(v / Math.pow(10, exp)).toFixed(3)}e${exp}`;
+  }
+  return `$${fixed}`;
 }
 
 export function fmtPct(v: number | null | undefined, digits = 1): string {
@@ -78,6 +103,7 @@ export function fmtAgo(iso: string | null | undefined): string {
   const t = Date.parse(iso);
   if (!Number.isFinite(t)) return DASH;
   const s = Math.max(0, (Date.now() - t) / 1000);
+  if (s < 10) return "just now";
   if (s < 60) return `${Math.round(s)}s ago`;
   if (s < 3600) return `${Math.round(s / 60)}m ago`;
   if (s < 86400) return `${Math.round(s / 3600)}h ago`;

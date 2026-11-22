@@ -1,79 +1,87 @@
 @import "tailwindcss";
 
 /* ==================================================================== *
- * MEME CHECKER — DESIGN SYSTEM
+ * MEME CHECKER — DESIGN SYSTEM v3 · OBSIDIAN / ACID
  *
- * Direction: on-chain investigation software. The reference points are
- * Arkham's density, Bubblemaps' spatial clarity, Linear's restraint, and
- * Stripe's typographic confidence — not their layouts.
+ * v2 fixed the structure: a left rail instead of a header bar, a document
+ * instead of a card stack, and a verdict that outranks everything else. That
+ * structure holds. What it did not have was a voice — neutral grey surfaces
+ * and a white primary action read as a compliance tool, not as a product
+ * built for people who trade memecoins.
  *
- * Three decisions drive everything below:
+ * This version re-skins the system without touching the information
+ * architecture. Four decisions:
  *
- * 1. INK, NOT BLACK. Pure black (#000) makes a dark UI look like a terminal
- *    demo. The surface ramp here is blue-tinted and sits between #08090c and
- *    #1a1f28, which reads as a material rather than an absence of one.
+ * 1. OBSIDIAN, NOT GREY. Surfaces are near-black with a cold undertone and a
+ *    slight blue cast in the mid ramp, the way volcanic glass reads under a
+ *    screen. Neutral #111 looks like a settings panel; obsidian looks like a
+ *    surface something is printed on.
  *
- * 2. ONE ACCENT, ONE WARNING RAMP. Sky is reserved for interaction — links,
- *    focus, primary action. State colour (rose/amber/emerald) never appears
- *    on anything you can click. That separation is why a dense screen stays
- *    scannable: colour always means "read this", never "press this".
+ * 2. ACID LIME IS THE ONLY INTERACTION COLOUR. One acid green (#c6f24e) for
+ *    primary actions, focus, active nav and live indicators. Nothing else on
+ *    the page is that colour, which is why it reads as a signal rather than
+ *    as decoration.
  *
- * 3. TYPE SCALE WITH REAL STEPS. Six sizes, minimum 16px apart at display
- *    level and never closer than 1px apart at body level. Half-pixel steps
- *    are invisible and read as sloppy rather than dense.
+ * 3. STATE IS A RAMP, NOT A SET. watch → risky → avoid is amber → orange →
+ *    red, because they are degrees of the same thing. "pass" is teal, chosen
+ *    to sit outside both the lime accent and the warm ramp, so a green
+ *    reading can never be confused with a clickable element.
+ *
+ * 4. TYPE IS SHARP, NOT EDITORIAL. A tight geometric grotesque for display,
+ *    Inter for prose, one mono for every number. The serif is gone: it made
+ *    the product read as a research note, and this is an instrument.
+ *
+ * Neon appears exactly twice — a 1px bloom on the primary action, and a soft
+ * radial wash behind the verdict. Any more and it becomes a gaming UI.
  * ==================================================================== */
 
 @theme {
-  /* surfaces — blue-black, not neutral-black */
-  --color-ink-950: #08090c;
-  --color-ink-900: #0b0d11;
-  --color-ink-850: #0f1217;
-  --color-ink-800: #14181f;
-  --color-ink-750: #191e27;
-  --color-ink-700: #1f2530;
-  --color-ink-650: #262e3a;
-  --color-ink-600: #2f3846;
-  --color-ink-500: #3d4757;
+  /* obsidian — near-black with a cold cast, never flat grey */
+  --color-ink-950: #050507;
+  --color-ink-925: #08080b;
+  --color-ink-900: #0b0b0f;
+  --color-ink-850: #101014;
+  --color-ink-800: #15151b;
+  --color-ink-750: #1c1c23;
+  --color-ink-700: #24242c;
+  --color-ink-650: #2e2e38;
+  --color-ink-600: #3c3c48;
+  --color-ink-500: #52525f;
 
-  /* text ramp — four steps, all AA on ink-900 */
-  --color-mute-600: #7d8794;
-  --color-mute-500: #98a2b0;
-  --color-mute-400: #b6bfcb;
-  --color-mute-300: #cdd5e0;
+  /* text — five steps, all AA on ink-925 */
+  --color-mute-600: #8b8b96;
+  --color-mute-500: #a4a4af;
+  --color-mute-400: #bdbdc7;
+  --color-mute-300: #d5d5dd;
+  --color-lit-200: #e9e9ef;
+  --color-lit-100: #f4f4f8;
+  --color-lit-50: #fcfcfd;
 
-  /* interaction accent */
-  --color-brand-700: #0369a1;
-  --color-brand-600: #0284c7;
-  --color-brand-500: #0ea5e9;
-  --color-brand-400: #38bdf8;
-  --color-brand-300: #7dd3fc;
+  /* acid lime — interaction only, never a data state */
+  --color-brand-700: #7f9f20;
+  --color-brand-600: #a3cc2b;
+  --color-brand-500: #c6f24e;
+  --color-brand-400: #d8ff6b;
+  --color-brand-300: #e9ffab;
 
-  /* state — never used for interaction */
-  --color-ok-700: #047857;
-  --color-ok-600: #059669;
-  --color-ok-500: #10b981;
-  --color-ok-400: #34d399;
-  --color-warn-600: #d97706;
-  --color-warn-500: #f59e0b;
-  --color-warn-400: #fbbf24;
-  --color-bad-600: #e11d48;
-  --color-bad-500: #f43f5e;
-  --color-bad-400: #fb7185;
+  /* state — teal pass, then a warm severity ramp */
+  --color-ok-700: #0e8f6d;
+  --color-ok-600: #14a882;
+  --color-ok-500: #1fd1a0;
+  --color-ok-400: #4ee8bd;
+  --color-warn-600: #cc8a00;
+  --color-warn-500: #ffb020;
+  --color-warn-400: #ffc857;
+  --color-risk-600: #cc4d10;
+  --color-risk-500: #ff6a1f;
+  --color-risk-400: #ff8f52;
+  --color-bad-600: #cc1f43;
+  --color-bad-500: #ff2d55;
+  --color-bad-400: #ff6383;
 
-  /* the fourth band — high risk sits between watch and fail, so it needs a
-     hue that is neither amber nor rose */
-  --color-risk-600: #ea580c;
-  --color-risk-500: #f97316;
-  --color-risk-400: #fb923c;
-
-  /* primary text tier — brighter than mute-300, so it is its own step rather
-     than a borrowed Tailwind slate */
-  --color-lit-200: #e2e8f0;
-  --color-lit-100: #f1f5f9;
-  --color-lit-50: #f8fafc;
-
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-jbmono), ui-monospace, SFMono-Regular, monospace;
+  --font-sans: var(--font-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display-face), var(--font-grotesk), ui-sans-serif, sans-serif;
+  --font-mono: var(--font-mono-jb), ui-monospace, SFMono-Regular, monospace;
 }
 
 :root {
@@ -87,99 +95,123 @@ html {
 html,
 body {
   background: var(--color-ink-950);
-  color: #e8ecf1;
+  color: var(--color-lit-200);
+  font-feature-settings: "cv11", "ss01";
 }
 
 body {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  font-feature-settings: "cv11" 1, "ss01" 1;
+  text-rendering: optimizeLegibility;
 }
 
 /* ==================================================================== *
- * TYPE SCALE — 6 steps, no half pixels
+ * TYPE SCALE
+ *
+ * Display is a tight grotesque with negative tracking; at 52px that reads as
+ * machined rather than typeset. Seven steps, nothing closer than 1px.
  * ==================================================================== */
 
-/* 30/1.05 — hero, once per page */
+/* 78/0.84 — the verdict number, once per page */
+.t-verdict {
+  font-family: var(--font-mono);
+  font-size: clamp(58px, 12vw, 78px);
+  line-height: 0.84;
+  font-weight: 500;
+  letter-spacing: -0.055em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 46/0.99 — hero headline */
 .t-hero {
+  font-family: var(--font-display);
+  font-size: clamp(33px, 7.6vw, 46px);
+  line-height: 0.99;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+}
+
+/* 30/1.06 — page title */
+.t-display {
+  font-family: var(--font-display);
   font-size: 30px;
   line-height: 1.06;
-  font-weight: 600;
-  letter-spacing: -0.028em;
+  font-weight: 500;
+  letter-spacing: -0.03em;
 }
 
-/* 21/1.15 — page title */
-.t-display {
-  font-size: 21px;
-  line-height: 1.15;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+/* 19/1.25 — section title inside a document */
+.t-section {
+  font-family: var(--font-display);
+  font-size: 19px;
+  line-height: 1.25;
+  font-weight: 500;
+  letter-spacing: -0.022em;
 }
 
-/* 15/1.35 — section or card title */
+/* 15/1.35 — card title */
 .t-title {
+  font-family: var(--font-display);
   font-size: 15px;
   line-height: 1.35;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-weight: 500;
+  letter-spacing: -0.012em;
 }
 
-/* 13/1.55 — body copy */
+/* 13.5/1.6 — body copy */
 .t-body {
-  font-size: 13px;
-  line-height: 1.55;
+  font-size: 13.5px;
+  line-height: 1.6;
   font-weight: 400;
 }
 .t-body-strong {
-  font-size: 13px;
+  font-size: 13.5px;
   line-height: 1.45;
   font-weight: 500;
 }
 
-/* 12/1.5 — secondary */
+/* 12/1.5 */
 .t-small {
   font-size: 12px;
   line-height: 1.5;
   font-weight: 400;
 }
 
-/* 11/1.4 — meta, sources, units */
+/* 10.5/1.4 — sources, units, captions */
 .t-meta {
-  font-size: 11px;
+  font-size: 10.5px;
   line-height: 1.4;
   font-weight: 400;
 }
 
-/* 22/1.05 — the big number in a stat */
+/* 36/1.0 — stat figure */
 .t-num-lg {
-  font-size: 22px;
-  line-height: 1.05;
-  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 36px;
+  line-height: 1;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.035em;
 }
 
-/* 15/1.1 — supporting number */
 .t-num {
+  font-family: var(--font-mono);
   font-size: 15px;
   line-height: 1.1;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.015em;
 }
 
-/* 10/1.3 — the ONLY uppercase style in the app.
-   Restricted to eyebrow labels and table column heads. */
+/* The only uppercase style. Eyebrows, column heads, section ordinals. */
 .t-label {
-  font-size: 10px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
   line-height: 1.3;
   font-weight: 500;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: var(--color-mute-500);
+  color: var(--color-mute-600);
 }
 
-/* numeric columns must align — the highest-value typographic decision in
-   any data surface */
 .tnum {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
@@ -187,52 +219,75 @@ body {
 
 /* ==================================================================== *
  * MATERIALS
+ *
+ *   .slab     a discrete object (holder list, provenance table). Has an edge.
+ *   .rule     a region boundary inside the document.
+ *   .glow-acid the one bloom in the system — primary action only.
  * ==================================================================== */
 
-/* Panel: a raised surface with a 1px hairline that catches light on the top
-   edge only. No shadow, no radius beyond 4px — this is instrumentation. */
-.panel {
-  position: relative;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, white 1.5%, var(--color-ink-900)) 0%,
-    var(--color-ink-900) 100%
-  );
-  border: 1px solid var(--color-ink-700);
-  border-radius: 4px;
+.slab {
+  background: var(--color-ink-925);
+  border: 1px solid var(--color-ink-750);
+  border-radius: 2px;
 }
 
-/* The top hairline: 1px of slightly brighter ink, which is what makes a card
-   read as extruded rather than painted on. */
-.panel::before {
+.rule {
+  border-top: 1px solid var(--color-ink-800);
+}
+
+.well {
+  background: var(--color-ink-850);
+  border-radius: 1px;
+}
+
+/* The verdict masthead gets a single soft wash from the top-left at 5%
+   opacity. It is the only gradient in the product. */
+.verdict-wash {
+  position: relative;
+  isolation: isolate;
+}
+.verdict-wash::before {
   content: "";
   position: absolute;
-  inset: 0 0 auto 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    color-mix(in srgb, white 7%, transparent) 30%,
-    color-mix(in srgb, white 7%, transparent) 70%,
-    transparent
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(
+    120% 90% at 8% 0%,
+    color-mix(in srgb, var(--color-brand-500) 6%, transparent) 0%,
+    transparent 62%
   );
   pointer-events: none;
 }
 
-/* Inset well for nested content (charts, code, tables) */
-.well {
-  background: var(--color-ink-850);
-  border: 1px solid var(--color-ink-750);
-  border-radius: 3px;
+/* 1px acid bloom. Primary action and nothing else. */
+.glow-acid {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-brand-500) 50%, transparent),
+    0 0 24px -6px color-mix(in srgb, var(--color-brand-500) 45%, transparent);
 }
 
-/* Fine grid texture for empty/large areas. 24px cells at 2% opacity —
-   enough to register as a surface, not enough to read as a pattern. */
-.grid-tex {
-  background-image:
-    linear-gradient(to right, color-mix(in srgb, white 2.5%, transparent) 1px, transparent 1px),
-    linear-gradient(to bottom, color-mix(in srgb, white 2.5%, transparent) 1px, transparent 1px);
-  background-size: 24px 24px;
+/* Plotting lattice, masthead only. 22px cells at 3% — enough to register as a
+   surface under the verdict, not enough to read as a pattern. */
+.lattice {
+  background-image: radial-gradient(
+    color-mix(in srgb, var(--color-lit-100) 7%, transparent) 0.5px,
+    transparent 0.5px
+  );
+  background-size: 22px 22px;
+  background-position: -1px -1px;
+}
+
+/* A hairline that fades at both ends — used under the wordmark and masthead.
+   Cheap way to make a rule look drawn rather than filled. */
+.hairline {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-ink-700) 18%,
+    var(--color-ink-700) 82%,
+    transparent
+  );
 }
 
 /* ==================================================================== *
@@ -240,14 +295,14 @@ body {
  * ==================================================================== */
 
 ::selection {
-  background: color-mix(in srgb, var(--color-brand-500) 34%, transparent);
-  color: #fff;
+  background: color-mix(in srgb, var(--color-brand-500) 45%, transparent);
+  color: #050507;
 }
 
 :focus-visible {
   outline: 2px solid var(--color-brand-500);
   outline-offset: 2px;
-  border-radius: 2px;
+  border-radius: 1px;
 }
 
 /* ==================================================================== *
@@ -256,11 +311,11 @@ body {
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-ink-600) transparent;
+  scrollbar-color: var(--color-ink-650) transparent;
 }
 *::-webkit-scrollbar {
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
 }
 *::-webkit-scrollbar-track {
   background: transparent;
@@ -289,7 +344,7 @@ body {
   position: relative;
   overflow: hidden;
   background: var(--color-ink-800);
-  border-radius: 3px;
+  border-radius: 2px;
 }
 .skeleton::after {
   content: "";
@@ -305,9 +360,10 @@ body {
   animation: shimmer 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
-@keyframes pulse-ring {
+/* live indicator — an acid ring, expanding once every 2.2s */
+@keyframes live {
   0% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-brand-500) 45%, transparent);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-brand-500) 70%, transparent);
   }
   70% {
     box-shadow: 0 0 0 5px transparent;
@@ -316,38 +372,89 @@ body {
     box-shadow: 0 0 0 0 transparent;
   }
 }
-.pulse-ring {
-  animation: pulse-ring 1.8s ease-out infinite;
+.live-dot {
+  animation: live 2.2s ease-out infinite;
 }
 
-@keyframes fade-up {
+@keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(5px);
+    transform: translateY(7px);
   }
   to {
     opacity: 1;
     transform: none;
   }
 }
-.fade-up {
-  animation: fade-up 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+.rise {
+  animation: rise 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-@keyframes draw-in {
+/* draw the gauge in on mount */
+@keyframes arc {
   from {
-    stroke-dashoffset: var(--dash-from);
-  }
-  to {
-    stroke-dashoffset: var(--dash-to);
+    stroke-dashoffset: var(--arc-len);
   }
 }
+.arc-draw {
+  animation: arc 1.1s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
 
-/* Slight lift on interactive rows — 1px, no scale, no glow */
+@keyframes grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+.bar-grow {
+  transform-origin: left;
+  animation: grow 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Row hover: a 2px acid bar slides in from the left edge. The only hover
+   state in the product that moves something rather than tinting it. */
+.row-acid {
+  position: relative;
+  transition: background-color 0.13s ease;
+}
+.row-acid::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--color-brand-500);
+  transform: scaleY(0);
+  transform-origin: center;
+  transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.row-acid:hover::before {
+  transform: scaleY(1);
+}
+
+/* Nav link: an acid underline sweeps in from the left. */
+.nav-sweep {
+  position: relative;
+}
+.nav-sweep::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: var(--color-brand-500);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.nav-sweep:hover::after,
+.nav-sweep[aria-current="page"]::after {
+  transform: scaleX(1);
+}
+
 .row-hover {
-  transition:
-    background-color 0.14s ease,
-    border-color 0.14s ease;
+  transition: background-color 0.13s ease;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -360,7 +467,6 @@ body {
   }
 }
 
-/* Screen-reader only */
 .sr-only {
   position: absolute;
   width: 1px;

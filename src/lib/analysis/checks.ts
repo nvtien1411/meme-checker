@@ -62,27 +62,27 @@ export function buildChecks(i: CheckInput): Check[] {
   /* 1 — can you sell at all ------------------------------------------------ */
   if (security.honeypot === true) {
     checks.push(
-      c("sell", "Can you sell it", "fail", "Sell blocked (honeypot)", "goplus", "observed",
+      c("sell", "Can you sell it?", "fail", "Sell blocked (honeypot)", "goplus", "observed",
         "GoPlus simulated a sell and it reverted. There is no trade to make here."),
     );
   } else if (security.freezable === true) {
     checks.push(
-      c("sell", "Can you sell it", "fail", "Freeze authority still live", "rugcheck/goplus", "observed",
+      c("sell", "Can you sell it?", "fail", "Freeze authority still live", "rugcheck/goplus", "observed",
         "The issuer can freeze your token account, which makes your balance unsellable at their discretion."),
     );
   } else if (security.honeypot === false) {
     checks.push(
-      c("sell", "Can you sell it", "pass", "Sell path open", "goplus", "observed",
+      c("sell", "Can you sell it?", "pass", "Sell path open", "goplus", "observed",
         "A simulated sell succeeded. Contract-level blocking is ruled out — it says nothing about liquidity."),
     );
   } else if (security.freezable === false) {
     checks.push(
-      c("sell", "Can you sell it", "pass", "No freeze authority", "rugcheck", "observed",
+      c("sell", "Can you sell it?", "pass", "No freeze authority", "rugcheck", "observed",
         "Freeze authority is revoked, so no wallet can be individually blocked from selling."),
     );
   } else {
     checks.push(
-      c("sell", "Can you sell it", "unknown", "Not reported", "goplus/rugcheck", "observed",
+      c("sell", "Can you sell it?", "unknown", "Not reported", "goplus/rugcheck", "observed",
         "Neither provider returned a sell simulation or authority state for this token."),
     );
   }
@@ -90,7 +90,7 @@ export function buildChecks(i: CheckInput): Check[] {
   /* 2 — supply is fixed ---------------------------------------------------- */
   if (security.mintable === true) {
     checks.push(
-      c("mint", "Is the supply fixed", young ? "fail" : "warn",
+      c("mint", "Is the supply fixed?", young ? "fail" : "warn",
         "Mint authority active", "rugcheck/goplus", "observed",
         young
           ? "On a new token a live mint is a dilution switch: the issuer can print and sell into your position."
@@ -98,12 +98,12 @@ export function buildChecks(i: CheckInput): Check[] {
     );
   } else if (security.mintable === false) {
     checks.push(
-      c("mint", "Is the supply fixed", "pass", "Mint revoked", "rugcheck/goplus", "observed",
+      c("mint", "Is the supply fixed?", "pass", "Mint revoked", "rugcheck/goplus", "observed",
         "Total supply cannot be increased."),
     );
   } else {
     checks.push(
-      c("mint", "Is the supply fixed", "unknown", "Not reported", "rugcheck/goplus", "observed",
+      c("mint", "Is the supply fixed?", "unknown", "Not reported", "rugcheck/goplus", "observed",
         "Mint authority state was not returned by either provider."),
     );
   }
@@ -112,27 +112,27 @@ export function buildChecks(i: CheckInput): Check[] {
   const lp = security.lpLockedPct;
   if (security.lpBurned === true && (lp === null || lp >= 99)) {
     checks.push(
-      c("lp", "Can the liquidity be pulled", "pass", "LP burned", "rugcheck", "observed",
+      c("lp", "Can the liquidity be pulled?", "pass", "LP burned", "rugcheck", "observed",
         "The LP tokens were burned, so the pool cannot be withdrawn by the deployer."),
     );
   } else if (lp === null) {
     checks.push(
-      c("lp", "Can the liquidity be pulled", "unknown", "Lock state unreadable", "rugcheck/goplus", "observed",
+      c("lp", "Can the liquidity be pulled?", "unknown", "Lock state unreadable", "rugcheck/goplus", "observed",
         "No LP lock percentage was returned. This is a gap in coverage, not evidence of safety."),
     );
   } else if (lp >= 90) {
     checks.push(
-      c("lp", "Can the liquidity be pulled", "pass", `${fmtPct(lp, 0)} locked`, "rugcheck/goplus", "observed",
+      c("lp", "Can the liquidity be pulled?", "pass", `${fmtPct(lp, 0)} locked`, "rugcheck/goplus", "observed",
         "Nearly all LP is locked or burned, so a pull-the-liquidity exit is off the table."),
     );
   } else if (lp >= 50) {
     checks.push(
-      c("lp", "Can the liquidity be pulled", "warn", `${fmtPct(lp, 0)} locked`, "rugcheck/goplus", "observed",
+      c("lp", "Can the liquidity be pulled?", "warn", `${fmtPct(lp, 0)} locked`, "rugcheck/goplus", "observed",
         "Part of the LP is unlocked. The deployer can remove that portion at any time."),
     );
   } else {
     checks.push(
-      c("lp", "Can the liquidity be pulled", "fail", `Only ${fmtPct(lp, 0)} locked`, "rugcheck/goplus", "observed",
+      c("lp", "Can the liquidity be pulled?", "fail", `Only ${fmtPct(lp, 0)} locked`, "rugcheck/goplus", "observed",
         "Most LP is unlocked and withdrawable. This is the classic rug mechanism."),
     );
   }
@@ -143,7 +143,7 @@ export function buildChecks(i: CheckInput): Check[] {
   );
   if (!holders.meaningful) {
     checks.push(
-      c("top-wallet", "Does one wallet hold too much", "unknown", "Supply still in the curve",
+      c("top-wallet", "Does one wallet hold too much?", "unknown", "Supply still in the curve",
         "rugcheck/goplus", "observed",
         "Holder percentages do not describe real distribution yet because most supply is still in the launch curve."),
     );
@@ -151,13 +151,13 @@ export function buildChecks(i: CheckInput): Check[] {
     const limit = young ? 6 : 15;
     const state: CheckState = top.pct <= limit ? "pass" : top.pct <= limit * 2 ? "warn" : "fail";
     checks.push(
-      c("top-wallet", "Does one wallet hold too much", state,
+      c("top-wallet", "Does one wallet hold too much?", state,
         `${fmtPct(top.pct)} in one wallet`, "rugcheck/goplus", "derived",
         `Largest holder that is not a pool, burn or exchange address. The usual line is ${limit}% for a ${young ? "new" : "mature"} token; above that, one seller can move the price against you.`),
     );
   } else {
     checks.push(
-      c("top-wallet", "Does one wallet hold too much", "unknown", "No non-pool holder found",
+      c("top-wallet", "Does one wallet hold too much?", "unknown", "No non-pool holder found",
         "rugcheck/goplus", "observed", "The holder list did not contain an address we could treat as a real holder."),
     );
   }
@@ -165,13 +165,13 @@ export function buildChecks(i: CheckInput): Check[] {
   /* 5 — supply is not one entity in disguise ------------------------------- */
   if (!clusters.dataAvailable) {
     checks.push(
-      c("cluster", "Is the supply one entity in disguise", "unknown",
+      c("cluster", "Is the supply one entity in disguise?", "unknown",
         "Cannot be established", "solana rpc", "observed",
         clusters.note ?? "Wallet relationships could not be established for this token."),
     );
   } else if (clusters.linkedSupplyPct === null) {
     checks.push(
-      c("cluster", "Is the supply one entity in disguise", "unknown", "No linked wallets traced",
+      c("cluster", "Is the supply one entity in disguise?", "unknown", "No linked wallets traced",
         "solana rpc", "observed",
         "No shared funding was found among the wallets we could trace. That is not the same as proving independence."),
     );
@@ -180,7 +180,7 @@ export function buildChecks(i: CheckInput): Check[] {
     const wallets = clusters.groups.reduce((n, g) => n + g.wallets, 0);
     const state: CheckState = pct >= 30 ? "fail" : pct >= 10 ? "warn" : "pass";
     checks.push(
-      c("cluster", "Is the supply one entity in disguise", state,
+      c("cluster", "Is the supply one entity in disguise?", state,
         `${fmtPct(pct)} across ${wallets} linked wallets`, "solana rpc funding trace", "derived",
         "Wallets that share a funding source are counted as one holder. Bubblemaps' own guidance treats a cluster above 30% of supply as high risk, and a cluster of hundreds of wallets as a farm even when the percentage is small."),
     );
@@ -189,25 +189,25 @@ export function buildChecks(i: CheckInput): Check[] {
   /* 6 — creator history ---------------------------------------------------- */
   if (deployer.ruggedCount > 0) {
     checks.push(
-      c("deployer", "Has the creator done this before", "fail",
+      c("deployer", "Has the creator done this before?", "fail",
         `${deployer.ruggedCount} prior token${deployer.ruggedCount > 1 ? "s" : ""} rugged`,
         "rugcheck creatorTokens", "observed",
         "This wallet has launched tokens that later rugged. It is the single strongest predictor available on-chain and it cannot be explained away."),
     );
   } else if (!deployer.dataAvailable) {
     checks.push(
-      c("deployer", "Has the creator done this before", "unknown", "Creator not identified",
+      c("deployer", "Has the creator done this before?", "unknown", "Creator not identified",
         "rugcheck", "observed", "No creator address was returned for this token."),
     );
   } else if (deployer.priorTokens.length === 0) {
     checks.push(
-      c("deployer", "Has the creator done this before", "unknown", "Fresh wallet",
+      c("deployer", "Has the creator done this before?", "unknown", "Fresh wallet",
         "rugcheck creatorTokens", "observed",
         "No prior launches. There is no rug history, but there is also no track record to judge."),
     );
   } else {
     checks.push(
-      c("deployer", "Has the creator done this before", "pass",
+      c("deployer", "Has the creator done this before?", "pass",
         `${deployer.priorTokens.length} prior launch${deployer.priorTokens.length > 1 ? "es" : ""}, none rugged`,
         "rugcheck creatorTokens", "observed",
         "This creator has launched before without a rug. Past behaviour is not a guarantee, but it is the best evidence available."),
@@ -217,12 +217,12 @@ export function buildChecks(i: CheckInput): Check[] {
   /* 7 — is the volume real ------------------------------------------------ */
   if (!flow.dataAvailable) {
     checks.push(
-      c("flow", "Is the trading real", "unknown", "Trade tape unavailable", "geckoterminal", "observed",
+      c("flow", "Is the trading real?", "unknown", "Trade tape unavailable", "geckoterminal", "observed",
         flow.note ?? "Individual trades could not be read, so buy/sell balance and churn cannot be judged."),
     );
   } else if (flow.imbalance === null) {
     checks.push(
-      c("flow", "Is the trading real", "unknown", "Volume split unavailable", "geckoterminal", "observed",
+      c("flow", "Is the trading real?", "unknown", "Volume split unavailable", "geckoterminal", "observed",
         "Trades were read but USD volume per side was not reported."),
     );
   } else {
@@ -235,7 +235,7 @@ export function buildChecks(i: CheckInput): Check[] {
           ? "Two-way, no clear side"
           : "Sellers in control";
     checks.push(
-      c("flow", "Is the trading real", state,
+      c("flow", "Is the trading real?", state,
         `${reading} · ${(imb * 100).toFixed(0)}%`,
         "geckoterminal trades", "derived",
         `Computed from ${flow.windowTrades} recent trades${flow.distinctTraders ? ` across ${flow.distinctTraders} wallets` : ""}. Heavy net selling while the price holds up usually means distribution into exit liquidity.`),
@@ -245,7 +245,7 @@ export function buildChecks(i: CheckInput): Check[] {
   /* 8 — can you actually get out ------------------------------------------ */
   if (!exit.available) {
     checks.push(
-      c("exit", "Can you actually get out", "unknown", "Pool reserves unavailable",
+      c("exit", "Can you actually get out?", "unknown", "Pool reserves unavailable",
         "dexscreener", "observed", exit.note ?? "Reserves could not be read, so exit depth is unknown."),
     );
   } else {
@@ -253,7 +253,7 @@ export function buildChecks(i: CheckInput): Check[] {
     const state: CheckState =
       cap === null ? "unknown" : cap >= 10_000 ? "pass" : cap >= 2_000 ? "warn" : "fail";
     checks.push(
-      c("exit", "Can you actually get out", state,
+      c("exit", "Can you actually get out?", state,
         cap === null ? "Depth unknown" : `${fmtUsd(cap)} before 5% impact`,
         "dexscreener reserves", "derived",
         "Constant-product estimate of how much you can sell before price impact reaches 5%. Your position should be a fraction of this number, not close to it."),
@@ -298,17 +298,17 @@ export function buildVerdict(checks: Check[]): Verdict {
   if (fails.length > 0) {
     tldr = `${fails.length} check${fails.length > 1 ? "s" : ""} failed: ${fails
       .slice(0, 3)
-      .map((f) => f.label.toLowerCase())
-      .join(", ")}.`;
+      .map((f) => f.label.toLowerCase().replace(/\?$/, ""))
+      .join(", ")}`;
   } else if (warns.length > 0) {
     tldr = `Nothing disqualifying, but ${warns.length} point${warns.length > 1 ? "s" : ""} to watch: ${warns
       .slice(0, 3)
-      .map((w) => w.label.toLowerCase())
-      .join(", ")}.`;
+      .map((w) => w.label.toLowerCase().replace(/\?$/, ""))
+      .join(", ")}`;
   } else if (unknowns.length > 0) {
-    tldr = `No failures found, but ${unknowns.length} check${unknowns.length > 1 ? "s" : ""} could not be answered — treat those as unverified, not safe.`;
+    tldr = `No failures found, but ${unknowns.length} check${unknowns.length > 1 ? "s" : ""} could not be answered — treat those as unverified, not safe`;
   } else {
-    tldr = "Every check that could be run passed. That is a floor, not a forecast.";
+    tldr = "Every check that could be run passed. That is a floor, not a forecast";
   }
 
   const parts: string[] = [];

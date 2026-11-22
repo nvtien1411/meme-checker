@@ -12,6 +12,11 @@ export interface ChainMeta {
   /** Native quote symbol, used when converting reserves. */
   native: string;
   addressKind: "solana" | "evm";
+  /**
+   * The chain's own accent, used for its chip and identity dot. Recognisable
+   * to anyone who trades on it, which is the point: no legend required.
+   */
+  tint: string;
 }
 
 export const CHAINS: ChainMeta[] = [
@@ -24,6 +29,7 @@ export const CHAINS: ChainMeta[] = [
     explorer: (a) => `https://solscan.io/token/${a}`,
     native: "SOL",
     addressKind: "solana",
+    tint: "#9945ff",
   },
   {
     id: "bsc",
@@ -34,6 +40,7 @@ export const CHAINS: ChainMeta[] = [
     explorer: (a) => `https://bscscan.com/token/${a}`,
     native: "BNB",
     addressKind: "evm",
+    tint: "#f3ba2f",
   },
   {
     id: "ethereum",
@@ -44,6 +51,7 @@ export const CHAINS: ChainMeta[] = [
     explorer: (a) => `https://etherscan.io/token/${a}`,
     native: "ETH",
     addressKind: "evm",
+    tint: "#8c8cf5",
   },
   {
     id: "base",
@@ -54,6 +62,7 @@ export const CHAINS: ChainMeta[] = [
     explorer: (a) => `https://basescan.org/token/${a}`,
     native: "ETH",
     addressKind: "evm",
+    tint: "#2f6bff",
   },
   {
     id: "robinhood",
@@ -64,6 +73,7 @@ export const CHAINS: ChainMeta[] = [
     explorer: (a) => `https://robinhoodchain.blockscout.com/token/${a}`,
     native: "ETH",
     addressKind: "evm",
+    tint: "#00c805",
   },
 ];
 

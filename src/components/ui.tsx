@@ -3,55 +3,88 @@
 import type { ReactNode } from "react";
 
 /* ==================================================================== *
- * PRIMITIVES
+ * PRIMITIVES v2
  *
- * Every component exists because two or more screens needed it. Spacing comes
- * from a fixed set (4/6/8/10/12/16/20/24/32), radii from one value (4px), and
- * no component invents its own border colour.
+ * Two container types instead of one. `.slab` is a discrete object; a
+ * "section" is a region of a document, separated by a rule and an ordinal.
+ *
+ * The previous build had Panel and nothing else, so every region looked
+ * equally important. That is the visual reason the redesign read as
+ * unchanged.
  * ==================================================================== */
 
-export function Panel({
+/* ------------------------------------------------------------------ *
+ * Section — a region of the document. No border, no fill. A rule above,
+ * an ordinal, a title, optional trailing context.
+ * ------------------------------------------------------------------ */
+
+export function Section({
+  id,
+  index,
   title,
-  subtitle,
+  note,
   right,
   children,
   className = "",
-  id,
-  flush = false,
+  first = false,
 }: {
-  title?: string;
-  subtitle?: string;
+  id?: string;
+  index: string;
+  title: string;
+  note?: string;
   right?: ReactNode;
   children: ReactNode;
   className?: string;
-  id?: string;
-  /** No body padding — for tables and lists that own their own rhythm. */
-  flush?: boolean;
+  first?: boolean;
 }) {
   return (
-    <section id={id} className={`panel scroll-mt-[116px] ${className}`}>
-      {(title || right) && (
-        <header className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-ink-750 px-4 py-2.5">
-          <div className="min-w-0 flex-1">
-            {title && <h2 className="t-label">{title}</h2>}
-            {subtitle && (
-              <p className="mt-1 t-meta leading-snug text-mute-500">{subtitle}</p>
-            )}
-          </div>
-          {right && <div className="shrink-0 t-meta text-mute-400">{right}</div>}
-        </header>
-      )}
-      <div className={flush ? "" : "p-4"}>{children}</div>
+    <section
+      id={id}
+      className={`scroll-mt-[76px] ${first ? "" : "rule"} ${className}`}
+    >
+      <header className="pb-4 pt-5">
+        <div className="flex items-baseline gap-3.5">
+          <span className="font-mono text-[10px] tabular-nums tracking-[0.08em] text-brand-500">
+            {index}
+          </span>
+          <h2 className="min-w-0 t-section text-lit-100">{title}</h2>
+          {right && (
+            <div className="ml-auto hidden shrink-0 font-mono text-[10px] tabular-nums text-mute-600 sm:block">
+              {right}
+            </div>
+          )}
+        </div>
+        {note && <p className="mt-1 t-meta text-mute-600">{note}</p>}
+      </header>
+      {children}
     </section>
   );
 }
 
 /* ------------------------------------------------------------------ *
- * Metric
- *
- * The most repeated element in the product. Label, value, and a support line
- * that carries the comparison the reader would otherwise make in their head.
- * Values are tabular so columns align across panels.
+ * Slab — a discrete object with an edge. Used sparingly: a holder list,
+ * a provenance table. If everything is a slab, nothing is.
+ * ------------------------------------------------------------------ */
+
+export function Slab({
+  children,
+  className = "",
+  id,
+}: {
+  children: ReactNode;
+  className?: string;
+  id?: string;
+}) {
+  return (
+    <div id={id} className={`slab scroll-mt-[76px] ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Metric — a figure with its label and the comparison the reader would
+ * otherwise make in their head.
  * ------------------------------------------------------------------ */
 
 export function Metric({
@@ -59,65 +92,65 @@ export function Metric({
   value,
   sub,
   tone = "default",
-  size = "md",
-  hint,
+  mono = true,
 }: {
   label: string;
   value: string;
   sub?: string;
-  tone?: "default" | "up" | "down" | "warn" | "muted";
-  size?: "md" | "lg";
-  hint?: string;
+  tone?: "default" | "up" | "down" | "mute";
+  mono?: boolean;
 }) {
   const toneCls =
     tone === "up"
       ? "text-ok-400"
       : tone === "down"
         ? "text-bad-400"
-        : tone === "warn"
-          ? "text-warn-400"
-          : tone === "muted"
-            ? "text-mute-400"
-            : "text-lit-100";
+        : tone === "mute"
+          ? "text-mute-600"
+          : "text-lit-100";
 
   return (
-    <div className="min-w-0 px-4 py-3" title={hint}>
-      <div className="truncate t-label">{label}</div>
+    <div className="min-w-0 px-4 py-3">
+      <div className="t-label truncate">{label}</div>
       <div
-        className={`mt-1.5 truncate ${size === "lg" ? "t-num-lg" : "t-num"} ${toneCls}`}
+        className={`mt-1.5 truncate text-[17px] leading-none tracking-[-0.02em] ${toneCls} ${
+          mono ? "font-mono tabular-nums" : ""
+        }`}
       >
         {value}
       </div>
-      {sub && <div className="mt-1 truncate t-meta text-mute-500">{sub}</div>}
+      {sub && <div className="mt-1.5 truncate t-meta text-mute-600">{sub}</div>}
     </div>
   );
 }
 
 /* ------------------------------------------------------------------ *
- * Tag — filled for state, outline for metadata. Never looks clickable.
+ * Tag — a bordered marker. Tones map to meaning, never to interaction.
  * ------------------------------------------------------------------ */
+
+const TAG_TONE = {
+  neutral: "border-ink-650 text-mute-400",
+  outline: "border-ink-600 text-mute-300",
+  ok: "border-ok-600/60 text-ok-400",
+  warn: "border-warn-600/60 text-warn-400",
+  risk: "border-risk-600/60 text-risk-400",
+  bad: "border-bad-600/60 text-bad-400",
+  brand: "border-brand-700/70 text-brand-400",
+  solid: "border-transparent bg-brand-500 text-ink-950",
+} as const;
 
 export function Tag({
   children,
-  tone = "outline",
+  tone = "neutral",
   className = "",
 }: {
   children: ReactNode;
-  tone?: "outline" | "ok" | "warn" | "bad" | "brand" | "solid";
+  tone?: keyof typeof TAG_TONE;
   className?: string;
 }) {
-  const map = {
-    outline: "border border-ink-650 text-mute-400",
-    ok: "border border-ok-600/45 bg-ok-600/12 text-ok-400",
-    warn: "border border-warn-600/45 bg-warn-600/12 text-warn-400",
-    bad: "border border-bad-600/45 bg-bad-600/12 text-bad-400",
-    brand: "border border-brand-600/45 bg-brand-600/12 text-brand-400",
-    solid: "border border-transparent bg-ink-700 text-lit-200",
-  } as const;
-
   return (
     <span
-      className={`inline-flex shrink-0 items-center gap-1 rounded-[3px] px-1.5 py-[3px] text-[10.5px] font-medium leading-none ${map[tone]} ${className}`}
+      className={`inline-flex shrink-0 items-center border px-1.5 py-[2px] font-mono text-[9px] uppercase leading-[1.4] tracking-[0.08em] ${TAG_TONE[tone]} ${className}`}
     >
       {children}
     </span>
@@ -125,94 +158,74 @@ export function Tag({
 }
 
 /* ------------------------------------------------------------------ *
- * Quality marker — required by the honesty rules: a measured number, our
- * arithmetic, and a model's guess must be distinguishable at a glance.
+ * QualityDot — observed / derived / inferred, as a glyph plus a word.
+ * Colour alone never carries this distinction.
  * ------------------------------------------------------------------ */
 
-export function QualityDot({ quality }: { quality: "observed" | "derived" | "inferred" }) {
-  const map = {
-    observed: { cls: "bg-mute-500", label: "Observed", title: "Read directly from a data source" },
-    derived: { cls: "bg-brand-500", label: "Derived", title: "Computed by us from observed values" },
-    inferred: { cls: "bg-warn-500", label: "Inferred", title: "Produced by a model from text — not a measurement" },
-  } as const;
-  const m = map[quality];
+const QUALITY_META = {
+  observed: { glyph: "●", word: "observed", cls: "text-ok-500" },
+  derived: { glyph: "◐", word: "derived", cls: "text-brand-500" },
+  inferred: { glyph: "○", word: "inferred", cls: "text-mute-500" },
+} as const;
 
+export function QualityDot({
+  quality,
+  withWord = true,
+}: {
+  quality: keyof typeof QUALITY_META;
+  withWord?: boolean;
+}) {
+  const q = QUALITY_META[quality];
   return (
-    <span className="inline-flex items-center gap-1" title={m.title}>
-      <span aria-hidden className={`h-1 w-1 rounded-full ${m.cls}`} />
-      <span className="t-meta text-mute-600">{m.label}</span>
+    <span className="inline-flex items-center gap-1">
+      <span aria-hidden className={`text-[8px] leading-none ${q.cls}`}>
+        {q.glyph}
+      </span>
+      {withWord && (
+        <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-mute-600">
+          {q.word}
+        </span>
+      )}
     </span>
   );
 }
 
 /* ------------------------------------------------------------------ *
- * Empty distinct from unavailable: "we looked, nothing there" and "we could
- * not look" are different facts in a risk tool.
+ * Empty — a stated absence. Never a blank area, never a zero.
  * ------------------------------------------------------------------ */
 
 export function Empty({
   title,
-  body,
-  kind = "empty",
+  detail,
   action,
 }: {
   title: string;
-  body?: string;
-  kind?: "empty" | "unavailable" | "error";
+  detail?: string;
   action?: ReactNode;
 }) {
-  const accent =
-    kind === "error"
-      ? "border-bad-600/40"
-      : kind === "unavailable"
-        ? "border-warn-600/35"
-        : "border-ink-700";
-
   return (
-    <div className={`rounded-[3px] border border-dashed ${accent} px-4 py-5`}>
-      <p className="t-body-strong text-mute-300">{title}</p>
-      {body && <p className="mt-1 t-small leading-relaxed text-mute-500">{body}</p>}
-      {action && <div className="mt-3">{action}</div>}
+    <div className="px-4 py-7">
+      <div className="flex items-start gap-2.5">
+        <span aria-hidden className="mt-[7px] h-[1px] w-4 shrink-0 bg-ink-600" />
+        <div className="min-w-0">
+          <p className="t-small font-medium text-mute-300">{title}</p>
+          {detail && (
+            <p className="mt-1 t-meta leading-relaxed text-mute-600">{detail}</p>
+          )}
+          {action && <div className="mt-2.5">{action}</div>}
+        </div>
+      </div>
     </div>
   );
 }
 
 /* ------------------------------------------------------------------ *
- * CSS-only tooltip. Works without JS and cannot trap focus.
+ * Note — a footnote, set off by a hairline. Used for caveats that must be
+ * readable but not compete with the reading above.
  * ------------------------------------------------------------------ */
 
-export function Tip({
-  label,
-  children,
-  align = "center",
-}: {
-  label: string;
-  children: ReactNode;
-  align?: "center" | "left" | "right";
-}) {
-  const pos =
-    align === "left" ? "left-0" : align === "right" ? "right-0" : "left-1/2 -translate-x-1/2";
-
+export function Note({ children }: { children: ReactNode }) {
   return (
-    <span className="group/tip relative inline-flex">
-      {children}
-      <span
-        role="tooltip"
-        className={`pointer-events-none absolute bottom-full z-40 mb-2 w-max max-w-[240px] rounded-[3px] border border-ink-600 bg-ink-800 px-2 py-1.5 text-[11px] leading-snug text-mute-300 opacity-0 shadow-[0_4px_16px_rgba(0,0,0,0.5)] transition-opacity duration-150 group-hover/tip:opacity-100 ${pos}`}
-      >
-        {label}
-      </span>
-    </span>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-
-export function SectionRule({ label }: { label: string }) {
-  return (
-    <div className="flex items-center gap-2.5 py-2">
-      <span className="t-label whitespace-nowrap">{label}</span>
-      <span aria-hidden className="h-px flex-1 bg-ink-750" />
-    </div>
+    <p className="rule mt-3 pt-2.5 t-meta leading-relaxed text-mute-600">{children}</p>
   );
 }
