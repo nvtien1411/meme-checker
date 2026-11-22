@@ -164,7 +164,13 @@ export async function HeroReport() {
               />
             ))}
           </div>
-          <div className="mt-1.5 font-mono t-meta text-mute-500">{verdict.failuresLine}</div>
+          <div className="mt-1.5 font-mono t-meta text-mute-500">
+            <span className="text-mute-400">risk {Math.round(verdict.score)}/100</span>
+            <span aria-hidden className="px-1 text-ink-600">
+              ·
+            </span>
+            {verdict.failuresLine}
+          </div>
         </div>
       </div>
 
@@ -186,7 +192,7 @@ export async function HeroReport() {
       {/* concentration */}
       <div className="border-t border-ink-750 bg-ink-850/50 px-4 py-3">
         <div className="flex items-baseline justify-between">
-          <span className="t-label">Top 10 combined</span>
+          <span className="t-label">Top 10 of supply</span>
           <span className="font-mono t-body-strong tabular-nums text-lit-100">{fmtPct(top10)}</span>
         </div>
         <div className="mt-1.5 flex h-1.5 w-full overflow-hidden rounded-[1px] bg-ink-800">

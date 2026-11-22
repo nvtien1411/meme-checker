@@ -24,8 +24,8 @@ export default function Home() {
         <div className="grid items-start gap-8 py-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,398px)] lg:gap-12 lg:py-14">
           <div className="min-w-0">
             <div className="space-y-1">
-              <div className="t-label">Solana · BNB · Ethereum · Base · Robinhood</div>
-              <div className="t-meta text-mute-500">free · no key · no wallet</div>
+              <div className="t-label">Solana · BNB · Ethereum · Base · Robinhood Chain</div>
+              <div className="t-meta text-mute-500">free tier · no key · no wallet</div>
             </div>
 
             <h1 className="mt-4 t-hero text-lit-50">
@@ -179,7 +179,7 @@ export default function Home() {
             {[
               "Rejecting a token in five seconds when the answer is obvious.",
               "Showing the number behind every verdict, with its source.",
-              "Separating measured data from our arithmetic from model output.",
+              "Separating measured data from our arithmetic from inference.",
               "Telling you when it does not know, instead of implying safety.",
             ].map((t) => (
               <li key={t} className="flex gap-2.5 t-body leading-relaxed text-mute-300">

@@ -313,7 +313,7 @@ export function buildVerdict(checks: Check[]): Verdict {
 
   const parts: string[] = [];
   if (fails.length > 0) parts.push(`${fails.length} failed`);
-  if (warns.length > 0) parts.push(`${warns.length} watch`);
+  if (warns.length > 0) parts.push(`${warns.length} to watch`);
   if (unknowns.length > 0) parts.push(`${unknowns.length} unknown`);
   if (passes.length > 0) parts.push(`${passes.length} passed`);
 
