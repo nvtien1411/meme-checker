@@ -212,6 +212,8 @@ export interface Verdict {
   unknowns: number;
   passes: number;
   headline: string;
+  /** Compact one-line summary for dense headers, e.g. "2 failed · 1 watch". */
+  failuresLine: string;
   /** One sentence a trader can act on. */
   tldr: string;
 }

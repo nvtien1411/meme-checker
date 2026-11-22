@@ -2,13 +2,13 @@
 
 import type { ReactNode } from "react";
 
-/* ------------------------------------------------------------------ *
- * Primitives
+/* ==================================================================== *
+ * PRIMITIVES
  *
- * One border weight, one radius, no shadows. In a data surface, decoration
- * competes with numbers — so the only visual devices here are hairlines,
- * spacing and type weight.
- * ------------------------------------------------------------------ */
+ * Every component exists because two or more screens needed it. Spacing comes
+ * from a fixed set (4/6/8/10/12/16/20/24/32), radii from one value (4px), and
+ * no component invents its own border colour.
+ * ==================================================================== */
 
 export function Panel({
   title,
@@ -17,6 +17,7 @@ export function Panel({
   children,
   className = "",
   id,
+  flush = false,
 }: {
   title?: string;
   subtitle?: string;
@@ -24,54 +25,66 @@ export function Panel({
   children: ReactNode;
   className?: string;
   id?: string;
+  /** No body padding — for tables and lists that own their own rhythm. */
+  flush?: boolean;
 }) {
   return (
-    <section id={id} className={`scroll-mt-[112px] border border-ink-700 bg-ink-900 ${className}`}>
+    <section id={id} className={`panel scroll-mt-[116px] ${className}`}>
       {(title || right) && (
-        <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-ink-700 px-4 py-2.5">
+        <header className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-ink-750 px-4 py-2.5">
           <div className="min-w-0 flex-1">
-            {title && <h2 className="t-section">{title}</h2>}
+            {title && <h2 className="t-label">{title}</h2>}
             {subtitle && (
               <p className="mt-1 t-meta leading-snug text-mute-500">{subtitle}</p>
             )}
           </div>
-          {right && <div className="shrink-0 t-meta text-mute-500">{right}</div>}
+          {right && <div className="shrink-0 t-meta text-mute-400">{right}</div>}
         </header>
       )}
-      <div className="px-4 py-3">{children}</div>
+      <div className={flush ? "" : "p-4"}>{children}</div>
     </section>
   );
 }
 
-export function Stat({
+/* ------------------------------------------------------------------ *
+ * Metric
+ *
+ * The most repeated element in the product. Label, value, and a support line
+ * that carries the comparison the reader would otherwise make in their head.
+ * Values are tabular so columns align across panels.
+ * ------------------------------------------------------------------ */
+
+export function Metric({
   label,
   value,
   sub,
   tone = "default",
-  mono = true,
+  size = "md",
+  hint,
 }: {
   label: string;
   value: string;
   sub?: string;
-  tone?: "default" | "up" | "down" | "warn";
-  mono?: boolean;
+  tone?: "default" | "up" | "down" | "warn" | "muted";
+  size?: "md" | "lg";
+  hint?: string;
 }) {
   const toneCls =
     tone === "up"
-      ? "text-ok-500"
+      ? "text-ok-400"
       : tone === "down"
-        ? "text-bad-500"
+        ? "text-bad-400"
         : tone === "warn"
-          ? "text-warn-500"
-          : "text-slate-100";
+          ? "text-warn-400"
+          : tone === "muted"
+            ? "text-mute-400"
+            : "text-slate-100";
+
   return (
-    <div className="min-w-0 px-3 py-2.5">
-      <div className="truncate t-label font-medium  text-mute-500">
-        {label}
-      </div>
+    <div className="min-w-0 px-4 py-3" title={hint}>
+      <div className="truncate t-label">{label}</div>
       <div
-        className={`mt-1 truncate t-num font-medium leading-none ${mono ? "tnum font-mono" : ""} ${toneCls}`}
-        title={value}
+        className={`mt-1.5 truncate ${size === "lg" ? "t-num-lg" : "t-num"} ${toneCls}`}
       >
         {value}
       </div>
@@ -80,63 +93,112 @@ export function Stat({
   );
 }
 
-export function Badge({
+/* ------------------------------------------------------------------ *
+ * Tag — filled for state, outline for metadata. Never looks clickable.
+ * ------------------------------------------------------------------ */
+
+export function Tag({
   children,
-  tone = "neutral",
+  tone = "outline",
   className = "",
 }: {
   children: ReactNode;
-  tone?: "neutral" | "ok" | "warn" | "bad" | "brand" | "mute";
+  tone?: "outline" | "ok" | "warn" | "bad" | "brand" | "solid";
   className?: string;
 }) {
   const map = {
-    neutral: "border-ink-600 text-mute-300",
-    ok: "border-ok-600/50 bg-ok-600/10 text-ok-500",
-    warn: "border-warn-600/50 bg-warn-600/10 text-warn-500",
-    bad: "border-bad-600/50 bg-bad-600/10 text-bad-500",
-    brand: "border-brand-600/50 bg-brand-600/10 text-brand-400",
-    mute: "border-ink-700 text-mute-500",
+    outline: "border border-ink-650 text-mute-400",
+    ok: "border border-ok-600/45 bg-ok-600/12 text-ok-400",
+    warn: "border border-warn-600/45 bg-warn-600/12 text-warn-400",
+    bad: "border border-bad-600/45 bg-bad-600/12 text-bad-400",
+    brand: "border border-brand-600/45 bg-brand-600/12 text-brand-400",
+    solid: "border border-transparent bg-ink-700 text-slate-200",
   } as const;
+
   return (
     <span
-      className={`inline-flex shrink-0 items-center gap-1 rounded border px-1.5 py-0.5 t-meta font-medium leading-none ${map[tone]} ${className}`}
+      className={`inline-flex shrink-0 items-center gap-1 rounded-[3px] px-1.5 py-[3px] text-[10.5px] font-medium leading-none ${map[tone]} ${className}`}
     >
       {children}
     </span>
   );
 }
 
-export { CopyButton as Copyable } from "./feedback";
+/* ------------------------------------------------------------------ *
+ * Quality marker — required by the honesty rules: a measured number, our
+ * arithmetic, and a model's guess must be distinguishable at a glance.
+ * ------------------------------------------------------------------ */
+
+export function QualityDot({ quality }: { quality: "observed" | "derived" | "inferred" }) {
+  const map = {
+    observed: { cls: "bg-mute-500", label: "Observed", title: "Read directly from a data source" },
+    derived: { cls: "bg-brand-500", label: "Derived", title: "Computed by us from observed values" },
+    inferred: { cls: "bg-warn-500", label: "Inferred", title: "Produced by a model from text — not a measurement" },
+  } as const;
+  const m = map[quality];
+
+  return (
+    <span className="inline-flex items-center gap-1" title={m.title}>
+      <span aria-hidden className={`h-1 w-1 rounded-full ${m.cls}`} />
+      <span className="t-meta text-mute-600">{m.label}</span>
+    </span>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Empty distinct from unavailable: "we looked, nothing there" and "we could
+ * not look" are different facts in a risk tool.
+ * ------------------------------------------------------------------ */
 
 export function Empty({
   title,
   body,
+  kind = "empty",
   action,
 }: {
   title: string;
   body?: string;
+  kind?: "empty" | "unavailable" | "error";
   action?: ReactNode;
 }) {
+  const accent =
+    kind === "error"
+      ? "border-bad-600/40"
+      : kind === "unavailable"
+        ? "border-warn-600/35"
+        : "border-ink-700";
+
   return (
-    <div className="border border-dashed border-ink-700 px-4 py-5">
-      <p className="t-body font-medium text-mute-300">{title}</p>
+    <div className={`rounded-[3px] border border-dashed ${accent} px-4 py-5`}>
+      <p className="t-body-strong text-mute-300">{title}</p>
       {body && <p className="mt-1 t-small leading-relaxed text-mute-500">{body}</p>}
       {action && <div className="mt-3">{action}</div>}
     </div>
   );
 }
 
-export function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`skeleton rounded-sm ${className}`} />;
-}
+/* ------------------------------------------------------------------ *
+ * CSS-only tooltip. Works without JS and cannot trap focus.
+ * ------------------------------------------------------------------ */
 
-export function Tooltip({ label, children }: { label: string; children: ReactNode }) {
+export function Tip({
+  label,
+  children,
+  align = "center",
+}: {
+  label: string;
+  children: ReactNode;
+  align?: "center" | "left" | "right";
+}) {
+  const pos =
+    align === "left" ? "left-0" : align === "right" ? "right-0" : "left-1/2 -translate-x-1/2";
+
   return (
-    <span className="group/tt relative inline-flex">
+    <span className="group/tip relative inline-flex">
       {children}
       <span
         role="tooltip"
-        className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1.5 w-56 -translate-x-1/2 rounded border border-ink-600 bg-ink-850 px-2 py-1.5 t-meta leading-snug text-mute-300 opacity-0 shadow-lg transition group-hover/tt:opacity-100"
+        className={`pointer-events-none absolute bottom-full z-40 mb-2 w-max max-w-[240px] rounded-[3px] border border-ink-600 bg-ink-800 px-2 py-1.5 text-[11px] leading-snug text-mute-300 opacity-0 shadow-[0_4px_16px_rgba(0,0,0,0.5)] transition-opacity duration-150 group-hover/tip:opacity-100 ${pos}`}
       >
         {label}
       </span>
@@ -144,22 +206,13 @@ export function Tooltip({ label, children }: { label: string; children: ReactNod
   );
 }
 
-export function QualityTag({ quality }: { quality: "observed" | "derived" | "inferred" }) {
-  const map = {
-    observed: { text: "observed", cls: "text-mute-400" },
-    derived: { text: "derived", cls: "text-brand-400/80" },
-    inferred: { text: "inferred", cls: "text-warn-500/80" },
-  } as const;
-  const m = map[quality];
+/* ------------------------------------------------------------------ */
+
+export function SectionRule({ label }: { label: string }) {
   return (
-    <span className={`font-mono t-label ${m.cls}`} title={
-      quality === "observed"
-        ? "Read directly from a source"
-        : quality === "derived"
-          ? "Computed by us from observed values"
-          : "Produced by a model from text — not a measurement"
-    }>
-      {m.text}
-    </span>
+    <div className="flex items-center gap-2.5 py-2">
+      <span className="t-label whitespace-nowrap">{label}</span>
+      <span aria-hidden className="h-px flex-1 bg-ink-750" />
+    </div>
   );
 }

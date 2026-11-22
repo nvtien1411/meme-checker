@@ -4,7 +4,22 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { CHAINS, guessAddressKind, isValidForChain, type ChainId } from "@/lib/chains";
 
-type Phase = "idle" | "typing" | "invalid" | "wrong-chain" | "submitting";
+/* ==================================================================== *
+ * CONTRACT ADDRESS INPUT
+ *
+ * The single most important control in the product: everything begins here.
+ * Three rules shaped it.
+ *
+ * 1. VALIDATE LOCALLY AND INSTANTLY. Waiting for a round-trip to learn that a
+ *    ticker is not an address wastes a request and the user's patience.
+ * 2. ONE STATUS LINE. Chain mismatch, malformed input and network failure all
+ *    report in the same place, so the eye never has to hunt for the error.
+ * 3. NEVER DISABLE THE PRIMARY ACTION SILENTLY. A greyed-out button with no
+ *    explanation is the most common cause of "it doesn't work". It stays live
+ *    and explains what is wrong on submit.
+ * ==================================================================== */
+
+type Phase = "idle" | "submitting";
 
 const EXAMPLES = [
   { label: "BONK", address: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", chain: "solana" as ChainId },
@@ -30,37 +45,35 @@ export function SearchBar({
 
   const trimmed = value.trim();
   const guess = useMemo(() => guessAddressKind(trimmed), [trimmed]);
-
-  // Validation is instant and local. Making someone wait for a round-trip to
-  // learn they pasted a ticker instead of an address is a wasted request.
   const chainMismatch =
     trimmed.length > 0 && guess !== null && chain !== "auto" && !isValidForChain(trimmed, chain);
 
-  const canSubmit = trimmed.length > 0 && guess !== null && !chainMismatch;
+  const big = size === "lg";
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!canSubmit) {
-      if (trimmed && !guess) {
-        setPhase("invalid");
-        setError("That is not a contract address.");
-        setHint("A Solana address is 32–44 characters. An EVM address starts with 0x and has 40 hex characters. A ticker will not work.");
-      }
+    setError(null);
+    setHint(null);
+
+    if (!trimmed || !guess) {
+      setError("That is not a contract address.");
+      setHint(
+        "A Solana address is 32–44 characters. An EVM address starts with 0x and totals 42. A ticker will not work.",
+      );
+      return;
+    }
+    if (chainMismatch) {
+      setError(`Not a valid ${CHAINS.find((c) => c.id === chain)?.label} address.`);
+      setHint("Use auto-detect, or pick the chain this address belongs to.");
       return;
     }
 
     setPhase("submitting");
-    setError(null);
-    setHint(null);
-
     try {
-      // Resolve the chain only. Running the full analysis here and again on the
-      // result page doubled every upstream call and the user's wait for one
-      // piece of information.
       const res = await fetch("/api/resolve", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ address: trimmed }),
+        body: JSON.stringify({ address: trimmed, chain: chain === "auto" ? null : chain }),
       });
       const json = (await res.json()) as {
         chain?: string;
@@ -75,29 +88,28 @@ export function SearchBar({
         return;
       }
 
-      // An explicit chain choice from the dropdown wins over detection.
-      const target = chain === "auto" ? json.chain : chain;
-      router.push(`/token/${target}/${trimmed}`);
+      router.push(`/token/${chain === "auto" ? json.chain : chain}/${trimmed}`);
     } catch {
       setPhase("idle");
-      setError("Could not reach the resolver.");
+      setError("Could not reach the analyser.");
       setHint("Check your connection and try again. Nothing was saved.");
     }
   }
 
-  const big = size === "lg";
-
   return (
     <form onSubmit={submit} className="w-full" noValidate>
       <div
-        className={`flex flex-col gap-2 rounded border bg-ink-900 p-1.5 sm:flex-row sm:items-center ${
-          error ? "border-bad-600/60" : "border-ink-600 focus-within:border-brand-600/70"
+        className={`flex flex-col gap-2 rounded-[4px] border bg-ink-900 p-1.5 transition-colors sm:flex-row sm:items-stretch ${
+          error
+            ? "border-bad-600/60"
+            : "border-ink-650 focus-within:border-brand-600"
         }`}
       >
-        <div className="relative flex min-w-0 flex-1 items-center">
+        {/* field */}
+        <div className="relative flex min-w-0 flex-1 items-stretch">
           <span
             aria-hidden
-            className="pointer-events-none absolute left-2.5 font-mono t-small text-mute-500"
+            className="pointer-events-none absolute inset-y-0 left-0 flex items-center border-r border-ink-750 px-3 t-label"
           >
             CA
           </span>
@@ -108,40 +120,42 @@ export function SearchBar({
               setValue(e.target.value);
               setError(null);
               setHint(null);
-              setPhase(e.target.value ? "typing" : "idle");
             }}
             spellCheck={false}
             autoComplete="off"
             aria-label="Contract address"
-            aria-invalid={phase === "invalid" || !!error}
-            placeholder="Paste a contract address"
-            className={`w-full bg-transparent py-2.5 pl-12 pr-2 font-mono text-mute-300 outline-none placeholder:text-mute-500 ${
-              big ? "t-body sm:t-body" : "t-body"
+            aria-invalid={!!error}
+            placeholder={big ? "Paste a contract address" : "Contract address"}
+            className={`w-full bg-transparent py-3 pl-[52px] pr-9 font-mono text-mute-300 outline-none placeholder:font-sans placeholder:text-mute-600 ${
+              big ? "text-[13px]" : "text-[12.5px]"
             }`}
           />
           {trimmed && (
             <button
               type="button"
-              aria-label="Clear"
+              aria-label="Clear input"
               onClick={() => {
                 setValue("");
                 setError(null);
                 setHint(null);
-                setPhase("idle");
               }}
-              className="mr-1 rounded px-1.5 py-0.5 t-small text-mute-500 transition hover:text-slate-200"
+              className="absolute inset-y-0 right-0 grid w-9 place-items-center text-mute-500 transition hover:text-slate-200"
             >
               ×
             </button>
           )}
         </div>
 
-        <div className="flex items-center gap-1.5">
+        {/* chain + action */}
+        <div className="flex shrink-0 gap-1.5">
           <select
             value={chain}
-            onChange={(e) => setChain(e.target.value as ChainId | "auto")}
+            onChange={(e) => {
+              setChain(e.target.value as ChainId | "auto");
+              setError(null);
+            }}
             aria-label="Blockchain"
-            className="min-h-[38px] rounded border border-ink-700 bg-ink-850 px-2 t-small text-mute-300 outline-none transition hover:border-ink-600"
+            className="min-h-[42px] cursor-pointer appearance-none rounded-[3px] border border-transparent bg-transparent px-2.5 t-small text-mute-400 outline-none transition hover:text-slate-200 focus:border-brand-600"
           >
             <option value="auto">Auto-detect</option>
             {CHAINS.map((c) => (
@@ -154,59 +168,55 @@ export function SearchBar({
           <button
             type="submit"
             disabled={phase === "submitting"}
-            className={`min-h-[38px] flex-1 whitespace-nowrap rounded px-4 t-body font-semibold transition sm:flex-none ${
+            className={`min-h-[42px] flex-1 whitespace-nowrap rounded-[3px] px-5 t-small font-semibold transition sm:flex-none ${
               phase === "submitting"
                 ? "cursor-wait bg-ink-700 text-mute-400"
-                : "bg-brand-500 text-ink-950 hover:bg-brand-400"
+                : "bg-brand-500 text-ink-950 hover:bg-brand-400 active:bg-brand-600"
             }`}
           >
-            {phase === "submitting" ? "Analyzing…" : "Analyze"}
+            {phase === "submitting" ? "Resolving…" : "Analyze"}
           </button>
         </div>
       </div>
 
-      {/* Status line. One place for validation, chain mismatch and failure —
-          never three separate red boxes competing for attention. */}
-      <div className="mt-1.5 min-h-[18px] px-0.5 t-small leading-snug">
+      {/* one status line for every state */}
+      <div className="mt-2 min-h-[18px] px-0.5">
         {error ? (
-          <p className="text-bad-500">
+          <p className="t-meta leading-snug text-bad-400">
             {error}
             {hint && <span className="text-mute-500"> {hint}</span>}
           </p>
         ) : chainMismatch ? (
-          <p className="text-warn-500">
-            That address is not a valid {CHAINS.find((c) => c.id === chain)?.label} address.
+          <p className="t-meta leading-snug text-warn-400">
+            That is not a {CHAINS.find((c) => c.id === chain)?.label} address.{" "}
             <button
               type="button"
               onClick={() => setChain("auto")}
-              className="ml-1 underline decoration-dotted underline-offset-2 hover:text-warn-500/80"
+              className="underline decoration-dotted underline-offset-2 hover:text-warn-300"
             >
               Use auto-detect
             </button>
           </p>
         ) : guess ? (
-          <p className="text-mute-500">
+          <p className="t-meta leading-snug text-mute-500">
             Recognised as a{" "}
-            <span className="text-mute-300">
-              {guess.kind === "solana" ? "Solana" : "EVM"}
-            </span>{" "}
-            address
-            {chain === "auto" ? " · chain will be detected" : ""}.
+            <span className="text-mute-300">{guess.kind === "solana" ? "Solana" : "EVM"}</span>{" "}
+            address{chain === "auto" ? " · chain will be detected on submit" : ""}.
           </p>
         ) : trimmed ? (
-          <p className="text-warn-500">Still typing — an address is 32–44 (Solana) or 42 (EVM) characters.</p>
+          <p className="t-meta leading-snug text-warn-400">
+            Still typing — an address is 32–44 characters (Solana) or 42 (EVM).
+          </p>
         ) : (
-          <p className="text-mute-500">
-            Paste the contract address, not the ticker. Tickers collide constantly.
+          <p className="t-meta leading-snug text-mute-600">
+            Paste the contract address, not the ticker — tickers collide constantly.
           </p>
         )}
       </div>
 
-      {size === "lg" && (
-        <div className="mt-3 flex flex-wrap items-center gap-1.5">
-          <span className="t-meta  text-mute-500">
-            Example contracts
-          </span>
+      {big && (
+        <div className="mt-4 flex flex-wrap items-center gap-1.5 border-t border-ink-800 pt-3">
+          <span className="t-label">try an example</span>
           {EXAMPLES.map((ex) => (
             <button
               key={ex.label}
@@ -215,14 +225,13 @@ export function SearchBar({
                 setValue(ex.address);
                 setChain(ex.chain);
                 setError(null);
-                setPhase("typing");
+                setHint(null);
               }}
-              className="rounded border border-ink-700 px-2 py-0.5 font-mono t-meta text-mute-400 transition hover:border-ink-500 hover:text-slate-200"
+              className="min-h-[32px] rounded-[3px] border border-ink-700 bg-ink-900 px-2.5 py-1.5 font-mono text-[11px] text-mute-300 transition hover:border-brand-600/60 hover:text-brand-400"
             >
               {ex.label}
             </button>
           ))}
-          <span className="ml-auto t-meta text-mute-500">no API key · free</span>
         </div>
       )}
     </form>

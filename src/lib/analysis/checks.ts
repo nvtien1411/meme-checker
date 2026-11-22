@@ -254,7 +254,7 @@ export function buildChecks(i: CheckInput): Check[] {
       cap === null ? "unknown" : cap >= 10_000 ? "pass" : cap >= 2_000 ? "warn" : "fail";
     checks.push(
       c("exit", "Can you actually get out", state,
-        cap === null ? "Depth unknown" : `${fmtUsd(cap)} before 5% slip`,
+        cap === null ? "Depth unknown" : `${fmtUsd(cap)} before 5% impact`,
         "dexscreener reserves", "derived",
         "Constant-product estimate of how much you can sell before price impact reaches 5%. Your position should be a fraction of this number, not close to it."),
     );
@@ -311,9 +311,16 @@ export function buildVerdict(checks: Check[]): Verdict {
     tldr = "Every check that could be run passed. That is a floor, not a forecast.";
   }
 
+  const parts: string[] = [];
+  if (fails.length > 0) parts.push(`${fails.length} failed`);
+  if (warns.length > 0) parts.push(`${warns.length} watch`);
+  if (unknowns.length > 0) parts.push(`${unknowns.length} unknown`);
+  if (passes.length > 0) parts.push(`${passes.length} passed`);
+
   return {
     score,
     band,
+    failuresLine: parts.join(" · "),
     fails: fails.length,
     warns: warns.length,
     unknowns: unknowns.length,

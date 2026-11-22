@@ -1,36 +1,64 @@
 @import "tailwindcss";
 
-/* ------------------------------------------------------------------ *
- * Meme Checker — design tokens
+/* ==================================================================== *
+ * MEME CHECKER — DESIGN SYSTEM
  *
- * Dark-first, data-dense, one accent. These screens get read at a glance
- * while someone decides whether to ape, so number legibility beats
- * decoration every time. No gradients, no glass, no glow.
- * ------------------------------------------------------------------ */
+ * Direction: on-chain investigation software. The reference points are
+ * Arkham's density, Bubblemaps' spatial clarity, Linear's restraint, and
+ * Stripe's typographic confidence — not their layouts.
+ *
+ * Three decisions drive everything below:
+ *
+ * 1. INK, NOT BLACK. Pure black (#000) makes a dark UI look like a terminal
+ *    demo. The surface ramp here is blue-tinted and sits between #08090c and
+ *    #1a1f28, which reads as a material rather than an absence of one.
+ *
+ * 2. ONE ACCENT, ONE WARNING RAMP. Sky is reserved for interaction — links,
+ *    focus, primary action. State colour (rose/amber/emerald) never appears
+ *    on anything you can click. That separation is why a dense screen stays
+ *    scannable: colour always means "read this", never "press this".
+ *
+ * 3. TYPE SCALE WITH REAL STEPS. Six sizes, minimum 16px apart at display
+ *    level and never closer than 1px apart at body level. Half-pixel steps
+ *    are invisible and read as sloppy rather than dense.
+ * ==================================================================== */
+
 @theme {
-  --color-ink-950: #07080a;
-  --color-ink-900: #0a0c0f;
-  --color-ink-850: #0e1116;
-  --color-ink-800: #131820;
-  --color-ink-750: #181e27;
-  --color-ink-700: #1e252f;
-  --color-ink-600: #2a323e;
-  --color-ink-500: #3b4553;
+  /* surfaces — blue-black, not neutral-black */
+  --color-ink-950: #08090c;
+  --color-ink-900: #0b0d11;
+  --color-ink-850: #0f1217;
+  --color-ink-800: #14181f;
+  --color-ink-750: #191e27;
+  --color-ink-700: #1f2530;
+  --color-ink-650: #262e3a;
+  --color-ink-600: #2f3846;
+  --color-ink-500: #3d4757;
 
-  --color-mute-500: #6b7686;
-  --color-mute-400: #8b95a4;
-  --color-mute-300: #a8b2c0;
+  /* text ramp — four steps, all AA on ink-900 */
+  --color-mute-600: #5c6675;
+  --color-mute-500: #78828f;
+  --color-mute-400: #98a2b0;
+  --color-mute-300: #b6bfcb;
 
+  /* interaction accent */
+  --color-brand-700: #0369a1;
   --color-brand-600: #0284c7;
   --color-brand-500: #0ea5e9;
   --color-brand-400: #38bdf8;
+  --color-brand-300: #7dd3fc;
 
-  --color-ok-500: #34d399;
-  --color-ok-600: #10b981;
-  --color-warn-500: #fbbf24;
-  --color-warn-600: #f59e0b;
-  --color-bad-500: #fb7185;
-  --color-bad-600: #f43f5e;
+  /* state — never used for interaction */
+  --color-ok-700: #047857;
+  --color-ok-600: #059669;
+  --color-ok-500: #10b981;
+  --color-ok-400: #34d399;
+  --color-warn-600: #d97706;
+  --color-warn-500: #f59e0b;
+  --color-warn-400: #fbbf24;
+  --color-bad-600: #e11d48;
+  --color-bad-500: #f43f5e;
+  --color-bad-400: #fb7185;
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jbmono), ui-monospace, SFMono-Regular, monospace;
@@ -40,40 +68,51 @@
   color-scheme: dark;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 html,
 body {
   background: var(--color-ink-950);
-  color: #e4e9ef;
-  -webkit-font-smoothing: antialiased;
+  color: #e8ecf1;
 }
 
-/* ------------------------------------------------------------------ *
- * Type scale
- *
- * Five steps. The first pass had 13 sizes with 0.5px gaps (11 / 11.5 / 12 /
- * 12.5 / 13 / 13.5); nothing is 0.5px apart to the eye, so the page read as
- * uniformly small rather than hierarchic.
- *
- * Minimums are set by legibility on a dark surface, not by how much fits:
- * nothing below 11px, secondary text 11.5–12px, body 13px. Weight tops out at
- * 600 — bold at small sizes on dark backgrounds smears.
- *
- * All-caps is restricted to `.t-label`, and `.t-label` is used for panel
- * headers and table columns only. Everything else is sentence case, because
- * uppercase everywhere flattens hierarchy instead of creating it.
- * ------------------------------------------------------------------ */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv11" 1, "ss01" 1;
+}
+
+/* ==================================================================== *
+ * TYPE SCALE — 6 steps, no half pixels
+ * ==================================================================== */
+
+/* 30/1.05 — hero, once per page */
+.t-hero {
+  font-size: 30px;
+  line-height: 1.06;
+  font-weight: 600;
+  letter-spacing: -0.028em;
+}
+
+/* 21/1.15 — page title */
 .t-display {
   font-size: 21px;
-  line-height: 1.2;
+  line-height: 1.15;
   font-weight: 600;
-  letter-spacing: -0.018em;
+  letter-spacing: -0.02em;
 }
+
+/* 15/1.35 — section or card title */
 .t-title {
   font-size: 15px;
   line-height: 1.35;
   font-weight: 600;
-  letter-spacing: -0.008em;
+  letter-spacing: -0.01em;
 }
+
+/* 13/1.55 — body copy */
 .t-body {
   font-size: 13px;
   line-height: 1.55;
@@ -84,73 +123,150 @@ body {
   line-height: 1.45;
   font-weight: 500;
 }
+
+/* 12/1.5 — secondary */
 .t-small {
   font-size: 12px;
   line-height: 1.5;
   font-weight: 400;
 }
+
+/* 11/1.4 — meta, sources, units */
 .t-meta {
-  font-size: 11.5px;
-  line-height: 1.45;
+  font-size: 11px;
+  line-height: 1.4;
   font-weight: 400;
 }
+
+/* 22/1.05 — the big number in a stat */
+.t-num-lg {
+  font-size: 22px;
+  line-height: 1.05;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.015em;
+}
+
+/* 15/1.1 — supporting number */
 .t-num {
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.1;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
-/* Panel headers and table columns. The only uppercase in the app. */
+
+/* 10/1.3 — the ONLY uppercase style in the app.
+   Restricted to eyebrow labels and table column heads. */
 .t-label {
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1.3;
   font-weight: 500;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-mute-400);
-}
-/* Section headings carried no more weight than the body text below them,
-   so the page had no visible structure while scrolling. */
-.t-section {
-  font-size: 12.5px;
-  line-height: 1.3;
-  font-weight: 600;
-  letter-spacing: 0.055em;
-  text-transform: uppercase;
-  color: var(--color-mute-300);
+  color: var(--color-mute-500);
 }
 
-/* Numeric columns must line up. In a data tool this is the single
-   highest-value typographic decision. */
+/* numeric columns must align — the highest-value typographic decision in
+   any data surface */
 .tnum {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
 }
 
+/* ==================================================================== *
+ * MATERIALS
+ * ==================================================================== */
+
+/* Panel: a raised surface with a 1px hairline that catches light on the top
+   edge only. No shadow, no radius beyond 4px — this is instrumentation. */
+.panel {
+  position: relative;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, white 1.5%, var(--color-ink-900)) 0%,
+    var(--color-ink-900) 100%
+  );
+  border: 1px solid var(--color-ink-700);
+  border-radius: 4px;
+}
+
+/* The top hairline: 1px of slightly brighter ink, which is what makes a card
+   read as extruded rather than painted on. */
+.panel::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, white 7%, transparent) 30%,
+    color-mix(in srgb, white 7%, transparent) 70%,
+    transparent
+  );
+  pointer-events: none;
+}
+
+/* Inset well for nested content (charts, code, tables) */
+.well {
+  background: var(--color-ink-850);
+  border: 1px solid var(--color-ink-750);
+  border-radius: 3px;
+}
+
+/* Fine grid texture for empty/large areas. 24px cells at 2% opacity —
+   enough to register as a surface, not enough to read as a pattern. */
+.grid-tex {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, white 2.5%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, white 2.5%, transparent) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* ==================================================================== *
+ * FOCUS + SELECTION
+ * ==================================================================== */
+
 ::selection {
-  background: color-mix(in srgb, var(--color-brand-500) 32%, transparent);
+  background: color-mix(in srgb, var(--color-brand-500) 34%, transparent);
+  color: #fff;
 }
 
 :focus-visible {
   outline: 2px solid var(--color-brand-500);
   outline-offset: 2px;
+  border-radius: 2px;
 }
 
-.scroll-thin {
+/* ==================================================================== *
+ * SCROLLBARS
+ * ==================================================================== */
+
+* {
   scrollbar-width: thin;
   scrollbar-color: var(--color-ink-600) transparent;
 }
-.scroll-thin::-webkit-scrollbar {
-  height: 8px;
-  width: 8px;
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
 }
-.scroll-thin::-webkit-scrollbar-thumb {
-  background: var(--color-ink-600);
-  border-radius: 99px;
-}
-.scroll-thin::-webkit-scrollbar-track {
+*::-webkit-scrollbar-track {
   background: transparent;
 }
+*::-webkit-scrollbar-thumb {
+  background: var(--color-ink-650);
+  border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--color-ink-500);
+  background-clip: content-box;
+}
+
+/* ==================================================================== *
+ * MOTION
+ * ==================================================================== */
 
 @keyframes shimmer {
   100% {
@@ -161,6 +277,7 @@ body {
   position: relative;
   overflow: hidden;
   background: var(--color-ink-800);
+  border-radius: 3px;
 }
 .skeleton::after {
   content: "";
@@ -170,28 +287,76 @@ body {
   background: linear-gradient(
     90deg,
     transparent,
-    color-mix(in srgb, #fff 4%, transparent),
+    color-mix(in srgb, white 4%, transparent),
     transparent
   );
-  animation: shimmer 1.5s infinite;
+  animation: shimmer 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
-@keyframes pulse-dot {
-  0%,
-  100% {
-    opacity: 1;
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-brand-500) 45%, transparent);
   }
-  50% {
-    opacity: 0.35;
+  70% {
+    box-shadow: 0 0 0 5px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
   }
 }
-.pulse-dot {
-  animation: pulse-dot 1.6s ease-in-out infinite;
+.pulse-ring {
+  animation: pulse-ring 1.8s ease-out infinite;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.fade-up {
+  animation: fade-up 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes draw-in {
+  from {
+    stroke-dashoffset: var(--dash-from);
+  }
+  to {
+    stroke-dashoffset: var(--dash-to);
+  }
+}
+
+/* Slight lift on interactive rows — 1px, no scale, no glow */
+.row-hover {
+  transition:
+    background-color 0.14s ease,
+    border-color 0.14s ease;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .skeleton::after,
-  .pulse-dot {
-    animation: none;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
+}
+
+/* Screen-reader only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
 }

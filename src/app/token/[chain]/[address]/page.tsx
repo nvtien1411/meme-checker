@@ -1,29 +1,29 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { analyzeToken, AnalysisError } from "@/lib/analyze";
 import { CHAINS, isValidForChain, type ChainId } from "@/lib/chains";
 import {
   CheckList,
-  DeployerPanel,
+  CreatorPanel,
   ExitPanel,
   FlowPanel,
-  HolderTable,
+  HolderPanel,
   NarrativePanel,
+  PremiumPreview,
   ProjectPanel,
   ProvenancePanel,
-  VerdictBanner,
+  VerdictHeader,
 } from "@/components/report";
 import { Panel } from "@/components/ui";
 import { SectionNav } from "@/components/SectionNav";
-import { ConcentrationBar } from "@/components/viz";
-import { ResultSkeleton } from "./skeleton";
+import { ReportSkeleton } from "./skeleton";
 
 const VALID = CHAINS.map((c) => c.id);
 
-// This route is inherently per-request: the whole page is the result of a live
-// lookup against four upstream APIs. Prerendering it would mean shipping an
-// empty shell, so it is explicitly a blocking dynamic route.
+// The whole route is the result of a live lookup against four upstream APIs.
+// Prerendering would ship an empty shell, so this is explicitly dynamic.
 export const instant = false;
 
 export async function generateMetadata({
@@ -33,15 +33,13 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { chain, address } = await params;
   return {
-    title: `${address.slice(0, 6)}… on ${chain}`,
-    description: "Token risk report from Meme Checker.",
+    title: `${address.slice(0, 6)}…${address.slice(-4)} on ${chain}`,
+    description: "Risk report from Meme Checker.",
   };
 }
 
 async function Report({ chain, address }: { chain: ChainId; address: string }) {
-  if (!isValidForChain(address, chain)) {
-    notFound();
-  }
+  if (!isValidForChain(address, chain)) notFound();
 
   let data;
   try {
@@ -51,112 +49,99 @@ async function Report({ chain, address }: { chain: ChainId; address: string }) {
     const hint = err instanceof AnalysisError ? err.hint : (err as Error).message;
 
     return (
-      <div className="mx-auto w-full max-w-[880px] px-4 py-10 sm:px-6">
-        <div className="border border-bad-600/50 bg-bad-600/8 px-4 py-3.5">
-          <h1 className="t-title text-bad-500">Could not analyse this token</h1>
-          <p className="mt-1.5 t-body leading-relaxed text-slate-300">{message}</p>
-          {hint && <p className="mt-1 t-small leading-relaxed text-mute-400">{hint}</p>}
-          <p className="mt-3 t-small text-mute-500">
+      <div className="mx-auto w-full max-w-[640px] px-4 py-16 sm:px-6">
+        <div className="panel border-bad-600/40 p-5">
+          <h1 className="t-title text-bad-400">Could not analyse this token</h1>
+          <p className="mt-2 t-body leading-relaxed text-slate-300">{message}</p>
+          {hint && <p className="mt-1.5 t-small leading-relaxed text-mute-400">{hint}</p>}
+          <p className="mt-4 border-t border-ink-800 pt-3 t-meta leading-relaxed text-mute-500">
             A failed lookup is not a verdict. Nothing here should be read as
             evidence that the token is safe or unsafe.
           </p>
+          <div className="mt-4 flex gap-2">
+            <Link
+              href="/check"
+              className="rounded bg-brand-500 px-3 py-1.5 t-small font-semibold text-ink-950 transition hover:bg-brand-400"
+            >
+              Try another address
+            </Link>
+            <Link
+              href="/"
+              className="rounded border border-ink-650 px-3 py-1.5 t-small text-mute-300 transition hover:border-ink-500 hover:text-slate-100"
+            >
+              Home
+            </Link>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1240px] px-4 py-6 sm:px-6">
-      <VerdictBanner data={data} />
+    <div className="mx-auto w-full max-w-[1320px] px-4 py-5 sm:px-6">
+      <VerdictHeader data={data} />
 
       <div className="mt-4">
         <SectionNav />
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
-        {/* main column */}
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_358px]">
+        {/* primary column */}
         <div className="min-w-0 space-y-4">
           <Panel
             id="checks"
             title="Checks"
-            subtitle="Ordered worst-first. Expand any row for the number behind it and what would flip it."
-            right={
-              <span className="font-mono t-meta text-mute-500">
-                {data.checks.length} total
-              </span>
-            }
+            subtitle="Worst first. Open any row for the number behind it and what would change the answer."
+            right={`${data.checks.length} checks`}
+            flush
           >
-            <div className="-mx-4 -mb-3">
-              <CheckList checks={data.checks} />
-            </div>
+            <CheckList checks={data.checks} />
           </Panel>
 
           <Panel
             id="holders"
-            title="Top 10 holders"
-            subtitle="Percentages exclude liquidity pools, burns and launch curves."
+            title="Holder distribution"
+            subtitle="Excludes liquidity pools, burns and launch curves. Linked wallets are merged."
             right={
-              data.holders.totalHolders !== null ? (
-                <span className="font-mono t-meta tabular-nums text-mute-500">
-                  of {data.holders.totalHolders.toLocaleString()}
-                </span>
-              ) : undefined
+              data.holders.totalHolders !== null
+                ? `of ${data.holders.totalHolders.toLocaleString()}`
+                : undefined
             }
+            flush
           >
-            <div className="-mx-4 -mb-3 min-w-0 overflow-hidden">
-              <ConcentrationBar data={data} />
-              <div className="border-t border-ink-800">
-                <HolderTable data={data} stripFooter />
-              </div>
-            </div>
+            <HolderPanel data={data} />
           </Panel>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Panel id="exit" title="Exit liquidity" subtitle="Single-pool estimate">
-              <div className="-mx-4 -mb-3">
-                <ExitPanel data={data} />
-              </div>
+            <Panel id="exit" title="Exit liquidity" subtitle="Single-pool estimate" flush>
+              <ExitPanel data={data} />
             </Panel>
-            <Panel id="flow" title="Flow quality" subtitle="From the recent trade tape">
-              <div className="-mx-4 -mb-3">
-                <FlowPanel data={data} />
-              </div>
+            <Panel id="flow" title="Trading flow" subtitle="Recent trade tape" flush>
+              <FlowPanel data={data} />
             </Panel>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Panel id="narrative" title="Narrative" subtitle="Model output, not a measurement">
-              <div className="-mx-4 -mb-3">
-                <NarrativePanel data={data} />
-              </div>
+            <Panel id="narrative" title="Narrative" subtitle="Model output, not a measurement" flush>
+              <NarrativePanel data={data} />
             </Panel>
-            <Panel title="Project" subtitle="Links published by the token">
-              <div className="-mx-4 -mb-3">
-                <ProjectPanel data={data} />
-              </div>
+            <Panel id="project" title="Project" subtitle="Published by the token" flush>
+              <ProjectPanel data={data} />
             </Panel>
           </div>
         </div>
 
         {/* side column */}
         <aside className="min-w-0 space-y-4">
-          <Panel id="creator" title="Creator">
-            <div className="-mx-4 -mb-3">
-              <DeployerPanel data={data} />
-            </div>
+          <Panel id="creator" title="Creator" flush>
+            <CreatorPanel data={data} />
           </Panel>
 
-          <Panel title="Data provenance" subtitle="Every source, and whether it answered">
-            <div className="-mx-4 -mb-3">
-              <ProvenancePanel data={data} />
-            </div>
-          </Panel>
+          <PremiumPreview />
 
-          <p className="border border-ink-800 px-3 py-2 t-meta leading-relaxed text-mute-500">
-            <span className="text-mute-400">Free report.</span> Wallet cluster map,
-            dev-wallet investigation, bundle analysis, KOL intelligence and alerts
-            are planned and not built. Nothing above is withheld behind them.
-          </p>
+          <Panel title="Data provenance" subtitle="Every source, and whether it answered" flush>
+            <ProvenancePanel data={data} />
+          </Panel>
         </aside>
       </div>
     </div>
@@ -173,7 +158,7 @@ export default async function TokenPage({
   const chain = chainRaw as ChainId;
 
   return (
-    <Suspense fallback={<ResultSkeleton />}>
+    <Suspense fallback={<ReportSkeleton />}>
       <Report chain={chain} address={address} />
     </Suspense>
   );

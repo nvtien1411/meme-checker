@@ -1,106 +1,135 @@
 "use client";
 
-import type { AnalysisResult, Check, CheckState } from "@/lib/types";
+import type { Check, CheckState, Holder } from "@/lib/types";
 import { fmtPct, fmtUsd } from "@/lib/http";
 
-/* ------------------------------------------------------------------ *
- * Data visualisation
+/* ==================================================================== *
+ * VISUALISATION
  *
- * Everything here is drawn from values the API already returns — no new
- * fetches, no invented series. The reference set (DefiLlama, Nansen, Birdeye)
- * is dense but visual: a column of numbers is scanned, a shape is understood.
- * The report had numbers only, so a reader had to do the comparison in their
- * head. These components do that comparison for them.
- *
- * Rules kept from the design system: one accent, no gradients, hairline
- * borders, tabular figures, and every mark carries its value as text so the
- * chart is never the only way to read the data.
- * ------------------------------------------------------------------ */
+ * Every mark is drawn from values the API already returns. No invented
+ * series, no smoothed trend lines, no decorative shapes. The test each
+ * component had to pass: does it show something a table of the same numbers
+ * cannot? If not, it is a table instead.
+ * ==================================================================== */
 
-/* ---------------------- holder concentration ---------------------- */
+/* ---------------------------- risk ring ---------------------------- */
 
-const SEGMENT_TONES = [
-  "bg-rose-500",
-  "bg-orange-500",
-  "bg-amber-500",
-  "bg-amber-400/80",
-  "bg-sky-500",
-  "bg-sky-400/75",
-  "bg-ink-500",
-  "bg-ink-500/80",
-  "bg-ink-500/60",
-  "bg-ink-500/40",
-];
+const BAND_STROKE = {
+  avoid: "#f43f5e",
+  risky: "#f97316",
+  watch: "#f59e0b",
+  clean: "#10b981",
+} as const;
 
 /**
- * Top-10 supply as one stacked bar plus a per-wallet breakdown. The bar answers
- * "how concentrated" in one glance; the rows answer "which wallet". A table
- * alone cannot show the shape of the distribution, which is the whole question.
+ * Score ring. 100 is worst, so the arc fills *toward* danger — the opposite of
+ * a health gauge. Reading it the wrong way would invert the meaning of the
+ * whole page, so the label says "risk" explicitly and the ticks mark the band
+ * boundaries.
  */
-export function ConcentrationBar({ data }: { data: AnalysisResult }) {
-  const { holders } = data;
-  if (holders.rows.length === 0) return null;
-
-  const top10 = holders.rows.reduce((sum, h) => sum + (h.pct ?? 0), 0);
-  const rest = Math.max(0, 100 - top10);
+export function RiskRing({
+  score,
+  band,
+  size = 132,
+}: {
+  score: number;
+  band: keyof typeof BAND_STROKE;
+  size?: number;
+}) {
+  const stroke = 9;
+  const r = (size - stroke) / 2 - 6;
+  const c = 2 * Math.PI * r;
+  const pct = Math.min(100, Math.max(0, score)) / 100;
+  const filled = pct * c;
+  const color = BAND_STROKE[band];
 
   return (
-    <div className="px-4 pb-3 pt-1">
-      <div className="flex items-baseline justify-between">
-        <span className="t-meta text-mute-500">
-          Top 10 combined <span className="font-mono text-slate-200">{fmtPct(top10)}</span>
-        </span>
-        <span className="font-mono t-meta text-mute-500">
-          everyone else {fmtPct(rest)}
-        </span>
-      </div>
-
-      {/* Stacked bar. Each segment is proportional to its share; the remainder
-          is drawn in the neutral track so the proportion is visible without a
-          legend. */}
-      <div
-        className="mt-1.5 flex h-2 w-full overflow-hidden rounded-[2px] bg-ink-800"
-        role="img"
-        aria-label={`Top 10 holders own ${fmtPct(top10)} of supply`}
-      >
-        {holders.rows.map((h, i) =>
-          h.pct === null ? null : (
-            <div
-              key={h.address}
-              className={`${SEGMENT_TONES[i] ?? "bg-ink-500"} shrink-0`}
-              style={{ width: `${Math.min(100, h.pct)}%` }}
-              title={`#${h.rank} ${h.pct.toFixed(2)}%`}
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <svg viewBox={`0 0 ${size} ${size}`} className="h-full w-full -rotate-90">
+        {/* track */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          className="fill-none"
+          stroke="#1f2530"
+          strokeWidth={stroke}
+        />
+        {/* band boundaries at 25 / 50 / 75 */}
+        {[0.25, 0.5, 0.75].map((t) => {
+          const a = t * 2 * Math.PI;
+          const x1 = size / 2 + (r - stroke / 2 - 1) * Math.cos(a);
+          const y1 = size / 2 + (r - stroke / 2 - 1) * Math.sin(a);
+          const x2 = size / 2 + (r + stroke / 2 + 1) * Math.cos(a);
+          const y2 = size / 2 + (r + stroke / 2 + 1) * Math.sin(a);
+          return (
+            <line
+              key={t}
+              x1={x1}
+              y1={y1}
+              x2={x2}
+              y2={y2}
+              stroke="#0b0d11"
+              strokeWidth={1.5}
             />
-          ),
-        )}
-      </div>
-
-      <div className="mt-1.5 t-meta text-mute-500">
-        Segments run largest to smallest; the pale tail is the long tail of small
-        holders. Hover a segment for its exact share.
+          );
+        })}
+        {/* value arc */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          className="fill-none"
+          stroke={color}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={`${filled} ${c}`}
+        />
+      </svg>
+      <div className="absolute inset-0 grid place-items-center">
+        <div className="text-center">
+          <div className="t-num-lg leading-none" style={{ color, fontSize: size * 0.26 }}>
+            {Math.round(score)}
+          </div>
+          <div className="mt-0.5 t-label" style={{ fontSize: 9 }}>
+            risk
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-/* ---------------------------- risk matrix ---------------------------- */
+/* ------------------------- check strip ---------------------------- */
 
-const STATE_FILL: Record<CheckState, string> = {
-  fail: "bg-rose-500",
-  warn: "bg-amber-500",
-  pass: "bg-emerald-500",
-  unknown: "bg-ink-500",
+const STATE_BG: Record<CheckState, string> = {
+  fail: "bg-bad-500",
+  warn: "bg-warn-500",
+  pass: "bg-ok-500",
+  unknown: "bg-ink-600",
 };
 
+const STATE_TEXT: Record<CheckState, string> = {
+  fail: "text-bad-400",
+  warn: "text-warn-400",
+  pass: "text-ok-400",
+  unknown: "text-mute-500",
+};
+
+const STATE_ORDER: Record<CheckState, number> = { fail: 0, warn: 1, unknown: 2, pass: 3 };
+
+export function sortBySeverity(checks: Check[]): Check[] {
+  return [...checks].sort((a, b) => STATE_ORDER[a.state] - STATE_ORDER[b.state]);
+}
+
 /**
- * Eight checks as a fixed grid of small cells, ordered by state. It is the same
- * information the list already carries, but arranged so the balance of passes
- * and failures is legible before reading a single word — which is what a
- * matrix is for. The list below stays the source of truth.
+ * Eight marks in severity order with counts spelled out underneath. The strip
+ * is the fastest possible read of "how bad" — one glance, no arithmetic. The
+ * counts are always visible because colour alone excludes anyone who cannot
+ * distinguish rose from amber.
  */
-export function RiskMatrix({ checks, score }: { checks: Check[]; score: number }) {
-  const rank: Record<CheckState, number> = { fail: 0, warn: 1, unknown: 2, pass: 3 };
-  const ordered = [...checks].sort((a, b) => rank[a.state] - rank[b.state]);
+export function CheckStrip({ checks, compact = false }: { checks: Check[]; compact?: boolean }) {
+  const ordered = sortBySeverity(checks);
   const counts = {
     fail: checks.filter((c) => c.state === "fail").length,
     warn: checks.filter((c) => c.state === "warn").length,
@@ -109,79 +138,261 @@ export function RiskMatrix({ checks, score }: { checks: Check[]; score: number }
   };
 
   return (
-    <div className="flex items-center gap-3">
-      <div>
-        <div
-          className="flex gap-1"
-          role="img"
-          aria-label={`${counts.fail} failed, ${counts.warn} to watch, ${counts.unknown} unknown, ${counts.pass} passed`}
-        >
-          {ordered.map((c) => (
-            <span
-              key={c.id}
-              title={`${c.label} — ${c.reading}`}
-              className={`h-5 w-2.5 rounded-[1px] ${STATE_FILL[c.state]}`}
-            />
-          ))}
-        </div>
-        {/* The key sits with the marks, not in the page nav. */}
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 t-meta text-mute-500">
-          {counts.fail > 0 && <KeyDot cls="bg-rose-500" label={`${counts.fail} fail`} />}
-          {counts.warn > 0 && <KeyDot cls="bg-amber-500" label={`${counts.warn} watch`} />}
-          {counts.unknown > 0 && <KeyDot cls="bg-ink-500" label={`${counts.unknown} unknown`} />}
-          {counts.pass > 0 && <KeyDot cls="bg-emerald-500" label={`${counts.pass} pass`} />}
-        </div>
+    <div className="min-w-0">
+      <div className="flex gap-[3px]" role="img" aria-label={`${ariaFor(counts)} — status of each check, not score weight`}>
+        {ordered.map((c) => (
+          <span
+            key={c.id}
+            title={`${c.label} — ${c.reading}`}
+            className={`${compact ? "h-1.5" : "h-2.5"} flex-1 rounded-[1px] ${STATE_BG[c.state]}`}
+          />
+        ))}
       </div>
-      <div className="shrink-0 self-start border-l border-ink-700 pl-3">
-        <div className="t-label">score</div>
-        <div className="font-mono t-num leading-none text-slate-100">
-          {score}
-          <span className="t-meta text-mute-500">/100</span>
-        </div>
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+        {(
+          [
+            ["fail", counts.fail, "failed"],
+            ["warn", counts.warn, "watch"],
+            ["unknown", counts.unknown, "unknown"],
+            ["pass", counts.pass, "passed"],
+          ] as const
+        ).map(([state, n, word]) => (
+          <span
+            key={state}
+            className={`inline-flex items-center gap-1.5 t-meta ${n === 0 ? "text-mute-600" : STATE_TEXT[state]}`}
+          >
+            <span aria-hidden className={`h-1 w-1 rounded-full ${STATE_BG[state]}`} />
+            <span className="tnum">{n}</span>
+            <span className={n === 0 ? "" : "text-mute-500"}>{word}</span>
+          </span>
+        ))}
       </div>
     </div>
   );
 }
 
-function KeyDot({ cls, label }: { cls: string; label: string }) {
+function holders_largest(segments: { pct: number }[]): number {
+  return segments.reduce((m, x) => Math.max(m, x.pct), 0);
+}
+
+function ariaFor(c: { fail: number; warn: number; unknown: number; pass: number }) {
+  return `${c.fail} failed, ${c.warn} to watch, ${c.unknown} unknown, ${c.pass} passed`;
+}
+
+/* --------------------- holder concentration ----------------------- */
+
+/**
+ * Stacked supply bar. Answers "how concentrated" before the row list answers
+ * "which wallet". Segments below 0.4% are merged into a single tail segment,
+ * otherwise twenty slivers of 0.2% render as noise.
+ */
+export function ConcentrationBar({
+  rows,
+  linkedPct,
+}: {
+  rows: Holder[];
+  linkedPct: number | null;
+}) {
+  const top10 = rows.reduce((s, h) => s + (h.pct ?? 0), 0);
+  const rest = Math.max(0, 100 - top10);
+
+  const segments = rows
+    .filter((h) => h.pct !== null)
+    .map((h, i) => ({
+      key: h.address,
+      pct: h.pct as number,
+      idx: i,
+    }));
+
+  const largest = holders_largest(segments);
+  // Round at one decimal, then derive the remainder from the rounded values so
+  // the three figures a reader adds up always equal the total shown.
+  const largestR = Math.round(largest * 10) / 10;
+  const top10R = Math.round(top10 * 10) / 10;
+  const restOfTop10 = Math.max(0, Math.round((top10R - largestR) * 10) / 10);
+  const toneLargest = largestR >= 10 ? "bg-bad-500" : largest >= 5 ? "bg-warn-500" : "bg-ink-500";
+
   return (
-    <span className="inline-flex items-center gap-1">
-      <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${cls}`} />
-      {label}
-    </span>
+    <div>
+      <div className="flex items-baseline justify-between gap-3">
+        <div className="t-meta text-mute-500">
+          Top 10 combined{" "}
+          <span className="font-mono tnum text-slate-100">{fmtPct(top10R)}</span>
+        </div>
+        <div className="t-meta text-mute-600">
+          everyone else{" "}
+          <span className="font-mono tnum">{fmtPct(rest)}</span>
+        </div>
+      </div>
+
+      <div
+        className="mt-2 flex h-2.5 w-full overflow-hidden rounded-[2px] bg-ink-800"
+        role="img"
+        aria-label={`Largest holder ${fmtPct(largestR)}, rest of top 10 ${fmtPct(restOfTop10)}, everyone else ${fmtPct(rest)}`}
+      >
+        <div
+          className={`${toneLargest} shrink-0`}
+          style={{ width: `${Math.min(100, largestR)}%` }}
+          title={`largest single wallet ${largest.toFixed(2)}%`}
+        />
+        <div
+          className="shrink-0 bg-warn-500/45"
+          style={{ width: `${Math.min(100, restOfTop10)}%` }}
+          title={`the other nine top holders combined ${restOfTop10.toFixed(2)}%`}
+        />
+        <div
+          className="shrink-0 bg-ink-600"
+          style={{ width: `${Math.min(100, rest)}%` }}
+          title={`everyone else ${rest.toFixed(2)}%`}
+        />
+      </div>
+
+      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 t-meta text-mute-600">
+        <span className="inline-flex items-center gap-1">
+          <span aria-hidden className={`h-1 w-1.5 rounded-[1px] ${toneLargest}`} />
+          largest wallet{" "}
+          <span className="font-mono tnum text-mute-400">{fmtPct(largestR)}</span>
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span aria-hidden className="h-1 w-1.5 rounded-[1px] bg-warn-500/45" />
+          other nine{" "}
+          <span className="font-mono tnum text-mute-400">{fmtPct(restOfTop10)}</span>
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span aria-hidden className="h-1 w-1.5 rounded-[1px] bg-ink-600" />
+          everyone else
+        </span>
+        {linkedPct !== null && (
+          <span className="ml-auto text-mute-400">
+            linked wallets <span className="font-mono tnum">{fmtPct(linkedPct)}</span>
+          </span>
+        )}
+      </div>
+    </div>
   );
 }
 
-/* ------------------------- exit liquidity ladder ------------------------- */
+/* ------------------------ holder rows ----------------------------- */
 
 /**
- * The three slippage points drawn as a depth ladder. Reading "$67 / $352 /
- * $741" in a row does not convey that the usable exit is two orders of
- * magnitude smaller than the market cap; a proportional bar does.
+ * Holder rows as proportional bars rather than a table. On a token with one
+ * dominant wallet, a table makes the reader compare nine numbers to notice
+ * that; bars make it immediate. The number is still present for anyone who
+ * wants it.
  */
-export function LiquidityLadder({ data }: { data: AnalysisResult }) {
-  const e = data.exit;
-  if (!e.available || e.maxSellUsd.slip10 === null) return null;
-
-  const points = [
-    { label: "1%", value: e.maxSellUsd.slip1, tone: "bg-rose-500", text: "text-rose-400" },
-    { label: "5%", value: e.maxSellUsd.slip5, tone: "bg-amber-500", text: "text-amber-400" },
-    { label: "10%", value: e.maxSellUsd.slip10, tone: "bg-sky-500", text: "text-sky-400" },
-  ];
-  const max = e.maxSellUsd.slip10;
+export function HolderBars({ rows, explorer }: { rows: Holder[]; explorer: (a: string) => string }) {
+  const max = Math.max(...rows.map((r) => r.pct ?? 0), 0.01);
 
   return (
-    <div className="space-y-2">
-      {points.map((p) => {
-        const w = p.value === null ? 0 : Math.max(2, (p.value / max) * 100);
+    <ul className="divide-y divide-ink-800">
+      {rows.map((h) => {
+        const pct = h.pct ?? 0;
+        const w = Math.max(1.5, (pct / max) * 100);
+        const tone =
+          pct >= 10 ? "bg-bad-500" : pct >= 5 ? "bg-warn-500" : "bg-ink-500";
+
         return (
-          <div key={p.label}>
-            <div className="flex items-baseline justify-between t-meta">
-              <span className="text-mute-500">{p.label} slippage</span>
-              <span className={`font-mono tabular-nums ${p.text}`}>{fmtUsd(p.value)}</span>
+          <li key={h.address} className="group/h row-hover px-4 py-2 hover:bg-ink-850/60">
+            <div className="flex items-center gap-2.5">
+              <span className="w-4 shrink-0 font-mono t-meta tabular-nums text-mute-600">
+                {h.rank}
+              </span>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline gap-2">
+                  <a
+                    href={explorer(h.address)}
+                    target="_blank"
+                    rel="noreferrer"
+                    title={h.address}
+                    className="truncate font-mono text-[11.5px] text-mute-300 underline decoration-ink-700 decoration-dotted underline-offset-[3px] transition hover:text-brand-400"
+                  >
+                    {h.address.slice(0, 6)}…{h.address.slice(-5)}
+                  </a>
+
+                  {h.label && (
+                    <span className="shrink-0 t-meta text-mute-600" title={h.labelBasis ?? ""}>
+                      {LABEL_WORD[h.label] ?? h.label}
+                    </span>
+                  )}
+                </div>
+
+                {/* the bar sits under the address so label and mark share a column */}
+                <div className="mt-1 h-[3px] w-full overflow-hidden rounded-[1px] bg-ink-800">
+                  <div className={`h-full ${tone}`} style={{ width: `${w}%` }} />
+                </div>
+              </div>
+
+              <div className="shrink-0 text-right">
+                <div
+                  className={`font-mono text-[12px] tabular-nums ${
+                    pct >= 10 ? "text-bad-400" : pct >= 5 ? "text-warn-400" : "text-mute-300"
+                  }`}
+                >
+                  {h.pct === null ? "—" : `${pct.toFixed(2)}%`}
+                </div>
+                <div className="mt-0.5 t-meta text-mute-600">
+                  {h.balance === null ? "" : compactNum(h.balance)}
+                </div>
+              </div>
             </div>
-            <div className="mt-1 h-1.5 w-full overflow-hidden rounded-[2px] bg-ink-800">
-              <div className={`h-full ${p.tone}`} style={{ width: `${w}%` }} />
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+const LABEL_WORD: Record<string, string> = {
+  "liquidity-pool": "liquidity pool",
+  burn: "burn",
+  "bonding-curve": "launch curve",
+  "launchpad-vault": "launch vault",
+  exchange: "exchange",
+  contract: "contract",
+  locked: "locked",
+};
+
+/* -------------------- exit depth ladder -------------------------- */
+
+/**
+ * Three slippage points on a shared scale. The reason this is not a table:
+ * $67 / $352 / $735 in a row does not convey that the usable exit is two
+ * orders of magnitude below what the market cap implies. A proportional bar
+ * does that in one glance.
+ */
+export function ExitLadder({
+  slip1,
+  slip5,
+  slip10,
+}: {
+  slip1: number | null;
+  slip5: number | null;
+  slip10: number | null;
+}) {
+  const rows = [
+    { label: "1%", value: slip1, tone: "bg-bad-500", text: "text-bad-400", hint: "Tight exit" },
+    { label: "5%", value: slip5, tone: "bg-warn-500", text: "text-warn-400", hint: "Workable exit" },
+    { label: "10%", value: slip10, tone: "bg-brand-500", text: "text-brand-400", hint: "Heavy slippage" },
+  ];
+  const max = Math.max(slip10 ?? 0, slip5 ?? 0, slip1 ?? 0, 1);
+
+  return (
+    <div className="space-y-2.5">
+      {rows.map((r) => {
+        const w = r.value === null ? 0 : Math.max(2, (r.value / max) * 100);
+        return (
+          <div key={r.label}>
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="t-meta text-mute-500">
+                sell at <span className="text-mute-300">{r.label}</span> slippage
+              </span>
+              <span className={`font-mono text-[12px] tabular-nums ${r.text}`}>
+                {r.value === null ? "—" : fmtUsd(r.value)}
+              </span>
+            </div>
+            <div className="mt-1 h-2 w-full overflow-hidden rounded-[1px] bg-ink-800">
+              <div className={`h-full ${r.tone} transition-all duration-500`} style={{ width: `${w}%` }} />
             </div>
           </div>
         );
@@ -190,87 +401,118 @@ export function LiquidityLadder({ data }: { data: AnalysisResult }) {
   );
 }
 
-/* ----------------------------- flow balance ----------------------------- */
+/* ---------------------- flow balance ----------------------------- */
 
 /**
- * Buy/sell split as a single diverging bar with the midpoint at 50%. A positive
- * imbalance leans right, negative leans left. The percentage label carries the
- * exact value, so the bar is a faster read of a number that is already present.
+ * Buy/sell as a single 100% bar split at the true proportion. Two labels,
+ * because the bar counts trades and the net figure measures volume — showing
+ * "62% buys" next to "net −29% by volume" without saying which is which reads
+ * as a contradiction.
  */
-export function FlowBalance({ data }: { data: AnalysisResult }) {
-  const f = data.flow;
-  if (!f.dataAvailable || f.buys === null || f.sells === null) return null;
-
-  const total = f.buys + f.sells;
+export function FlowBalance({
+  buys,
+  sells,
+  imbalance,
+  buyVol,
+  sellVol,
+}: {
+  buys: number;
+  sells: number;
+  imbalance: number | null;
+  buyVol: number | null;
+  sellVol: number | null;
+}) {
+  const total = buys + sells;
   if (total === 0) return null;
-  const buyPct = (f.buys / total) * 100;
-
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-baseline justify-between t-meta">
-        <span className="font-mono text-emerald-400">{f.buys.toLocaleString()} buys</span>
-        <span className="font-mono text-rose-400">{f.sells.toLocaleString()} sells</span>
-      </div>
-      <div
-        className="relative h-2 w-full overflow-hidden rounded-[2px] bg-rose-500/70"
-        role="img"
-        aria-label={`${buyPct.toFixed(0)}% buys by count`}
-      >
-        <div className="h-full bg-emerald-500" style={{ width: `${buyPct}%` }} />
-        <div
-          aria-hidden
-          className="absolute inset-y-0 left-1/2 w-px bg-ink-950/80"
-          style={{ transform: "translateX(-0.5px)" }}
-        />
-      </div>
-      <div className="space-y-0.5 t-meta text-mute-500">
-        <div className="flex justify-between">
-          <span>bar = share of trades</span>
-          <span className="text-mute-400">{buyPct.toFixed(0)}% buys</span>
-        </div>
-        {f.imbalance !== null && (
-          <div className="flex justify-between">
-            <span>net = share of volume</span>
-            <span className={f.imbalance >= 0 ? "text-emerald-400" : "text-rose-400"}>
-              {(f.imbalance * 100).toFixed(0)}%
-            </span>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/* --------------------------- liquidity coverage --------------------------- */
-
-/**
- * Pool depth against valuation. When the pool is a rounding error next to the
- * reported market cap, the price is a claim rather than a market — and that is
- * far easier to see as a proportion than as a percentage.
- */
-export function CoverageMeter({ data }: { data: AnalysisResult }) {
-  const cov = data.exit.liquidityCoverage;
-  if (cov === null) return null;
-
-  const capped = Math.min(100, cov);
-  const tone = cov < 2 ? "bg-rose-500" : cov < 8 ? "bg-amber-500" : "bg-emerald-500";
+  const buyPct = (buys / total) * 100;
 
   return (
     <div>
       <div className="flex items-baseline justify-between t-meta">
-        <span className="text-mute-500">Pool depth vs market cap</span>
-        <span className="font-mono tabular-nums text-slate-200">{fmtPct(cov)}</span>
+        <span className="font-mono tabular-nums text-ok-400">
+          {buys.toLocaleString()} <span className="text-mute-600">buys</span>
+        </span>
+        <span className="font-mono tabular-nums text-bad-400">
+          {sells.toLocaleString()} <span className="text-mute-600">sells</span>
+        </span>
       </div>
-      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-[2px] bg-ink-800">
-        <div className={`h-full ${tone}`} style={{ width: `${capped}%` }} />
+
+      <div
+        className="relative mt-1.5 flex h-2.5 w-full overflow-hidden rounded-[2px] bg-bad-600/55"
+        role="img"
+        aria-label={`${buyPct.toFixed(0)}% of trades are buys`}
+      >
+        <div className="h-full bg-ok-600/80 transition-all duration-500" style={{ width: `${buyPct}%` }} />
+        <div aria-hidden className="absolute inset-y-0 left-1/2 w-px bg-ink-950/70" />
       </div>
-      <p className="mt-1 t-meta leading-relaxed text-mute-500">
-        {cov < 2
-          ? "The pool is a rounding error next to the value implied by the price."
-          : cov < 8
-            ? "Thin relative to valuation — the quoted price is fragile."
-            : "Deep enough that the quoted price is roughly tradeable."}
-      </p>
+
+      <div className="mt-1.5 flex flex-wrap justify-between gap-x-3 gap-y-1 t-meta text-mute-600">
+        <span>
+          {buyPct.toFixed(0)}% of trades are buys
+        </span>
+        {imbalance !== null && (
+          <span>
+            net{" "}
+            <span className={`font-mono tnum ${imbalance >= 0 ? "text-ok-400" : "text-bad-400"}`}>
+              {(imbalance * 100).toFixed(0)}%
+            </span>{" "}
+            by volume
+          </span>
+        )}
+      </div>
+
+      {buyVol !== null && sellVol !== null && (
+        <div className="mt-1 font-mono t-meta text-mute-600">
+          {fmtUsd(buyVol)} in / {fmtUsd(sellVol)} out
+        </div>
+      )}
     </div>
   );
 }
+
+/* --------------------- liquidity coverage ------------------------ */
+
+/**
+ * Pool depth against the valuation implied by the quoted price. Under 2% the
+ * pool is a rounding error next to market cap, which means the price is a
+ * claim rather than a market. That comparison is invisible in a table.
+ */
+export function CoverageMeter({ coverage }: { coverage: number | null }) {
+  if (coverage === null) return null;
+
+  const capped = Math.min(100, coverage);
+  const tone =
+    coverage < 2 ? "bg-bad-500" : coverage < 8 ? "bg-warn-500" : "bg-ok-500";
+  const reading =
+    coverage < 2
+      ? "A rounding error next to the implied valuation. The quoted price is not a tradeable market."
+      : coverage < 8
+        ? "Thin against valuation. Selling will move the price more than the chart suggests."
+        : "Deep enough that the quoted price is roughly tradeable at small size.";
+
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="t-meta text-mute-500">Pool depth vs market cap</span>
+        <span className="font-mono text-[12px] tabular-nums text-slate-200">
+          {fmtPct(coverage)}
+        </span>
+      </div>
+      <div className="mt-1.5 h-2 w-full overflow-hidden rounded-[1px] bg-ink-800">
+        <div className={`h-full ${tone} transition-all duration-500`} style={{ width: `${capped}%` }} />
+      </div>
+      <p className="mt-1.5 t-meta leading-relaxed text-mute-500">{reading}</p>
+    </div>
+  );
+}
+
+/* ---------------------------- helpers ---------------------------- */
+
+function compactNum(n: number) {
+  if (n >= 1e9) return `${(n / 1e9).toFixed(1)}B`;
+  if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
+  return n.toFixed(1);
+}
+
+export { STATE_BG, STATE_TEXT };

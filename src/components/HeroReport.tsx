@@ -1,84 +1,76 @@
 import { connection } from "next/server";
+import Link from "next/link";
 import { analyzeToken } from "@/lib/analyze";
 import type { AnalysisResult } from "@/lib/types";
 import { fmtPct, fmtPrice, fmtUsd } from "@/lib/http";
 
-/* ------------------------------------------------------------------ *
- * Hero report card
+/* ==================================================================== *
+ * Hero evidence card
  *
- * The landing page was 100% text: a 1440x900 viewport contained 1024px2 of
- * image, which is nothing. Every reference product (Birdeye, DexScreener,
- * Nansen) puts a live data surface next to the claim, because the claim alone
- * reads as marketing and the surface reads as a product.
+ * The landing page's job is to answer "what does this actually do" in under
+ * five seconds. A description cannot do that; a real report can. This runs a
+ * token through the same pipeline the result page uses, at request time.
  *
- * This is the anchor. It renders a real analysis at request time — same
- * pipeline as the checker, no mock numbers — and it is deliberately compact:
- * verdict, the ring, the three worst checks, concentration. Enough to look
- * like the thing you would get, not so much that it becomes a wall.
+ * Deliberately compact — verdict, ring, three worst readings, concentration.
+ * Enough to look like the thing you would get, not so much that it becomes a
+ * dashboard on the marketing page.
  *
  * If a source fails, the card says so. A hard-coded screenshot would be the
- * one thing on this page that could not be trusted.
- * ------------------------------------------------------------------ */
+ * one element on the page that could not be trusted, on a product whose whole
+ * premise is not making things up.
+ * ==================================================================== */
 
 const SAMPLE = {
   address: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
   chain: "solana" as const,
 };
 
-const BAND = {
-  avoid: { text: "text-rose-400", ring: "stroke-rose-500", bg: "bg-rose-500" },
-  risky: { text: "text-orange-300", ring: "stroke-orange-500", bg: "bg-orange-500" },
-  watch: { text: "text-amber-400", ring: "stroke-amber-500", bg: "bg-amber-500" },
-  clean: { text: "text-emerald-400", ring: "stroke-emerald-500", bg: "bg-emerald-500" },
+const BAND_COLOR = {
+  avoid: "#f43f5e",
+  risky: "#f97316",
+  watch: "#f59e0b",
+  clean: "#10b981",
 } as const;
 
-const STATE_TEXT: Record<string, string> = {
-  fail: "text-rose-400",
-  warn: "text-amber-400",
-  pass: "text-emerald-400",
-  unknown: "text-mute-500",
-};
+const BAND_LABEL = {
+  avoid: "Avoid",
+  risky: "High risk",
+  watch: "Watch",
+  clean: "No red flags",
+} as const;
 
-const STATE_BG: Record<string, string> = {
-  fail: "bg-rose-500",
-  warn: "bg-amber-500",
-  pass: "bg-emerald-500",
-  unknown: "bg-ink-500",
-};
-
-function RiskRing({ score, band }: { score: number; band: keyof typeof BAND }) {
-  const r = 26;
+function TinyRing({ score, band, size = 54 }: { score: number; band: keyof typeof BAND_COLOR; size?: number }) {
+  const stroke = 5;
+  const r = (size - stroke) / 2 - 3;
   const c = 2 * Math.PI * r;
   const filled = (Math.min(100, Math.max(0, score)) / 100) * c;
+  const color = BAND_COLOR[band];
+
   return (
-    <div className="relative h-[68px] w-[68px] shrink-0">
-      <svg viewBox="0 0 64 64" className="h-full w-full -rotate-90" aria-hidden>
-        <circle cx="32" cy="32" r={r} className="fill-none stroke-ink-700" strokeWidth="5" />
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <svg viewBox={`0 0 ${size} ${size}`} className="h-full w-full -rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={r} className="fill-none" stroke="#1f2530" strokeWidth={stroke} />
         <circle
-          cx="32"
-          cy="32"
+          cx={size / 2}
+          cy={size / 2}
           r={r}
-          className={`fill-none ${BAND[band].ring}`}
-          strokeWidth="5"
+          className="fill-none"
+          stroke={color}
+          strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={`${filled} ${c}`}
         />
       </svg>
       <div className="absolute inset-0 grid place-items-center">
-        <div className="text-center">
-          <div className="font-mono t-num leading-none text-slate-100">{score}</div>
-          <div className="mt-0.5 text-[8px] uppercase tracking-[0.08em] text-mute-500">
-            risk
-          </div>
-        </div>
+        <span className="font-mono text-[13px] font-semibold leading-none" style={{ color }}>
+          {Math.round(score)}
+        </span>
       </div>
     </div>
   );
 }
 
 export async function HeroReport() {
-  // Live numbers, therefore explicitly dynamic. Without this the build tries to
-  // call four upstream APIs at compile time and fails the export.
   await connection();
 
   let data: AnalysisResult | null = null;
@@ -90,11 +82,18 @@ export async function HeroReport() {
 
   if (!data) {
     return (
-      <div className="border border-ink-700 bg-ink-900 p-4">
-        <p className="t-small text-mute-300">Live sample unavailable right now.</p>
-        <p className="mt-1 t-meta leading-relaxed text-mute-500">
-          An upstream source did not answer. Nothing is faked in its place.
+      <div className="panel p-4">
+        <p className="t-small text-mute-300">Live sample unavailable right now</p>
+        <p className="mt-1.5 t-meta leading-relaxed text-mute-500">
+          An upstream source did not answer. Nothing is fabricated in its place —
+          try the checker directly.
         </p>
+        <Link
+          href="/check"
+          className="mt-3 inline-block rounded-[3px] bg-brand-500 px-3 py-1.5 t-small font-semibold text-ink-950 transition hover:bg-brand-400"
+        >
+          Check a token
+        </Link>
       </div>
     );
   }
@@ -103,129 +102,138 @@ export async function HeroReport() {
   const rank: Record<string, number> = { fail: 0, warn: 1, unknown: 2, pass: 3 };
   const ordered = [...checks].sort((a, b) => rank[a.state] - rank[b.state]);
   const top10 = holders.rows.reduce((s, h) => s + (h.pct ?? 0), 0);
-  const band = BAND[verdict.band];
+
+  const stateColor: Record<string, string> = {
+    fail: "#f43f5e",
+    warn: "#f59e0b",
+    pass: "#10b981",
+    unknown: "#2f3846",
+  };
+
+  const readingColor: Record<string, string> = {
+    fail: "text-bad-400",
+    warn: "text-warn-400",
+    pass: "text-ok-400",
+    unknown: "text-mute-500",
+  };
 
   return (
-    <div className="relative">
-      {/* the soft backlight is the only gradient in the product, and it exists
-          to separate this panel from the page, not to decorate it */}
-      <div
-        aria-hidden
-        className="absolute -inset-px -z-10 bg-gradient-to-b from-brand-500/12 via-transparent to-transparent blur-[1px]"
-      />
-
-      <div className="border border-ink-700 bg-ink-900">
-        {/* identity */}
-        <div className="flex items-center gap-2.5 border-b border-ink-700 px-3.5 py-2.5">
-          {token.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={token.imageUrl}
-              alt=""
-              className="h-7 w-7 shrink-0 rounded-full border border-ink-600 object-cover"
-            />
-          ) : (
-            <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-ink-600 bg-ink-800 font-mono text-[8px] text-mute-400">
-              {(token.symbol ?? "?").slice(0, 2).toUpperCase()}
-            </div>
-          )}
-          <div className="min-w-0 flex-1">
-            <div className="flex items-baseline gap-1.5">
-              <span className="truncate t-body-strong text-slate-100">{token.name}</span>
-              <span className="font-mono t-meta text-brand-400">{token.symbol?.toUpperCase()}</span>
-            </div>
-            <div className="font-mono t-meta text-mute-500">
-              {fmtPrice(market.priceUsd)} · {fmtUsd(market.liquidityUsd)} liq
-            </div>
+    <div className="panel overflow-hidden">
+      {/* header */}
+      <div className="flex items-center gap-2.5 border-b border-ink-750 px-4 py-3">
+        {token.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={token.imageUrl}
+            alt=""
+            className="h-7 w-7 shrink-0 rounded-full border border-ink-650 object-cover"
+          />
+        ) : (
+          <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-ink-650 bg-ink-800 font-mono text-[8px] text-mute-500">
+            {(token.symbol ?? "?").slice(0, 2).toUpperCase()}
           </div>
-          <span className="shrink-0 rounded border border-ink-600 px-1.5 py-0.5 font-mono t-meta text-mute-400">
-            live
-          </span>
-        </div>
-
-        {/* verdict + ring */}
-        <div className="flex items-center gap-3.5 px-3.5 py-3">
-          <RiskRing score={verdict.score} band={verdict.band} />
-          <div className="min-w-0 flex-1">
-            <div className={`t-title uppercase leading-none ${band.text}`}>{verdict.headline}</div>
-            <p className="mt-1 t-meta leading-snug text-mute-400">
-              {verdict.fails} failed · {verdict.warns} watch · {verdict.unknowns} unknown ·{" "}
-              {verdict.passes} passed
-            </p>
-            {/* the eight marks, ordered worst first */}
-            <div className="mt-2 flex gap-[3px]" aria-hidden>
-              {ordered.map((c) => (
-                <span key={c.id} className={`h-2 w-5 rounded-[1px] ${STATE_BG[c.state]}`} />
-              ))}
-            </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-1.5">
+            <span className="truncate t-body-strong text-slate-100">{token.name}</span>
+            <span className="font-mono t-meta text-brand-400">{token.symbol?.toUpperCase()}</span>
+          </div>
+          <div className="font-mono t-meta text-mute-600">
+            {fmtPrice(market.priceUsd)} · {fmtUsd(market.liquidityUsd)} liq
           </div>
         </div>
+        <span className="inline-flex shrink-0 items-center gap-1 rounded-[3px] border border-ok-600/40 bg-ok-600/10 px-1.5 py-[3px] t-meta text-ok-400">
+          <span aria-hidden className="pulse-dot h-1 w-1 rounded-full bg-ok-500" />
+          live
+        </span>
+      </div>
 
-        {/* the three that matter */}
-        <ul className="divide-y divide-ink-800 border-t border-ink-800">
-          {ordered.slice(0, 3).map((c) => (
-            <li key={c.id} className="flex items-baseline justify-between gap-3 px-3.5 py-1.5">
-              <span className="min-w-0 truncate t-meta text-mute-300">{c.label}</span>
-              <span className={`shrink-0 font-mono t-meta tabular-nums ${STATE_TEXT[c.state]}`}>
-                {c.reading}
-              </span>
-            </li>
-          ))}
-        </ul>
-
-        {/* concentration strip */}
-        <div className="border-t border-ink-700 bg-ink-850/40 px-3.5 py-2">
-          <div className="flex items-baseline justify-between">
-            <span className="t-label">Top 10 combined</span>
-            <span className="font-mono t-body-strong tabular-nums text-slate-100">
-              {fmtPct(top10)}
-            </span>
+      {/* verdict */}
+      <div className="flex items-center gap-3 px-4 py-3.5">
+        <TinyRing score={verdict.score} band={verdict.band} />
+        <div className="min-w-0 flex-1">
+          <div className="t-body-strong uppercase tracking-[0.05em]" style={{ color: BAND_COLOR[verdict.band] }}>
+            {BAND_LABEL[verdict.band]}
           </div>
-          <div className="mt-1 flex h-1.5 w-full overflow-hidden rounded-[1px] bg-ink-800">
-            {holders.rows.map((h, i) =>
-              h.pct === null ? null : (
-                <div
-                  key={h.address}
-                  className={i === 0 ? "bg-rose-500" : i < 4 ? "bg-amber-500/70" : "bg-ink-500"}
-                  style={{ width: `${Math.min(100, h.pct)}%` }}
-                />
-              ),
-            )}
+          <div className="mt-1 flex gap-[3px]" aria-hidden>
+            {ordered.map((c) => (
+              <span
+                key={c.id}
+                className="h-1.5 flex-1 rounded-[1px]"
+                style={{ backgroundColor: stateColor[c.state] }}
+              />
+            ))}
           </div>
-        </div>
-
-        <div className="border-t border-ink-700 bg-ink-850/60 px-3.5 py-1.5">
-          <span className="font-mono t-meta text-mute-500">
-            generated {new Date(data.generatedAt).toLocaleTimeString("en-GB")} ·{" "}
-            {data.provenance.length} sources
-          </span>
+          <div className="mt-1.5 font-mono t-meta text-mute-500">{verdict.failuresLine}</div>
         </div>
       </div>
+
+      {/* three worst readings */}
+      <ul className="divide-y divide-ink-800 border-t border-ink-800">
+        {ordered.slice(0, 3).map((c) => (
+          <li
+            key={c.id}
+            className="flex flex-col gap-0.5 px-4 py-2.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3"
+          >
+            <span className="min-w-0 t-meta text-mute-300 sm:truncate">{c.label}</span>
+            <span className={`font-mono t-meta tabular-nums sm:shrink-0 ${readingColor[c.state]}`}>
+              {c.reading}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      {/* concentration */}
+      <div className="border-t border-ink-750 bg-ink-850/50 px-4 py-3">
+        <div className="flex items-baseline justify-between">
+          <span className="t-label">Top 10 combined</span>
+          <span className="font-mono t-body-strong tabular-nums text-slate-100">{fmtPct(top10)}</span>
+        </div>
+        <div className="mt-1.5 flex h-1.5 w-full overflow-hidden rounded-[1px] bg-ink-800">
+          {holders.rows.map((h, i) =>
+            h.pct === null ? null : (
+              <div
+                key={h.address}
+                className={i === 0 ? "bg-bad-500" : i < 4 ? "bg-warn-500/75" : "bg-ink-600"}
+                style={{ width: `${Math.min(100, h.pct)}%` }}
+              />
+            ),
+          )}
+        </div>
+      </div>
+
+      <Link
+        href={`/token/${SAMPLE.chain}/${SAMPLE.address}`}
+        className="flex items-center justify-between gap-2 border-t border-ink-750 px-3.5 py-2 t-meta text-mute-500 transition hover:bg-ink-850 hover:text-brand-400"
+      >
+        <span>Open this full report</span>
+        <span aria-hidden>→</span>
+      </Link>
     </div>
   );
 }
 
 export function HeroReportSkeleton() {
   return (
-    <div className="border border-ink-700 bg-ink-900">
-      <div className="flex items-center gap-2.5 border-b border-ink-700 px-3.5 py-2.5">
+    <div className="panel overflow-hidden">
+      <div className="flex items-center gap-2.5 border-b border-ink-750 px-4 py-3">
         <div className="skeleton h-7 w-7 rounded-full" />
         <div className="flex-1 space-y-1.5">
-          <div className="skeleton h-2.5 w-24 rounded-sm" />
-          <div className="skeleton h-2 w-32 rounded-sm" />
+          <div className="skeleton h-2.5 w-24" />
+          <div className="skeleton h-2 w-32" />
         </div>
       </div>
-      <div className="flex items-center gap-3.5 px-3.5 py-3">
-        <div className="skeleton h-[68px] w-[68px] rounded-full" />
+      <div className="flex items-center gap-3 px-4 py-3.5">
+        <div className="skeleton h-[54px] w-[54px] rounded-full" />
         <div className="flex-1 space-y-2">
-          <div className="skeleton h-3.5 w-28 rounded-sm" />
-          <div className="skeleton h-2 w-40 rounded-sm" />
-          <div className="skeleton h-1.5 w-44 rounded-sm" />
+          <div className="skeleton h-3 w-20" />
+          <div className="skeleton h-1.5 w-full" />
+          <div className="skeleton h-2 w-28" />
         </div>
       </div>
-      <div className="space-y-2 border-t border-ink-800 px-3.5 py-2.5">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="skeleton h-2.5 w-full rounded-sm" />
+      <div className="space-y-2.5 border-t border-ink-800 px-4 py-3.5">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="skeleton h-2.5 w-full" />
         ))}
       </div>
     </div>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Panel } from "@/components/ui";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -7,16 +8,15 @@ export const metadata: Metadata = {
 };
 
 const HISTORY = [
-  { symbol: "BONK", chain: "Solana", verdict: "WATCH", score: 26, when: "2h ago" },
-  { symbol: "CAKE", chain: "BNB Chain", verdict: "NO RED FLAGS", score: 14, when: "yesterday" },
-  { symbol: "DEGEN", chain: "Base", verdict: "HIGH RISK", score: 58, when: "2 days ago" },
+  { symbol: "BONK", chain: "Solana", verdict: "WATCH", score: 26, tone: "warn" },
+  { symbol: "CAKE", chain: "BNB Chain", verdict: "NO RED FLAGS", score: 14, tone: "ok" },
+  { symbol: "DEGEN", chain: "Base", verdict: "HIGH RISK", score: 58, tone: "risky" },
 ];
 
-const BAND: Record<string, string> = {
-  WATCH: "text-brand-400 border-brand-600/50",
-  "NO RED FLAGS": "text-ok-500 border-ok-600/50",
-  "HIGH RISK": "text-warn-500 border-warn-600/50",
-  AVOID: "text-bad-500 border-bad-600/50",
+const TONE_CLS: Record<string, string> = {
+  warn: "text-warn-400 border-warn-600/45",
+  ok: "text-ok-400 border-ok-600/45",
+  risky: "text-orange-400 border-orange-600/45",
 };
 
 export default function DashboardPage() {
@@ -26,17 +26,18 @@ export default function DashboardPage() {
         <h1 className="t-display text-slate-50">Dashboard</h1>
         <Link
           href="/check"
-          className="rounded bg-brand-500 px-3 py-1.5 t-small font-semibold text-ink-950 transition hover:bg-brand-400"
+          className="rounded-[3px] bg-brand-500 px-3 py-1.5 t-small font-semibold text-ink-950 transition hover:bg-brand-400"
         >
           New check
         </Link>
       </div>
 
-      <div className="mt-4 border border-ink-700 bg-ink-900 px-3.5 py-2.5">
-        <p className="t-small leading-relaxed text-mute-300">
-          <span className="font-medium text-warn-500">This is a preview layout.</span>{" "}
-          Accounts, saved history and usage metering are not connected yet — the rows
-          below are placeholders showing the intended structure, not your data.
+      <div className="mt-4 flex items-start gap-2.5 rounded-[3px] border border-warn-600/35 bg-warn-600/[0.06] px-3.5 py-2.5">
+        <span aria-hidden className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full bg-warn-500" />
+        <p className="t-small leading-relaxed text-mute-400">
+          <span className="font-medium text-warn-400">Preview layout.</span>{" "}
+          Accounts, saved history and usage metering are not connected yet — the
+          rows below show the intended structure, not your data.
         </p>
       </div>
 
@@ -46,76 +47,70 @@ export default function DashboardPage() {
           { label: "Checks this month", value: "—", sub: "not metered yet" },
           { label: "Saved tokens", value: "—", sub: "requires an account" },
         ].map((s) => (
-          <div key={s.label} className="border border-ink-700 bg-ink-900 px-3.5 py-3">
-            <div className="t-label text-mute-500">{s.label}</div>
-            <div className="mt-1 font-mono t-display tabular-nums text-slate-100">{s.value}</div>
-            <div className="mt-0.5 t-meta text-mute-500">{s.sub}</div>
+          <div key={s.label} className="panel px-4 py-3.5">
+            <div className="t-label">{s.label}</div>
+            <div className="mt-1.5 font-mono t-num-lg leading-none text-slate-100">{s.value}</div>
+            <div className="mt-1 t-meta text-mute-600">{s.sub}</div>
           </div>
         ))}
       </div>
 
-      <section className="mt-6 border border-ink-700 bg-ink-900">
-        <header className="flex items-center justify-between border-b border-ink-700 px-3.5 py-2.5">
-          <h2 className="t-label text-mute-400">
-            Recent checks
-          </h2>
-          <span className="font-mono t-label text-mute-500">
-            placeholder
-          </span>
-        </header>
-        <ul className="divide-y divide-ink-800">
-          {HISTORY.map((h) => (
-            <li key={h.symbol} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3.5 py-2.5">
-              <span className="w-16 font-mono t-small text-slate-200">{h.symbol}</span>
-              <span className="t-small text-mute-500">{h.chain}</span>
-              <span
-                className={`rounded border px-1.5 py-0.5 font-mono t-label ${BAND[h.verdict]}`}
+      <div className="mt-5">
+        <Panel
+          title="Recent checks"
+          right={<span className="font-mono text-[9.5px] uppercase tracking-[0.06em]">placeholder</span>}
+          flush
+        >
+          <ul className="divide-y divide-ink-800">
+            {HISTORY.map((h) => (
+              <li
+                key={h.symbol}
+                className="row-hover flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 hover:bg-ink-850/60"
               >
-                {h.verdict}
-              </span>
-              <span className="ml-auto font-mono t-meta tabular-nums text-mute-500">
-                {h.score}/100
-              </span>
-              <span className="w-20 text-right t-meta text-mute-500">{h.when}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
+                <span className="w-16 font-mono t-small text-slate-200">{h.symbol}</span>
+                <span className="t-meta text-mute-600">{h.chain}</span>
+                <span
+                  className={`rounded-[3px] border px-1.5 py-[2px] font-mono text-[9.5px] uppercase tracking-[0.05em] ${TONE_CLS[h.tone]}`}
+                >
+                  {h.verdict}
+                </span>
+                <span className="ml-auto font-mono text-[11px] tabular-nums text-mute-500">
+                  {h.score}/100
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      </div>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <div className="border border-ink-700 bg-ink-900 p-3.5">
-          <h2 className="t-label text-mute-400">
-            Plan and billing
-          </h2>
-          <p className="mt-1.5 t-small leading-relaxed text-mute-300">
+        <Panel title="Plan and billing">
+          <p className="t-small leading-relaxed text-mute-400">
             You are on the free tier. Premium and Group are not available yet, so
             there is nothing to upgrade to and no payment method on file.
           </p>
           <Link
             href="/pricing"
-            className="mt-2.5 inline-block t-small text-brand-400 underline decoration-dotted underline-offset-2"
+            className="mt-2.5 inline-block t-meta text-brand-400 underline decoration-brand-700 decoration-dotted underline-offset-2 hover:text-brand-300"
           >
-            What premium will include
+            What premium will include →
           </Link>
-        </div>
+        </Panel>
 
-        <div className="border border-ink-700 bg-ink-900 p-3.5">
-          <h2 className="t-label text-mute-400">
-            Telegram
-          </h2>
-          <p className="mt-1.5 t-small leading-relaxed text-mute-300">
-            Linking a Telegram account to your dashboard is planned. The bot itself
-            will run the same checks as the website.
+        <Panel title="Telegram">
+          <p className="t-small leading-relaxed text-mute-400">
+            Linking a Telegram account to your dashboard is planned. The bot
+            itself will run the same checks as the website.
           </p>
           <a
             href="https://t.me/"
             target="_blank"
             rel="noreferrer"
-            className="mt-2.5 inline-block t-small text-brand-400 underline decoration-dotted underline-offset-2"
+            className="mt-2.5 inline-block t-meta text-brand-400 underline decoration-brand-700 decoration-dotted underline-offset-2 hover:text-brand-300"
           >
             Open the bot ↗
           </a>
-        </div>
+        </Panel>
       </div>
     </div>
   );

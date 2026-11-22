@@ -35,11 +35,11 @@ export default function RootLayout({
       className={`${inter.variable} ${mono.variable}`}
       suppressHydrationWarning
     >
-      <body className="min-h-dvh bg-ink-950 font-sans t-title antialiased">
+      <body className="min-h-dvh bg-ink-950 font-sans text-[13px] antialiased">
         <ToastProvider>
           <a
             href="#main"
-            className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-brand-500 focus:px-3 focus:py-1.5 focus:text-small focus:font-semibold focus:text-ink-950"
+            className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded focus:bg-brand-500 focus:px-3 focus:py-1.5 focus:text-[12px] focus:font-semibold focus:text-ink-950"
           >
             Skip to content
           </a>
