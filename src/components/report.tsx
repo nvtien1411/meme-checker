@@ -14,6 +14,8 @@ import {
   Meter,
   ExitCurve,
   FlowBar,
+  HolderDetail,
+  HolderMap,
   HolderRows,
   RiskArc,
 } from "./viz";
@@ -326,32 +328,81 @@ export function HolderSection({ data }: { data: AnalysisResult }) {
   const chain = CHAIN_BY_ID[data.token.chain];
   const largest = h.rows.reduce((m, r) => Math.max(m, r.pct ?? 0), 0);
   const linked = data.clusters.linkedSupplyPct;
+  const [picked, setPicked] = useState<string | null>(null);
+  const selected = picked ? (h.rows.find((r) => r.address === picked) ?? null) : null;
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] lg:gap-8">
-      <div className="min-w-0">
-        <ConcentrationBar
-          top10={h.meaningful ? h.effectiveTop10Pct : null}
-          largest={h.meaningful ? largest : null}
-          linkedPct={linked}
-        />
-        <Note>{h.method}</Note>
-      </div>
+    <div>
+      <ConcentrationBar
+        top10={h.meaningful ? h.effectiveTop10Pct : null}
+        largest={h.meaningful ? largest : null}
+        linkedPct={linked}
+      />
 
-      <div className="min-w-0">
-        <div className="slab overflow-hidden">
-          <div className="flex items-center justify-between border-b border-ink-800 px-4 py-2">
+      <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,300px)_minmax(0,1fr)] lg:gap-8">
+        {/* spatial view: one bubble per holder, sized by real share */}
+        <div className="min-w-0">
+          <div className="flex items-baseline justify-between pb-1.5">
+            <span className="t-label">share of supply</span>
+            <span className="font-mono text-[8.5px] uppercase tracking-[0.1em] text-mute-600">
+              to scale
+            </span>
+          </div>
+          <div className="slab overflow-hidden">
+            <HolderMap rows={h.rows} selected={picked} onSelect={setPicked} />
+            {selected && (
+              <HolderDetail
+                holder={selected}
+                explorer={chain.explorer}
+                onClose={() => setPicked(null)}
+              />
+            )}
+          </div>
+          <p className="mt-2 t-meta leading-relaxed text-mute-600">
+            Top {h.rows.length} holders, area proportional to share
+            {h.totalHolders !== null && h.totalHolders > h.rows.length && (
+              <>
+                {" — "}the remaining{" "}
+                {(h.totalHolders - h.rows.length).toLocaleString()} hold{" "}
+                <span className="font-mono tabular-nums text-mute-400">
+                  {Math.max(0, 100 - (h.effectiveTop10Pct ?? 0)).toFixed(1)}%
+                </span>{" "}
+                between them and are not drawn
+              </>
+            )}
+            . Click a bubble to inspect it
+          </p>
+        </div>
+
+        {/* table view */}
+        <div className="min-w-0">
+          <div className="flex items-baseline justify-between pb-1.5">
             <span className="t-label">top holders</span>
-            <span className="font-mono text-[9.5px] uppercase tracking-[0.08em] text-mute-600">
+            <span className="font-mono text-[8.5px] uppercase tracking-[0.1em] text-mute-600">
               {h.totalHolders !== null ? `of ${h.totalHolders.toLocaleString()}` : "total unknown"}
             </span>
           </div>
-          <HolderRows rows={h.rows} explorer={chain.explorer} />
+
+          <div className="slab overflow-hidden">
+            <div className="grid grid-cols-[20px_minmax(0,1fr)_auto_auto] items-baseline gap-x-3 border-b border-ink-800 px-4 py-1.5">
+              <span className="t-label">#</span>
+              <span className="t-label">wallet</span>
+              <span className="t-label text-right">share</span>
+              <span className="t-label text-right">balance</span>
+            </div>
+            <HolderRows
+              rows={h.rows}
+              explorer={chain.explorer}
+              selected={picked}
+              onSelect={setPicked}
+            />
+          </div>
+
+          <p className="mt-2 t-meta leading-relaxed text-mute-600">
+            Pools, burn addresses and launch curves are excluded. An unlabelled wallet is
+            unclassified — not suspicious
+          </p>
         </div>
-        <p className="mt-2 t-meta leading-relaxed text-mute-600">
-          Pools, burn addresses and launch curves are excluded. Bars are scaled to the largest
-          holder, not to total supply. An unlabelled wallet is unclassified — not suspicious
-        </p>
       </div>
     </div>
   );

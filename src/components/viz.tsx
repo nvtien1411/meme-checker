@@ -269,6 +269,204 @@ export function ConcentrationBar({
 }
 
 /* ------------------------------------------------------------------ *
+ * HolderMap
+ *
+ * The idea worth taking from Bubblemaps: concentration is spatial, not a
+ * percentage in a column. Bubbles are sized by real share of supply and
+ * packed deterministically, so the shape of the distribution is legible
+ * before any number is read — one enormous bubble and a scattering of specks
+ * says "one wallet owns this" faster than 19.8% does.
+ *
+ * Deliberately not a cluster graph: shared-funding tracing is not run on this
+ * build (it is Solana-only and skipped past seven days), so drawing links
+ * between wallets would be inventing the single most consequential thing on
+ * the page. These are holders, drawn to scale, nothing more.
+ *
+ * Packing is deterministic — no random, no seeded jitter — so the server and
+ * client render identical markup.
+ * ------------------------------------------------------------------ */
+
+function packBubbles(
+  items: { id: string; r: number }[],
+  box = 100,
+): { id: string; r: number; x: number; y: number }[] {
+  const placed: { id: string; r: number; x: number; y: number }[] = [];
+  for (const it of items) {
+    let spot: { x: number; y: number } | null = null;
+    for (let ring = 0; ring < 46 && !spot; ring++) {
+      const dist = ring * 2.1;
+      const steps = ring === 0 ? 1 : Math.max(6, ring * 8);
+      for (let s = 0; s < steps; s++) {
+        const a = (s / steps) * Math.PI * 2 + ring * 0.7;
+        const x = box / 2 + Math.cos(a) * dist;
+        const y = box / 2 + Math.sin(a) * dist;
+        if (x - it.r < 1 || x + it.r > box - 1) continue;
+        if (y - it.r < 1 || y + it.r > box - 1) continue;
+        if (placed.every((p) => Math.hypot(p.x - x, p.y - y) >= p.r + it.r + 0.9)) {
+          spot = { x, y };
+          break;
+        }
+      }
+    }
+    if (spot) placed.push({ ...it, ...spot });
+  }
+  return placed;
+}
+
+export function HolderMap({
+  rows,
+  selected,
+  onSelect,
+}: {
+  rows: Holder[];
+  selected: string | null;
+  onSelect: (address: string | null) => void;
+}) {
+  const usable = rows.filter((h) => (h.pct ?? 0) > 0);
+  if (usable.length === 0) {
+    return (
+      <div className="grid h-[196px] place-items-center">
+        <p className="t-small text-mute-500">No holder shares to plot</p>
+      </div>
+    );
+  }
+
+  const max = Math.max(...usable.map((h) => h.pct ?? 0));
+  // Area proportional to share, with no additive floor: r ∝ √pct. A floor makes
+  // small holders look similar to each other and quietly understates how much
+  // the top wallet dominates, which is the one thing this graphic exists to show.
+  const bubbles = packBubbles(
+    usable.map((h) => ({
+      id: h.address,
+      r: 13 * Math.sqrt((h.pct ?? 0) / max),
+    })),
+  );
+
+  return (
+    <svg
+      viewBox="0 0 100 100"
+      className="h-[196px] w-full"
+      role="img"
+      aria-label={`Top ${usable.length} holders drawn to scale; the largest holds ${max.toFixed(2)} percent`}
+    >
+      {bubbles.map((b) => {
+        const h = usable.find((r) => r.address === b.id);
+        if (!h) return null;
+        const pct = h.pct ?? 0;
+        const tone = pct >= 10 ? "#ff2d55" : pct >= 5 ? "#ffb020" : "#52525f";
+        const isSel = selected === b.id;
+        return (
+          <g key={b.id}>
+            <circle
+              cx={b.x}
+              cy={b.y}
+              r={b.r}
+              fill={tone}
+              fillOpacity={isSel ? 0.42 : 0.16}
+              stroke={isSel ? "#c6f24e" : tone}
+              strokeWidth={isSel ? 0.9 : 0.5}
+              strokeOpacity={isSel ? 1 : 0.85}
+              className="cursor-pointer transition-[fill-opacity] duration-150 hover:fill-opacity-30"
+              onClick={() => onSelect(isSel ? null : b.id)}
+            >
+              <title>{`#${h.rank} — ${pct.toFixed(2)}% of supply`}</title>
+            </circle>
+            {b.r >= 8 && (
+              <text
+                x={b.x}
+                y={b.y}
+                textAnchor="middle"
+                dominantBaseline="central"
+                className="pointer-events-none select-none font-mono"
+                style={{ fontSize: 6.6, fill: "#f4f4f8", fontWeight: 600 }}
+              >
+                {pct.toFixed(1)}%
+              </text>
+            )}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * HolderDetail
+ *
+ * The node profile, reduced to what is actually known about a holder here:
+ * share, balance, and the provider's label if it gave one. No inferred role.
+ * ------------------------------------------------------------------ */
+
+export function HolderDetail({
+  holder,
+  explorer,
+  onClose,
+}: {
+  holder: Holder;
+  explorer: (a: string) => string;
+  onClose: () => void;
+}) {
+  const pct = holder.pct ?? 0;
+  const tone = pct >= 10 ? "text-bad-400" : pct >= 5 ? "text-warn-400" : "text-mute-300";
+
+  return (
+    <div className="rise border-t border-ink-800 bg-ink-900 px-4 py-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-baseline gap-2">
+            <span className="font-mono text-[10px] tabular-nums text-mute-600">
+              #{holder.rank}
+            </span>
+            <a
+              href={explorer(holder.address)}
+              target="_blank"
+              rel="noreferrer"
+              title={holder.address}
+              className="break-all font-mono text-[11px] leading-snug text-lit-100 underline decoration-ink-600 underline-offset-2 hover:text-brand-400"
+            >
+              {holder.address}
+            </a>
+          </div>
+          {holder.label ? (
+            <p className="mt-1 t-meta text-mute-500">
+              Labelled <span className="text-mute-300">{holder.label}</span>
+              {holder.labelBasis ? ` — ${holder.labelBasis}` : ""}
+            </p>
+          ) : (
+            <p className="mt-1 t-meta text-mute-600">
+              No provider label. Unclassified is not the same as suspicious
+            </p>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close holder detail"
+          className="shrink-0 font-mono text-[13px] leading-none text-mute-600 transition hover:text-lit-100"
+        >
+          ×
+        </button>
+      </div>
+
+      <dl className="mt-2.5 grid grid-cols-2 gap-3 border-t border-ink-800 pt-2.5">
+        <div>
+          <dt className="t-meta text-mute-600">share of supply</dt>
+          <dd className={`mt-0.5 font-mono text-[14px] tabular-nums ${tone}`}>
+            {holder.pct === null ? "—" : `${pct.toFixed(2)}%`}
+          </dd>
+        </div>
+        <div>
+          <dt className="t-meta text-mute-600">balance</dt>
+          <dd className="mt-0.5 font-mono text-[14px] tabular-nums text-lit-200">
+            {holder.balance === null ? "—" : compact(holder.balance)}
+          </dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
  * HolderRows
  *
  * Static bars scaled to the largest holder, so the shape of the
@@ -294,9 +492,13 @@ const LABEL_WORD: Record<string, string> = {
 export function HolderRows({
   rows,
   explorer,
+  selected = null,
+  onSelect,
 }: {
   rows: Holder[];
   explorer: (a: string) => string;
+  selected?: string | null;
+  onSelect?: (address: string | null) => void;
 }) {
   const max = rows.reduce((m, h) => Math.max(m, h.pct ?? 0), 0) || 1;
 
@@ -305,13 +507,16 @@ export function HolderRows({
       {rows.map((h) => {
         const pct = h.pct ?? 0;
         const w = Math.max(0.6, (pct / max) * 100);
-        const tone =
-          pct >= 10 ? "#ff2d55" : pct >= 5 ? "#ffb020" : "#52525f";
+        const tone = pct >= 10 ? "#ff2d55" : pct >= 5 ? "#ffb020" : "#52525f";
+        const isSel = selected === h.address;
 
         return (
           <li
             key={h.address}
-            className="row-acid grid grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-x-3 py-[9px] pl-4 pr-4 hover:bg-ink-850/70"
+            className={`row-acid grid grid-cols-[20px_minmax(0,1fr)_auto_auto] items-center gap-x-3 py-[7px] pl-4 pr-4 transition-colors ${
+              isSel ? "bg-ink-850" : "hover:bg-ink-850/70"
+            } ${onSelect ? "cursor-pointer" : ""}`}
+            onClick={() => onSelect?.(isSel ? null : h.address)}
           >
             <span className="font-mono text-[10px] tabular-nums text-mute-600">{h.rank}</span>
 
@@ -322,6 +527,7 @@ export function HolderRows({
                   target="_blank"
                   rel="noreferrer"
                   title={h.address}
+                  onClick={(e) => e.stopPropagation()}
                   className="truncate font-mono text-[11.5px] text-mute-300 transition-colors hover:text-lit-100"
                 >
                   {h.address.slice(0, 8)}…{h.address.slice(-6)}
@@ -332,26 +538,21 @@ export function HolderRows({
                   </span>
                 )}
               </div>
-              <div className="mt-[5px] h-[3px] w-full overflow-hidden bg-ink-800">
-                <div
-                  className="bar-grow h-full"
-                  style={{ width: `${w}%`, backgroundColor: tone }}
-                />
+              <div className="mt-[5px] h-[2px] w-full overflow-hidden bg-ink-800">
+                <div className="bar-grow h-full" style={{ width: `${w}%`, backgroundColor: tone }} />
               </div>
             </div>
 
-            <div className="shrink-0 text-right">
-              <div
-                className={`font-mono text-[12.5px] tabular-nums ${
-                  pct >= 10 ? "text-bad-400" : pct >= 5 ? "text-warn-400" : "text-mute-300"
-                }`}
-              >
-                {h.pct === null ? "—" : `${pct.toFixed(2)}%`}
-              </div>
-              <div className="mt-0.5 font-mono text-[9.5px] tabular-nums text-mute-600">
-                {h.balance === null ? "" : compact(h.balance)}
-              </div>
-            </div>
+            <span
+              className={`text-right font-mono text-[12px] tabular-nums ${
+                pct >= 10 ? "text-bad-400" : pct >= 5 ? "text-warn-400" : "text-mute-300"
+              }`}
+            >
+              {h.pct === null ? "—" : `${pct.toFixed(2)}%`}
+            </span>
+            <span className="text-right font-mono text-[10px] tabular-nums text-mute-600">
+              {h.balance === null ? "" : compact(h.balance)}
+            </span>
           </li>
         );
       })}
