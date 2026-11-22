@@ -44,7 +44,7 @@ export function SiteFooter() {
                   />
                 </svg>
               </span>
-              <span className="text-[12.5px] font-semibold text-slate-200">Meme Checker</span>
+              <span className="text-[12.5px] font-semibold text-lit-200">Meme Checker</span>
             </div>
             <p className="mt-2.5 t-meta leading-relaxed text-mute-600">
               A research aid for contract addresses. Not financial advice, not a
@@ -55,7 +55,7 @@ export function SiteFooter() {
               Every threshold and every blind spot is documented on the{" "}
               <Link
                 href="/faq"
-                className="text-mute-400 underline decoration-ink-600 decoration-dotted underline-offset-2 hover:text-slate-200"
+                className="text-mute-400 underline decoration-ink-600 decoration-dotted underline-offset-2 hover:text-lit-200"
               >
                 method page
               </Link>
@@ -74,14 +74,14 @@ export function SiteFooter() {
                         href={l.href}
                         target="_blank"
                         rel="noreferrer"
-                        className="t-small text-mute-500 transition hover:text-slate-200"
+                        className="t-small text-mute-500 transition hover:text-lit-200"
                       >
                         {l.label} ↗
                       </a>
                     ) : (
                       <Link
                         href={l.href}
-                        className="t-small text-mute-500 transition hover:text-slate-200"
+                        className="t-small text-mute-500 transition hover:text-lit-200"
                       >
                         {l.label}
                       </Link>

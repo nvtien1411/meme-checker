@@ -36,10 +36,10 @@
   --color-ink-500: #3d4757;
 
   /* text ramp — four steps, all AA on ink-900 */
-  --color-mute-600: #5c6675;
-  --color-mute-500: #78828f;
-  --color-mute-400: #98a2b0;
-  --color-mute-300: #b6bfcb;
+  --color-mute-600: #7d8794;
+  --color-mute-500: #98a2b0;
+  --color-mute-400: #b6bfcb;
+  --color-mute-300: #cdd5e0;
 
   /* interaction accent */
   --color-brand-700: #0369a1;
@@ -59,6 +59,18 @@
   --color-bad-600: #e11d48;
   --color-bad-500: #f43f5e;
   --color-bad-400: #fb7185;
+
+  /* the fourth band — high risk sits between watch and fail, so it needs a
+     hue that is neither amber nor rose */
+  --color-risk-600: #ea580c;
+  --color-risk-500: #f97316;
+  --color-risk-400: #fb923c;
+
+  /* primary text tier — brighter than mute-300, so it is its own step rather
+     than a borrowed Tailwind slate */
+  --color-lit-200: #e2e8f0;
+  --color-lit-100: #f1f5f9;
+  --color-lit-50: #f8fafc;
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jbmono), ui-monospace, SFMono-Regular, monospace;

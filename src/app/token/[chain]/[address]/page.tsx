@@ -52,7 +52,7 @@ async function Report({ chain, address }: { chain: ChainId; address: string }) {
       <div className="mx-auto w-full max-w-[640px] px-4 py-16 sm:px-6">
         <div className="panel border-bad-600/40 p-5">
           <h1 className="t-title text-bad-400">Could not analyse this token</h1>
-          <p className="mt-2 t-body leading-relaxed text-slate-300">{message}</p>
+          <p className="mt-2 t-body leading-relaxed text-mute-300">{message}</p>
           {hint && <p className="mt-1.5 t-small leading-relaxed text-mute-400">{hint}</p>}
           <p className="mt-4 border-t border-ink-800 pt-3 t-meta leading-relaxed text-mute-500">
             A failed lookup is not a verdict. Nothing here should be read as
@@ -67,7 +67,7 @@ async function Report({ chain, address }: { chain: ChainId; address: string }) {
             </Link>
             <Link
               href="/"
-              className="rounded border border-ink-650 px-3 py-1.5 t-small text-mute-300 transition hover:border-ink-500 hover:text-slate-100"
+              className="rounded border border-ink-650 px-3 py-1.5 t-small text-mute-300 transition hover:border-ink-500 hover:text-lit-100"
             >
               Home
             </Link>

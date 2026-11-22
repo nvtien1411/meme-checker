@@ -97,7 +97,7 @@ const MARK: Record<Feat["state"], { glyph: string; cls: string; text: string }> 
 export default function PricingPage() {
   return (
     <div className="mx-auto w-full max-w-[1120px] px-4 py-12 sm:px-6">
-      <h1 className="t-display text-slate-50">Pricing</h1>
+      <h1 className="t-display text-lit-50">Pricing</h1>
       <p className="mt-2 max-w-xl t-body leading-relaxed text-mute-400">
         The verdict checks are free forever. Premium adds deeper research —
         wallet investigation, saved history, alerts — not a different verdict.
@@ -124,7 +124,7 @@ export default function PricingPage() {
           >
             <div className="border-b border-ink-750 px-4 py-3.5">
               <div className="flex items-center gap-2">
-                <h2 className="t-title text-slate-100">{t.name}</h2>
+                <h2 className="t-title text-lit-100">{t.name}</h2>
                 {t.primary && (
                   <span className="rounded-[3px] border border-ok-600/45 px-1.5 py-[2px] font-mono text-[9px] uppercase tracking-[0.06em] text-ok-400">
                     available
@@ -137,7 +137,7 @@ export default function PricingPage() {
                 )}
               </div>
               <div className="mt-2 flex items-baseline gap-1.5">
-                <span className="font-mono t-num-lg leading-none text-slate-50">{t.price}</span>
+                <span className="font-mono t-num-lg leading-none text-lit-50">{t.price}</span>
                 <span className="t-meta text-mute-500">{t.cadence}</span>
               </div>
               <p className="mt-1.5 t-small leading-relaxed text-mute-400">{t.blurb}</p>
@@ -169,7 +169,7 @@ export default function PricingPage() {
                 className={`block rounded-[3px] px-3 py-2 text-center t-small font-semibold transition ${
                   t.primary
                     ? "bg-brand-500 text-ink-950 hover:bg-brand-400"
-                    : "border border-ink-650 text-mute-300 hover:border-ink-500 hover:text-slate-100"
+                    : "border border-ink-650 text-mute-300 hover:border-ink-500 hover:text-lit-100"
                 }`}
               >
                 {t.cta}
@@ -207,7 +207,7 @@ export default function PricingPage() {
             },
           ].map((f) => (
             <div key={f.q}>
-              <dt className="t-body-strong text-slate-200">{f.q}</dt>
+              <dt className="t-body-strong text-lit-200">{f.q}</dt>
               <dd className="mt-1 t-small leading-relaxed text-mute-500">{f.a}</dd>
             </div>
           ))}

@@ -28,7 +28,7 @@ export default function Home() {
               <div className="t-meta text-mute-500">free · no key · no wallet</div>
             </div>
 
-            <h1 className="mt-4 t-hero text-slate-50">
+            <h1 className="mt-4 t-hero text-lit-50">
               Find out what
               <br />
               could <span className="text-brand-400">cost you money</span>
@@ -83,7 +83,7 @@ export default function Home() {
             { k: "~3s", v: "typical result", s: "cached for repeat views" },
           ].map((x) => (
             <div key={x.v} className="bg-ink-950 px-4 py-3.5">
-              <dt className="font-mono t-num-lg leading-none text-slate-100">{x.k}</dt>
+              <dt className="font-mono t-num-lg leading-none text-lit-100">{x.k}</dt>
               <dd className="mt-1.5 t-small text-mute-300">{x.v}</dd>
               <dd className="mt-0.5 t-meta text-mute-600">{x.s}</dd>
             </div>
@@ -96,10 +96,10 @@ export default function Home() {
        * ---------------------------------------------------------------- */}
       <section className="border-b border-ink-800 py-10">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="t-display text-slate-100">What gets checked</h2>
+          <h2 className="t-display text-lit-100">What gets checked</h2>
           <span className="t-meta text-mute-600">
             thresholds and blind spots documented on the{" "}
-            <Link href="/faq" className="text-mute-400 underline decoration-ink-600 decoration-dotted underline-offset-2 hover:text-slate-200">
+            <Link href="/faq" className="text-mute-400 underline decoration-ink-600 decoration-dotted underline-offset-2 hover:text-lit-200">
               method page
             </Link>
           </span>
@@ -112,7 +112,7 @@ export default function Home() {
                 {String(i + 1).padStart(2, "0")}
               </span>
               <div className="min-w-0">
-                <p className="t-body-strong text-slate-200">{c.q}</p>
+                <p className="t-body-strong text-lit-200">{c.q}</p>
                 <p className="mt-1 t-small leading-relaxed text-mute-500">{c.d}</p>
               </div>
             </div>
@@ -124,7 +124,7 @@ export default function Home() {
        * HOW IT WORKS
        * ---------------------------------------------------------------- */}
       <section className="border-b border-ink-800 py-10">
-        <h2 className="t-display text-slate-100">How it works</h2>
+        <h2 className="t-display text-lit-100">How it works</h2>
         <ol className="mt-5 grid gap-6 sm:grid-cols-3">
           {[
             {
@@ -145,7 +145,7 @@ export default function Home() {
           ].map((s) => (
             <li key={s.n} className="border-l-2 border-ink-700 pl-4">
               <div className="font-mono t-meta text-mute-600">{s.n}</div>
-              <div className="mt-1 t-body-strong text-slate-200">{s.t}</div>
+              <div className="mt-1 t-body-strong text-lit-200">{s.t}</div>
               <p className="mt-1.5 t-small leading-relaxed text-mute-500">{s.d}</p>
             </li>
           ))}
@@ -157,7 +157,7 @@ export default function Home() {
        * ---------------------------------------------------------------- */}
       <section className="grid gap-8 border-b border-ink-800 py-10 lg:grid-cols-2 lg:gap-14">
         <div>
-          <h2 className="t-display text-slate-100">What this will not do</h2>
+          <h2 className="t-display text-lit-100">What this will not do</h2>
           <ul className="mt-4 space-y-2.5">
             {[
               "Predict price. There is no model here and no target.",
@@ -174,7 +174,7 @@ export default function Home() {
         </div>
 
         <div>
-          <h2 className="t-display text-slate-100">What it is good at</h2>
+          <h2 className="t-display text-lit-100">What it is good at</h2>
           <ul className="mt-4 space-y-2.5">
             {[
               "Rejecting a token in five seconds when the answer is obvious.",
@@ -196,7 +196,7 @@ export default function Home() {
        * ---------------------------------------------------------------- */}
       <section className="grid gap-4 border-b border-ink-800 py-10 lg:grid-cols-2">
         <div className="panel p-5">
-          <h2 className="t-title text-slate-100">Same checks, inside Telegram</h2>
+          <h2 className="t-title text-lit-100">Same checks, inside Telegram</h2>
           <p className="mt-2 t-small leading-relaxed text-mute-400">
             Drop a contract address into a group and get the same verdict without
             leaving the chat. Same backend, same sources, same rules about
@@ -206,14 +206,14 @@ export default function Home() {
             href="https://t.me/"
             target="_blank"
             rel="noreferrer"
-            className="mt-3.5 inline-flex items-center gap-1.5 rounded-[3px] border border-ink-650 px-3 py-1.5 t-small text-mute-300 transition hover:border-ink-500 hover:text-slate-100"
+            className="mt-3.5 inline-flex items-center gap-1.5 rounded-[3px] border border-ink-650 px-3 py-1.5 t-small text-mute-300 transition hover:border-ink-500 hover:text-lit-100"
           >
             Open the bot <span aria-hidden>↗</span>
           </a>
         </div>
 
         <div className="panel p-5">
-          <h2 className="t-title text-slate-100">Free, and what sits behind it</h2>
+          <h2 className="t-title text-lit-100">Free, and what sits behind it</h2>
           <ul className="mt-3 space-y-1.5">
             {[
               ["8 checks + verdict", "Free", true],
@@ -247,7 +247,7 @@ export default function Home() {
       {/* closing */}
       <section className="py-12">
         <div className="max-w-xl">
-          <h2 className="t-display text-slate-100">Check one now</h2>
+          <h2 className="t-display text-lit-100">Check one now</h2>
           <p className="mt-1.5 t-small leading-relaxed text-mute-400">
             No signup, no wallet connection, no rate-limit wall on the free tier.
           </p>

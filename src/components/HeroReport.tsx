@@ -135,7 +135,7 @@ export async function HeroReport() {
         )}
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-1.5">
-            <span className="truncate t-body-strong text-slate-100">{token.name}</span>
+            <span className="truncate t-body-strong text-lit-100">{token.name}</span>
             <span className="font-mono t-meta text-brand-400">{token.symbol?.toUpperCase()}</span>
           </div>
           <div className="font-mono t-meta text-mute-600">
@@ -187,7 +187,7 @@ export async function HeroReport() {
       <div className="border-t border-ink-750 bg-ink-850/50 px-4 py-3">
         <div className="flex items-baseline justify-between">
           <span className="t-label">Top 10 combined</span>
-          <span className="font-mono t-body-strong tabular-nums text-slate-100">{fmtPct(top10)}</span>
+          <span className="font-mono t-body-strong tabular-nums text-lit-100">{fmtPct(top10)}</span>
         </div>
         <div className="mt-1.5 flex h-1.5 w-full overflow-hidden rounded-[1px] bg-ink-800">
           {holders.rows.map((h, i) =>

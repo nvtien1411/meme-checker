@@ -217,7 +217,7 @@ export function ConcentrationBar({
       <div className="flex items-baseline justify-between gap-3">
         <div className="t-meta text-mute-500">
           Top 10 combined{" "}
-          <span className="font-mono tnum text-slate-100">{fmtPct(top10R)}</span>
+          <span className="font-mono tnum text-lit-100">{fmtPct(top10R)}</span>
         </div>
         <div className="t-meta text-mute-600">
           everyone else{" "}
@@ -494,7 +494,7 @@ export function CoverageMeter({ coverage }: { coverage: number | null }) {
     <div>
       <div className="flex items-baseline justify-between gap-2">
         <span className="t-meta text-mute-500">Pool depth vs market cap</span>
-        <span className="font-mono text-[12px] tabular-nums text-slate-200">
+        <span className="font-mono text-[12px] tabular-nums text-lit-200">
           {fmtPct(coverage)}
         </span>
       </div>

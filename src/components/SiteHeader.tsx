@@ -31,7 +31,7 @@ export function SiteHeader() {
               />
             </svg>
           </span>
-          <span className="text-[13.5px] font-semibold tracking-[-0.01em] text-slate-100">
+          <span className="text-[13.5px] font-semibold tracking-[-0.01em] text-lit-100">
             Meme Checker
           </span>
         </Link>
@@ -45,8 +45,8 @@ export function SiteHeader() {
                 href={n.href}
                 className={`relative rounded-[3px] px-2.5 py-1.5 t-small transition ${
                   active
-                    ? "bg-ink-800 text-slate-100"
-                    : "text-mute-500 hover:bg-ink-850 hover:text-slate-200"
+                    ? "bg-ink-800 text-lit-100"
+                    : "text-mute-500 hover:bg-ink-850 hover:text-lit-200"
                 }`}
               >
                 {n.label}
@@ -60,13 +60,13 @@ export function SiteHeader() {
             href="https://t.me/"
             target="_blank"
             rel="noreferrer"
-            className="hidden rounded-[3px] px-2.5 py-1.5 t-small text-mute-500 transition hover:text-slate-200 sm:block"
+            className="hidden rounded-[3px] px-2.5 py-1.5 t-small text-mute-500 transition hover:text-lit-200 sm:block"
           >
             Telegram
           </a>
           <Link
             href="/login"
-            className="hidden rounded-[3px] border border-ink-650 px-2.5 py-1.5 t-small text-mute-300 transition hover:border-ink-500 hover:text-slate-100 sm:block"
+            className="hidden rounded-[3px] border border-ink-650 px-2.5 py-1.5 t-small text-mute-300 transition hover:border-ink-500 hover:text-lit-100 sm:block"
           >
             Log in
           </Link>

@@ -52,7 +52,7 @@ export function SectionNav() {
               href={`#${s.id}`}
               aria-current={on ? "true" : undefined}
               className={`relative shrink-0 whitespace-nowrap px-3 py-2.5 t-meta transition-colors ${
-                on ? "font-medium text-brand-400" : "text-mute-500 hover:text-slate-200"
+                on ? "font-medium text-brand-400" : "text-mute-500 hover:text-lit-200"
               }`}
             >
               {s.label}

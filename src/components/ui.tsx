@@ -78,7 +78,7 @@ export function Metric({
           ? "text-warn-400"
           : tone === "muted"
             ? "text-mute-400"
-            : "text-slate-100";
+            : "text-lit-100";
 
   return (
     <div className="min-w-0 px-4 py-3" title={hint}>
@@ -112,7 +112,7 @@ export function Tag({
     warn: "border border-warn-600/45 bg-warn-600/12 text-warn-400",
     bad: "border border-bad-600/45 bg-bad-600/12 text-bad-400",
     brand: "border border-brand-600/45 bg-brand-600/12 text-brand-400",
-    solid: "border border-transparent bg-ink-700 text-slate-200",
+    solid: "border border-transparent bg-ink-700 text-lit-200",
   } as const;
 
   return (

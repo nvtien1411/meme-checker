@@ -171,12 +171,12 @@ export function ConfirmButton({
           className="fixed inset-0 z-50 grid place-items-center bg-ink-950/80 px-4"
         >
           <div className="w-full max-w-sm border border-ink-600 bg-ink-900 p-4">
-            <p className="text-body text-slate-200">{question}</p>
+            <p className="text-body text-lit-200">{question}</p>
             <div className="mt-3 flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded border border-ink-600 px-2.5 py-1.5 text-small text-mute-300 hover:text-slate-100"
+                className="rounded border border-ink-600 px-2.5 py-1.5 text-small text-mute-300 hover:text-lit-100"
               >
                 Cancel
               </button>

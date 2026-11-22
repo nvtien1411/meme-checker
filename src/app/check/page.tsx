@@ -29,7 +29,7 @@ const LIMITS = [
 export default function CheckPage() {
   return (
     <div className="mx-auto w-full max-w-[720px] px-4 py-12 sm:px-6">
-      <h1 className="t-display text-slate-50">Token Checker</h1>
+      <h1 className="t-display text-lit-50">Token Checker</h1>
       <p className="mt-2 max-w-lg t-body leading-relaxed text-mute-400">
         Paste a contract address. The chain is detected automatically — pick one
         yourself only if you already know it, which skips a lookup.
@@ -62,7 +62,7 @@ export default function CheckPage() {
         <ul className="mt-3 divide-y divide-ink-800 border-y border-ink-800">
           {LIMITS.map((l) => (
             <li key={l.t} className="py-3.5">
-              <p className="t-body-strong text-slate-200">{l.t}</p>
+              <p className="t-body-strong text-lit-200">{l.t}</p>
               <p className="mt-1 t-small leading-relaxed text-mute-500">{l.d}</p>
             </li>
           ))}
@@ -71,7 +71,7 @@ export default function CheckPage() {
           Full thresholds and caveats per check:{" "}
           <Link
             href="/faq"
-            className="text-mute-400 underline decoration-ink-600 decoration-dotted underline-offset-2 hover:text-slate-200"
+            className="text-mute-400 underline decoration-ink-600 decoration-dotted underline-offset-2 hover:text-lit-200"
           >
             method page
           </Link>

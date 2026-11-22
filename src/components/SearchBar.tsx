@@ -139,7 +139,7 @@ export function SearchBar({
                 setError(null);
                 setHint(null);
               }}
-              className="absolute inset-y-0 right-0 grid w-9 place-items-center text-mute-500 transition hover:text-slate-200"
+              className="absolute inset-y-0 right-0 grid w-9 place-items-center text-mute-500 transition hover:text-lit-200"
             >
               ×
             </button>
@@ -155,7 +155,7 @@ export function SearchBar({
               setError(null);
             }}
             aria-label="Blockchain"
-            className="min-h-[42px] cursor-pointer appearance-none rounded-[3px] border border-transparent bg-transparent px-2.5 t-small text-mute-400 outline-none transition hover:text-slate-200 focus:border-brand-600"
+            className="min-h-[42px] cursor-pointer appearance-none rounded-[3px] border border-transparent bg-transparent px-2.5 t-small text-mute-400 outline-none transition hover:text-lit-200 focus:border-brand-600"
           >
             <option value="auto">Auto-detect</option>
             {CHAINS.map((c) => (

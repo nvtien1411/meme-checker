@@ -16,19 +16,19 @@ const HISTORY = [
 const TONE_CLS: Record<string, string> = {
   warn: "text-warn-400 border-warn-600/45",
   ok: "text-ok-400 border-ok-600/45",
-  risky: "text-orange-400 border-orange-600/45",
+  risky: "text-risk-400 border-risk-600/45",
 };
 
 export default function DashboardPage() {
   return (
     <div className="mx-auto w-full max-w-[1000px] px-4 py-10 sm:px-6">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h1 className="t-display text-slate-50">Dashboard</h1>
+        <h1 className="t-display text-lit-50">Dashboard</h1>
         <Link
           href="/check"
           className="rounded-[3px] bg-brand-500 px-3 py-1.5 t-small font-semibold text-ink-950 transition hover:bg-brand-400"
         >
-          New check
+          Check a token
         </Link>
       </div>
 
@@ -49,7 +49,7 @@ export default function DashboardPage() {
         ].map((s) => (
           <div key={s.label} className="panel px-4 py-3.5">
             <div className="t-label">{s.label}</div>
-            <div className="mt-1.5 font-mono t-num-lg leading-none text-slate-100">{s.value}</div>
+            <div className="mt-1.5 font-mono t-num-lg leading-none text-lit-100">{s.value}</div>
             <div className="mt-1 t-meta text-mute-600">{s.sub}</div>
           </div>
         ))}
@@ -61,13 +61,19 @@ export default function DashboardPage() {
           right={<span className="font-mono text-[9.5px] uppercase tracking-[0.06em]">placeholder</span>}
           flush
         >
+          <div className="flex items-center gap-x-3 border-b border-ink-800 bg-ink-850/40 px-4 py-1.5">
+            <span className="w-16 t-meta text-mute-600">Token</span>
+            <span className="t-meta text-mute-600">Chain</span>
+            <span className="t-meta text-mute-600">Verdict</span>
+            <span className="ml-auto t-meta text-mute-600">Risk score</span>
+          </div>
           <ul className="divide-y divide-ink-800">
             {HISTORY.map((h) => (
               <li
                 key={h.symbol}
-                className="row-hover flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 hover:bg-ink-850/60"
+                className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5"
               >
-                <span className="w-16 font-mono t-small text-slate-200">{h.symbol}</span>
+                <span className="w-16 font-mono t-small text-lit-200">{h.symbol}</span>
                 <span className="t-meta text-mute-600">{h.chain}</span>
                 <span
                   className={`rounded-[3px] border px-1.5 py-[2px] font-mono text-[9.5px] uppercase tracking-[0.05em] ${TONE_CLS[h.tone]}`}

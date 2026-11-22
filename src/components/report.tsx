@@ -39,7 +39,7 @@ const BAND_LABEL = {
 
 const BAND_TEXT = {
   avoid: "text-bad-400",
-  risky: "text-orange-400",
+  risky: "text-risk-400",
   watch: "text-warn-400",
   clean: "text-ok-400",
 } as const;
@@ -73,7 +73,7 @@ export function VerdictHeader({ data }: { data: AnalysisResult }) {
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-            <h1 className="truncate t-display text-slate-50">
+            <h1 className="truncate t-display text-lit-50">
               {data.token.name ?? "Unknown token"}
             </h1>
             {data.token.symbol && (
@@ -131,7 +131,7 @@ export function VerdictHeader({ data }: { data: AnalysisResult }) {
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className="t-body leading-relaxed text-slate-200">{v.tldr}</p>
+          <p className="t-body leading-relaxed text-lit-200">{v.tldr}</p>
           <div className="mt-3">
             <CheckStrip checks={data.checks} />
           </div>
@@ -247,7 +247,7 @@ export function CheckList({ checks }: { checks: Check[] }) {
 
               <span className="min-w-0 flex-1">
                 <span className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                  <span className="t-body-strong text-slate-100">{c.label}</span>
+                  <span className="t-body-strong text-lit-100">{c.label}</span>
                   <span
                     className={`shrink-0 font-mono text-[12px] tabular-nums ${STATE_TEXT[c.state]}`}
                   >
@@ -586,7 +586,7 @@ export function ProvenancePanel({ data }: { data: AnalysisResult }) {
   return (
     <div className="p-4">
       <details open={failed.length > 0}>
-        <summary className="cursor-pointer list-none t-small text-mute-400 transition hover:text-slate-200">
+        <summary className="cursor-pointer list-none t-small text-mute-400 transition hover:text-lit-200">
           {failed.length > 0 ? (
             <span className="text-bad-400">
               {failed.length} source{failed.length > 1 ? "s" : ""} did not answer

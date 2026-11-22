@@ -24,7 +24,7 @@ export default function LoginPage() {
 
   return (
     <div className="mx-auto w-full max-w-[392px] px-4 py-14 sm:px-6">
-      <h1 className="t-display text-slate-50">
+      <h1 className="t-display text-lit-50">
         {mode === "login" ? "Log in" : "Create an account"}
       </h1>
       <p className="mt-1.5 t-small leading-relaxed text-mute-400">
@@ -41,7 +41,7 @@ export default function LoginPage() {
               setStatus("idle");
             }}
             className={`flex-1 rounded-[3px] px-2 py-1.5 t-small font-medium transition ${
-              mode === m ? "bg-ink-750 text-slate-100" : "text-mute-500 hover:text-slate-200"
+              mode === m ? "bg-ink-750 text-lit-100" : "text-mute-500 hover:text-lit-200"
             }`}
           >
             {m === "login" ? "Log in" : "Sign up"}
@@ -64,7 +64,7 @@ export default function LoginPage() {
             }}
             autoComplete="email"
             placeholder="you@domain.com"
-            className="mt-1.5 w-full rounded-[3px] border border-ink-700 bg-ink-900 px-3 py-2 t-small text-slate-200 outline-none transition placeholder:text-mute-600 focus:border-brand-600"
+            className="mt-1.5 w-full rounded-[3px] border border-ink-700 bg-ink-900 px-3 py-2 t-small text-lit-200 outline-none transition placeholder:text-mute-600 focus:border-brand-600"
           />
           {email && !emailValid && (
             <p className="mt-1 t-meta text-bad-400">That does not look like an email address.</p>
@@ -85,7 +85,7 @@ export default function LoginPage() {
             }}
             autoComplete={mode === "login" ? "current-password" : "new-password"}
             placeholder="At least 8 characters"
-            className="mt-1.5 w-full rounded-[3px] border border-ink-700 bg-ink-900 px-3 py-2 t-small text-slate-200 outline-none transition placeholder:text-mute-600 focus:border-brand-600"
+            className="mt-1.5 w-full rounded-[3px] border border-ink-700 bg-ink-900 px-3 py-2 t-small text-lit-200 outline-none transition placeholder:text-mute-600 focus:border-brand-600"
           />
           {password.length > 0 && password.length < 8 && (
             <p className="mt-1 t-meta text-mute-500">
