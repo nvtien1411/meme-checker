@@ -64,21 +64,6 @@ export function SectionNav() {
           </a>
         );
       })}
-      <span className="ml-auto hidden shrink-0 items-center gap-2 py-2 pl-3 t-meta text-mute-500 sm:flex">
-        <LegendDot cls="bg-ok-600" label="pass" />
-        <LegendDot cls="bg-warn-600" label="watch" />
-        <LegendDot cls="bg-bad-600" label="fail" />
-        <LegendDot cls="bg-ink-500" label="unknown" />
-      </span>
     </nav>
-  );
-}
-
-function LegendDot({ cls, label }: { cls: string; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-1">
-      <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${cls}`} />
-      {label}
-    </span>
   );
 }

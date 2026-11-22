@@ -16,6 +16,7 @@ import {
 } from "@/components/report";
 import { Panel } from "@/components/ui";
 import { SectionNav } from "@/components/SectionNav";
+import { ConcentrationBar } from "@/components/viz";
 import { ResultSkeleton } from "./skeleton";
 
 const VALID = CHAINS.map((c) => c.id);
@@ -103,7 +104,10 @@ async function Report({ chain, address }: { chain: ChainId; address: string }) {
             }
           >
             <div className="-mx-4 -mb-3 min-w-0 overflow-hidden">
-              <HolderTable data={data} />
+              <ConcentrationBar data={data} />
+              <div className="border-t border-ink-800">
+                <HolderTable data={data} stripFooter />
+              </div>
             </div>
           </Panel>
 

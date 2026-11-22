@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { SearchBar } from "@/components/SearchBar";
+import { SampleReport, SampleReportFallback } from "@/components/SampleReport";
 
 const CHECKS = [
   { q: "Can you sell it", d: "Honeypot simulation, freeze authority. The only check that matters if it fails." },
@@ -19,9 +21,10 @@ export default function LandingPage() {
       <section className="border-b border-ink-800 py-10 sm:py-14">
         <div className="max-w-3xl">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono t-meta  text-mute-500">
-              Solana · BNB Chain · Ethereum · Base · Robinhood
+            <span className="font-mono t-meta text-mute-500">
+              Solana · BNB Chain · Ethereum · Base · Robinhood Chain
             </span>
+            <span className="font-mono t-meta text-mute-500">·</span>
             <span className="font-mono t-meta text-mute-500">
               free · no API key · no wallet
             </span>
@@ -30,7 +33,7 @@ export default function LandingPage() {
           <h1 className="mt-4 t-display leading-[1.15] tracking-tight text-slate-50 sm:t-display">
             Paste a contract address.
             <br />
-            Find out what would actually
+            Find out what could actually
             <span className="text-brand-400"> cost you money</span>.
           </h1>
 
@@ -50,6 +53,21 @@ export default function LandingPage() {
           Research tool, not a signal service. It cannot tell you what a token
           will do — only which rules it breaks.
         </p>
+      </section>
+
+      {/* Live sample — the product showing itself */}
+      <section className="border-b border-ink-800 py-9">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="t-section">A real report, right now</h2>
+          <span className="t-meta text-mute-500">
+            pulled live through the same pipeline as the checker
+          </span>
+        </div>
+        <div className="mt-3">
+          <Suspense fallback={<SampleReportFallback />}>
+            <SampleReport />
+          </Suspense>
+        </div>
       </section>
 
       {/* the eight checks */}
@@ -93,8 +111,8 @@ export default function LandingPage() {
             },
             {
               n: "02",
-              t: "We read four sources",
-              d: "DexScreener, GeckoTerminal, RugCheck and GoPlus. Each result is stamped with its source and snapshot time.",
+              t: "We read every source, and name them",
+              d: "DexScreener, GeckoTerminal, RugCheck, GoPlus and a Solana RPC. Each call is timestamped and shown, including the ones that failed.",
             },
             {
               n: "03",

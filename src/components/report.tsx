@@ -5,6 +5,7 @@ import type { AnalysisResult, Check, CheckState } from "@/lib/types";
 import { fmtAgo, fmtChange, fmtPrice, fmtUsd } from "@/lib/http";
 import { CHAIN_BY_ID } from "@/lib/chains";
 import { Badge, Copyable, QualityTag, Stat, Tooltip } from "./ui";
+import { CoverageMeter, FlowBalance, LiquidityLadder, RiskMatrix } from "./viz";
 
 /* ------------------------------- verdict ------------------------------ */
 
@@ -107,11 +108,8 @@ export function VerdictBanner({ data }: { data: AnalysisResult }) {
         <p className="w-full min-w-0 t-body leading-relaxed text-slate-300 sm:flex-1">
           {v.tldr}
         </p>
-        <div className="flex shrink-0 items-center gap-1.5">
-          <CountChip n={v.fails} label="failed" tone="bad" />
-          <CountChip n={v.warns} label="watch" tone="warn" />
-          <CountChip n={v.unknowns} label="unknown" tone="mute" />
-          <CountChip n={v.passes} label="passed" tone="ok" />
+        <div className="flex items-center gap-3">
+          <RiskMatrix checks={data.checks} score={v.score} />
         </div>
       </div>
 
@@ -178,33 +176,19 @@ export function VerdictBanner({ data }: { data: AnalysisResult }) {
                 ? "—"
                 : `${data.holders.effectiveTop10Pct.toFixed(1)}%`
           }
-          sub={!data.holders.meaningful ? "curve holds supply" : "ex-LP, clusters merged"}
+          sub={
+            !data.holders.meaningful
+              ? "curve holds supply"
+              : data.clusters.dataAvailable
+                ? "ex-LP, linked wallets merged"
+                : "ex-LP only — no funding trace"
+          }
         />
       </div>
     </div>
   );
 }
 
-function CountChip({ n, label, tone }: { n: number; label: string; tone: "bad" | "warn" | "ok" | "mute" }) {
-  const cls =
-    n === 0
-      ? "border-ink-700 text-mute-500"
-      : tone === "bad"
-        ? "border-bad-600/50 text-bad-500"
-        : tone === "warn"
-          ? "border-warn-600/50 text-warn-500"
-          : tone === "ok"
-            ? "border-ok-600/50 text-ok-500"
-            : "border-ink-600 text-mute-400";
-  return (
-    <span
-      className={`inline-flex items-baseline gap-1 rounded border px-1.5 py-0.5 font-mono t-meta ${cls}`}
-    >
-      <span className="tnum font-semibold">{n}</span>
-      <span className="t-label opacity-70">{label}</span>
-    </span>
-  );
-}
 
 /* -------------------------------- checks ------------------------------ */
 
@@ -284,7 +268,13 @@ const LABEL_TEXT: Record<string, string> = {
   locked: "locked",
 };
 
-export function HolderTable({ data }: { data: AnalysisResult }) {
+export function HolderTable({
+  data,
+  stripFooter = false,
+}: {
+  data: AnalysisResult;
+  stripFooter?: boolean;
+}) {
   const { holders } = data;
   const chain = CHAIN_BY_ID[data.token.chain];
   const hasLabels = holders.rows.some((h) => h.label !== null);
@@ -371,7 +361,7 @@ export function HolderTable({ data }: { data: AnalysisResult }) {
         </table>
       </div>
 
-      <div className="border-t border-ink-800 px-4 py-2.5">
+      <div className={`px-4 py-2.5 ${stripFooter ? "" : "border-t border-ink-800"}`}>
         {!holders.meaningful && holders.note && (
           <p className="mb-1.5 t-small leading-relaxed text-warn-500">{holders.note}</p>
         )}
@@ -480,40 +470,15 @@ export function ExitPanel({ data }: { data: AnalysisResult }) {
         <p className="t-body leading-relaxed text-mute-400">{e.note}</p>
       ) : (
         <>
-          <div className="grid grid-cols-3 divide-x divide-ink-700 border border-ink-700">
-            {[
-              { k: "1% slip", v: e.maxSellUsd.slip1 },
-              { k: "5% slip", v: e.maxSellUsd.slip5 },
-              { k: "10% slip", v: e.maxSellUsd.slip10 },
-            ].map((x) => (
-              <div key={x.k} className="px-3 py-2.5">
-                <div className="t-label text-mute-500">
-                  {x.k}
-                </div>
-                <div className="mt-0.5 font-mono t-body tabular-nums text-slate-100">
-                  {fmtUsd(x.v)}
-                </div>
-              </div>
-            ))}
-          </div>
-          <p className="mt-2 t-small leading-relaxed text-mute-400">
+          <LiquidityLadder data={data} />
+          <p className="mt-2.5 t-small leading-relaxed text-mute-400">
             Amount you can sell before price impact reaches that level. Your
             position should be a fraction of these, not near them.
           </p>
-          {e.liquidityCoverage !== null && (
-            <p className="mt-1.5 t-small text-mute-500">
-              Pool holds{" "}
-              <span
-                className={
-                  e.liquidityCoverage < 2 ? "text-bad-500" : e.liquidityCoverage < 8 ? "text-warn-500" : "text-mute-300"
-                }
-              >
-                {e.liquidityCoverage.toFixed(1)}%
-              </span>{" "}
-              of the reported market cap.
-            </p>
-          )}
-          <p className="mt-2 border-t border-ink-800 pt-2 t-meta leading-relaxed text-mute-500">
+          <div className="mt-2.5 border-t border-ink-800 pt-2.5">
+            <CoverageMeter data={data} />
+          </div>
+          <p className="mt-2 border-t border-ink-800 pt-2.5 t-meta leading-relaxed text-mute-500">
             {e.note}
           </p>
         </>
@@ -528,6 +493,9 @@ export function FlowPanel({ data }: { data: AnalysisResult }) {
   const f = data.flow;
   return (
     <div className="px-4 py-3">
+      <div className="mb-3">
+        <FlowBalance data={data} />
+      </div>
       {!f.dataAvailable && f.note && (
         <p className="mb-2.5 rounded border border-ink-700 bg-ink-850 px-2.5 py-2 t-small leading-relaxed text-mute-400">
           {f.note}
