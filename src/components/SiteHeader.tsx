@@ -17,7 +17,7 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-ink-700 bg-ink-950/92 backdrop-blur-sm">
       <div className="mx-auto flex h-13 w-full max-w-[1240px] items-center gap-1 px-4 sm:px-6">
-        <Link href="/" className="mr-2 flex items-center gap-2 py-3">
+        <Link href="/" className="mr-2 flex items-center gap-2 py-3" aria-label="Meme Checker home">
           <span
             aria-hidden
             className="grid h-6 w-6 place-items-center rounded-[3px] border border-brand-600/60 bg-brand-600/15 font-mono t-meta font-semibold text-brand-400"

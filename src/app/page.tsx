@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { SearchBar } from "@/components/SearchBar";
-import { SampleReport, SampleReportFallback } from "@/components/SampleReport";
+import { HeroReport, HeroReportSkeleton } from "@/components/HeroReport";
 
 const CHECKS = [
   { q: "Can you sell it", d: "Honeypot simulation, freeze authority. The only check that matters if it fails." },
@@ -17,57 +17,78 @@ const CHECKS = [
 export default function LandingPage() {
   return (
     <div className="mx-auto w-full max-w-[1240px] px-4 sm:px-6">
-      {/* hero */}
-      <section className="border-b border-ink-800 py-10 sm:py-14">
-        <div className="max-w-3xl">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono t-meta text-mute-500">
-              Solana · BNB Chain · Ethereum · Base · Robinhood Chain
-            </span>
-            <span className="font-mono t-meta text-mute-500">·</span>
-            <span className="font-mono t-meta text-mute-500">
-              free · no API key · no wallet
-            </span>
+      {/* hero — claim left, evidence right. The right column is a real report,
+          not a mockup, so the first thing a visitor sees is the product. */}
+      <section className="border-b border-ink-800">
+        <div className="grid items-start gap-8 py-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,440px)] lg:gap-10 lg:py-12">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="font-mono t-meta text-mute-500">
+                Solana · BNB Chain · Ethereum · Base + Robinhood Chain
+              </span>
+              <span aria-hidden className="t-meta text-ink-600">/</span>
+              <span className="font-mono t-meta text-mute-500">free · no key · no wallet</span>
+            </div>
+
+            <h1 className="mt-4 t-display leading-[1.12] text-slate-50">
+              Find out what could
+              <br />
+              <span className="text-brand-400">cost you money</span>
+              <br />
+              before you buy.
+            </h1>
+
+            <p className="mt-4 max-w-[56ch] t-body leading-relaxed text-mute-300">
+              Paste a contract address and get eight checks in the order that
+              matters — can you sell, is the supply real, can the liquidity
+              vanish, has this dev done it before. Every answer carries its
+              source. Anything unverifiable says{" "}
+              <span className="text-mute-400">unknown</span> instead of quietly
+              becoming a pass.
+            </p>
+
+            <div className="mt-5 max-w-xl">
+              <SearchBar size="lg" autoFocus />
+            </div>
+
+            <p className="mt-3 t-meta text-mute-500">
+              Research tool, not a signal service — it cannot tell you what a
+              token will do, only which rules it breaks.
+            </p>
+
           </div>
 
-          <h1 className="mt-4 t-display leading-[1.15] tracking-tight text-slate-50 sm:t-display">
-            Paste a contract address.
-            <br />
-            Find out what could actually
-            <span className="text-brand-400"> cost you money</span>.
-          </h1>
-
-          <p className="mt-3 max-w-[62ch] t-body leading-relaxed text-mute-300">
-            Eight checks in the order that matters. Every answer carries its
-            source; anything we cannot verify says{" "}
-            <span className="text-mute-400">unknown</span> instead of quietly
-            becoming a pass.
-          </p>
+          <div className="min-w-0">
+            <div className="mb-2 flex items-baseline justify-between">
+              <span className="t-label">live example</span>
+              <Link
+                href="/check"
+                className="t-meta text-mute-500 underline decoration-ink-600 decoration-dotted underline-offset-2 transition hover:text-brand-400"
+              >
+                check your own →
+              </Link>
+            </div>
+            <Suspense fallback={<HeroReportSkeleton />}>
+              <HeroReport />
+            </Suspense>
+          </div>
         </div>
 
-        <div className="mt-6 max-w-3xl">
-          <SearchBar size="lg" autoFocus />
-        </div>
-
-        <p className="mt-3 t-meta text-mute-500">
-          Research tool, not a signal service. It cannot tell you what a token
-          will do — only which rules it breaks.
-        </p>
-      </section>
-
-      {/* Live sample — the product showing itself */}
-      <section className="border-b border-ink-800 py-9">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="t-section">A real report, right now</h2>
-          <span className="t-meta text-mute-500">
-            pulled live through the same pipeline as the checker
-          </span>
-        </div>
-        <div className="mt-3">
-          <Suspense fallback={<SampleReportFallback />}>
-            <SampleReport />
-          </Suspense>
-        </div>
+        {/* Full-width stat strip. Inside the copy column with a full-width rule
+            above it, the row read as truncated at the fold. */}
+        <dl className="grid grid-cols-2 gap-px border-t border-ink-800 bg-ink-800 sm:grid-cols-4">
+          {[
+            { k: "8", v: "checks per token" },
+            { k: "5", v: "chains supported" },
+            { k: "0", v: "API keys needed" },
+            { k: "~3s", v: "typical result" },
+          ].map((x) => (
+            <div key={x.v} className="bg-ink-950 px-4 py-3">
+              <dt className="font-mono t-num leading-none text-slate-100">{x.k}</dt>
+              <dd className="mt-1 t-meta text-mute-500">{x.v}</dd>
+            </div>
+          ))}
+        </dl>
       </section>
 
       {/* the eight checks */}

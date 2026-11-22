@@ -115,7 +115,7 @@ export function SearchBar({
             aria-label="Contract address"
             aria-invalid={phase === "invalid" || !!error}
             placeholder="Paste a contract address"
-            className={`w-full bg-transparent py-2.5 pl-10 pr-2 font-mono text-mute-300 outline-none placeholder:text-mute-500 ${
+            className={`w-full bg-transparent py-2.5 pl-12 pr-2 font-mono text-mute-300 outline-none placeholder:text-mute-500 ${
               big ? "t-body sm:t-body" : "t-body"
             }`}
           />
@@ -203,7 +203,7 @@ export function SearchBar({
       </div>
 
       {size === "lg" && (
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
           <span className="t-meta  text-mute-500">
             Example contracts
           </span>

@@ -166,7 +166,7 @@ export function buildChecks(i: CheckInput): Check[] {
   if (!clusters.dataAvailable) {
     checks.push(
       c("cluster", "Is the supply one entity in disguise", "unknown",
-        clusters.note ? "Trace unavailable" : "Not traced", "solana rpc", "observed",
+        "Cannot be established", "solana rpc", "observed",
         clusters.note ?? "Wallet relationships could not be established for this token."),
     );
   } else if (clusters.linkedSupplyPct === null) {
@@ -228,9 +228,15 @@ export function buildChecks(i: CheckInput): Check[] {
   } else {
     const imb = flow.imbalance;
     const state: CheckState = imb > 0.15 ? "pass" : imb > -0.2 ? "warn" : "fail";
+    const reading =
+      state === "pass"
+        ? "Buyers in control"
+        : state === "warn"
+          ? "Two-way, no clear side"
+          : "Sellers in control";
     checks.push(
       c("flow", "Is the trading real", state,
-        `Net ${(imb * 100).toFixed(0)}% by volume`,
+        `${reading} · ${(imb * 100).toFixed(0)}%`,
         "geckoterminal trades", "derived",
         `Computed from ${flow.windowTrades} recent trades${flow.distinctTraders ? ` across ${flow.distinctTraders} wallets` : ""}. Heavy net selling while the price holds up usually means distribution into exit liquidity.`),
     );
