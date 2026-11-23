@@ -343,46 +343,78 @@ export function Gated({
 }
 
 /* ------------------------------------------------------------------ *
- * ProReveal - the boundary drawn through real content.
+ * ProReveal - the paid layer, visible before anyone clicks anything.
  *
- * The old gate listed what Pro would show. A list of nouns is a brochure: the
- * reader cannot tell whether the rows behind it are worth anything, because
- * they have never seen one. This renders the actual rows and cuts after the
- * first few, so the free reader sees real wallets, real numbers, real history
- * and then the exact point where the data stops.
+ * Two earlier versions of this were both wrong in the same way.
  *
- * Not blurred, not greyed. Clipping is honest: the rows that are shown are
- * shown at full fidelity, and the ones below are labelled as not shown.
+ * The first listed what Pro would show, in bullets. A reader cannot judge
+ * whether a table of wallets is worth paying for if they have never seen one.
+ *
+ * The second rendered the real rows but hid them entirely from free readers
+ * until they clicked "open" in the corner. That is worse: the product looked
+ * like it had one layer, and the only way to discover the second was to go
+ * looking for a button.
+ *
+ * This version renders the real content for everyone, clipped after a few rows,
+ * with the boundary drawn where the data stops. A free reader sees actual
+ * wallets, actual numbers, actual history — and can see precisely what continues
+ * below. Nothing is blurred and nothing is dimmed, because the rows above the
+ * cut exist to prove the data is real.
+ *
+ * The `value` line is the important part: it is a measured sentence about this
+ * specific section, supplied by the caller. "These 9 wallets have 4 prior
+ * collapses between them" sells the layer. "Wallet history" does not.
  * ------------------------------------------------------------------ */
 
 export function ProReveal({
   title,
+  value,
   rows = [],
   shown = 3,
   tail,
   more,
   note,
   children,
+  clip = 3,
 }: {
   title: string;
+  /** One measured sentence about this section's own data. Never a category. */
+  value?: string;
   /** The real rows, in their final form. Nothing here is written for the gate. */
   rows?: ReactNode[];
-  /** Full paid content, when it is more than a list of rows. Shown only to Pro. */
+  /** Full paid content, when it is more than a list of rows. */
   children?: ReactNode;
-  /** How many a free reader sees. Enough to judge the shape, not to finish. */
+  /** How many rows a free reader sees. Enough to judge the shape, not to finish. */
   shown?: number;
   /** Content that only means anything once every row is visible. */
   tail?: ReactNode;
   /** What the remaining rows contain — specific, counted, no adjectives. */
-  more: string[];
+  more?: string[];
   note?: string;
+  /** Height budget for clipped children, in rows. */
+  clip?: number;
 }) {
   const { pro, setPro } = useViewer();
   const total = rows.length;
   const hidden = Math.max(0, total - shown);
+  const hasChildren = children !== undefined && children !== null;
+  const rowsFirst = total > 0;
+  const canClip = hasChildren || total > 0;
 
+  // Paid: everything, no chrome.
   if (pro) {
-    if (children) return <div className="space-y-2.5">{children}</div>;
+    if (hasChildren) {
+      return (
+        <div className="space-y-2.5">
+          <div className="flex flex-wrap items-baseline gap-2">
+            <span aria-hidden className="h-[5px] w-[5px] self-center bg-acid" />
+            <h3 className="t-strong text-fg">{title}</h3>
+            {value && <span className="min-w-0 flex-1 t-xs text-fg3">{value}</span>}
+          </div>
+          {children}
+        </div>
+      );
+    }
     return (
       <div className="space-y-2.5">
         {rows}
@@ -391,57 +423,62 @@ export function ProReveal({
     );
   }
 
+  // Free: the same content, clipped, with the boundary named.
+  const visible = rowsFirst ? rows.slice(0, shown) : null;
+
   return (
-    <div>
-      <div className="space-y-2.5">{rows.slice(0, shown)}</div>
+    <section className="border border-line">
+      <header className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1 border-b border-acid/25 bg-acid/[0.045] px-3 py-2">
+        <span aria-hidden className="h-[5px] w-[5px] shrink-0 self-center bg-acid/80" />
+        <h3 className="t-strong text-fg">{title}</h3>
+        <Tag tone="acid">pro</Tag>
+        {value && <span className="min-w-0 flex-1 t-xs text-fg3">{value}</span>}
+        <span className="ml-auto shrink-0 font-mono text-[9px] uppercase tracking-[0.06em] text-acid/70">
+          pro layer
+        </span>
+      </header>
 
-      {/* the cut. A border and a number, not a curtain. */}
-      <div className="relative mt-2.5 border border-dashed border-acid/30 bg-acid/[0.03]">
-        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-b border-acid/20 px-2.5 py-1.5">
-          <svg viewBox="0 0 10 10" className="h-[9px] w-[9px] shrink-0 self-center text-acid" aria-hidden fill="none">
-            <rect x="2" y="4.5" width="6" height="4.5" stroke="currentColor" strokeWidth="1" />
-            <path d="M3.2 4.5V3.2a1.8 1.8 0 0 1 3.6 0v1.3" stroke="currentColor" strokeWidth="1" />
-          </svg>
-          <span className="t-strong text-fg">{title}</span>
-          <span className="font-mono text-[9.5px] tabular-nums text-acid">
-            {hidden > 2 ? `+${hidden} more` : `${more.length} checks behind it`}
-          </span>
-          <Button
-            onClick={() => setPro(true)}
-            variant="ghost"
-            className="ml-auto"
-            aria-label="Open the paid layer"
-          >
-            open
-          </Button>
-        </div>
+      {canClip && (
+        <>
+          <div className="relative overflow-hidden" style={{ maxHeight: `${clip * 34 + 2}px` }}>
+            {rowsFirst ? visible : children}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-7"
+              style={{ background: "linear-gradient(to bottom, transparent, var(--color-bg) 92%)" }}
+            />
+          </div>
 
-        <ul className="grid grid-cols-1 gap-x-5 px-2.5 py-2 sm:grid-cols-2">
+          <div className="border-t border-acid/25 bg-acid/[0.03] px-3 py-1.5">
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+              <Button onClick={() => setPro(true)} variant="ghost" aria-label="Open the paid layer">
+                open
+              </Button>
+              <span className="font-mono text-[9px] uppercase tracking-[0.06em] text-fg4">
+                {hidden > 0 ? `+${hidden} rows below` : "clipped — the data continues"}
+              </span>
+            </div>
+          </div>
+        </>
+      )}
+
+      {tail}
+
+      {more && more.length > 0 && !canClip && (
+        <ul className="grid grid-cols-1 gap-x-5 border-t border-line px-3 py-2 sm:grid-cols-2">
           {more.map((m) => (
             <li key={m} className="flex items-start gap-1.5">
-              <span aria-hidden className="mt-[6px] h-[3px] w-[3px] shrink-0 bg-acid/70" />
-              <span className="t-xs leading-snug text-fg3">{m}</span>
+              <span aria-hidden className="mt-[6px] h-[3px] w-[3px] shrink-0 bg-acid/60" />
+              <span className="t-xs leading-snug text-fg4">{m}</span>
             </li>
           ))}
         </ul>
+      )}
 
-        {note && (
-          <p className="border-t border-acid/20 px-2.5 py-1.5 t-xs leading-relaxed text-fg4">{note}</p>
-        )}
-
-        <div className="flex items-center justify-end gap-2 border-t border-acid/20 px-2.5 py-1.5">
-          <span className="mr-auto font-mono text-[9px] uppercase tracking-[0.06em] text-fg4">
-            free view stops here
-          </span>
-          <Link
-            href="/pricing"
-            className="font-mono text-[9px] uppercase tracking-[0.06em] text-acid underline decoration-acid/30 underline-offset-2 hover:decoration-acid"
-          >
-            what pro includes
-          </Link>
-        </div>
-      </div>
-    </div>
+      {note && (
+        <p className="border-t border-line px-3 py-1.5 t-xs leading-relaxed text-fg4">{note}</p>
+      )}
+    </section>
   );
 }
 

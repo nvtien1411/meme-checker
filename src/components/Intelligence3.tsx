@@ -45,12 +45,18 @@ export function WalletDirectory() {
     return m;
   }, []);
 
+  // Ordered by the finding, not by history depth. A reader who sees only the
+  // first three rows must see the ones that prove the column means something —
+  // sorting by launchCount put two wallets with no exit record on top, which
+  // made "first out" look like an empty column.
   const rows = useMemo(
     () =>
-      [...net.nodes].sort(
-        (a, b) => b.profile.launchCount - a.profile.launchCount || b.degree - a.degree,
-      ),
-    [net],
+      [...net.nodes].sort((a, b) => {
+        const fa = firsts.get(a.addr) ?? 0;
+        const fb = firsts.get(b.addr) ?? 0;
+        return fb - fa || b.profile.launchCount - a.profile.launchCount || b.degree - a.degree;
+      }),
+    [net, firsts],
   );
 
   return (

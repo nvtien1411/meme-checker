@@ -3,6 +3,7 @@ import { PageHead } from "@/components/Shell";
 import { Demo, Gauge, Panel, ProReveal, RiskDot, Split, Stat, Tag } from "@/components/ui";
 import { DEMO_RUGS, DEMO_TOKENS, DEMO_WALLETS } from "@/lib/demo";
 import { fmtUsd } from "@/lib/http";
+import { deployerRecord } from "@/lib/intel2";
 
 /* ==================================================================== *
  * DEPLOYERS
@@ -169,6 +170,13 @@ export default function DeployersPage() {
 
         <ProReveal
           title="Every launch by this wallet"
+          value={(() => {
+            const d = deployerRecord(DEMO_RUGS[2].deployer);
+            return d
+              ? `${d.launchCount} launches on record, ${d.rugCount} collapsed, median drawdown ${d.medianDrawdown?.toFixed(0)}%`
+              : "No launch record for this address";
+          })()}
+          clip={3}
           shown={2}
           rows={DEMO_RUGS.slice(2, 5).map((r) => (
             <div key={r.symbol} className="panel flex flex-wrap items-baseline gap-x-3 gap-y-1 px-2.5 py-1.5">

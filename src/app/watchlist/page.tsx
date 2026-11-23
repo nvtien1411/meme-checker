@@ -44,6 +44,8 @@ export default function WatchlistPage() {
       <div className="space-y-2.5 p-3 sm:p-4">
         <ProReveal
           title="What your watched wallets did since you added them"
+          value="Behaviour, exits and co-appearances for every address on this list"
+          clip={4}
           shown={0}
           rows={[]}
           more={[

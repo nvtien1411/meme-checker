@@ -3,6 +3,7 @@ import { PageHead } from "@/components/Shell";
 import { Demo, Panel, ProReveal, Tag } from "@/components/ui";
 import { CallerTable } from "@/components/Intelligence2";
 import { DEMO_CALLERS, DEMO_CALLS } from "@/lib/demo";
+import { allCallerProfiles } from "@/lib/intel2";
 
 /* ==================================================================== *
  * CALLERS — the leaderboard, and the reason it exists
@@ -35,6 +36,14 @@ export default function CallersPage() {
 
         <ProReveal
           title="What each caller actually did with their own money"
+          value={(() => {
+            const ps = allCallerProfiles();
+            const bad = ps.filter((p) => p.sellsAboveCall);
+            return bad.length === 0
+              ? "No tracked caller sold above their own call price"
+              : `${bad.length} of ${ps.length} sold above the price their own post produced — the worst at ${Math.max(...bad.map((p) => p.exitVsCall)).toFixed(2)}x`;
+          })()}
+          clip={5}
           shown={0}
           rows={[]}
           more={[

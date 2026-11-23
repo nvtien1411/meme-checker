@@ -4,6 +4,7 @@ import { Demo, Gauge, Panel, ProReveal, RiskDot, Split, Tag } from "@/components
 import { TokenOverlapPanel } from "@/components/Intelligence2";
 import { DEMO_TOKENS } from "@/lib/demo";
 import { fmtUsd } from "@/lib/http";
+import { tokenOverlaps } from "@/lib/intel2";
 
 /* ==================================================================== *
  * COMPARE
@@ -51,6 +52,13 @@ export default function ComparePage() {
       <div className="space-y-2.5 p-3 sm:p-4">
         <ProReveal
           title="Whether the same wallets are buying all three"
+          value={(() => {
+            const o = tokenOverlaps();
+            if (o.length === 0) return "None of these tokens share a holder";
+            const top = o[0];
+            return `${top.a} and ${top.b} share ${top.shared.length} holders${top.sharedRugRate !== null ? `, whose prior launches collapsed ${Math.round(top.sharedRugRate * 100)}% of the time` : ""}`;
+          })()}
+          clip={4}
           shown={0}
           rows={[]}
           more={[

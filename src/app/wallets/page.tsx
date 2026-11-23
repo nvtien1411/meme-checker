@@ -106,6 +106,7 @@ export default function WalletsPage() {
           title="What each address is, and which one leaves first"
           shown={0}
           rows={[]}
+          clip={4}
           more={[
             "A behaviour label per wallet, derived from its launch history, with confidence",
             "Median holding time before its first sell, per address",

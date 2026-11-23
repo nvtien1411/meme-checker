@@ -4,7 +4,7 @@ import { Demo, Gauge, Panel, ProReveal, Split, Tag } from "@/components/ui";
 import { NarrativeWalletGate } from "@/components/NarrativeGate";
 import { NarrativeTable } from "@/components/Intelligence2";
 import { DEMO_NARRATIVES, DEMO_TOKENS } from "@/lib/demo";
-import { narrativeAnalysis } from "@/lib/intel2";
+import { allNarratives, narrativeAnalysis } from "@/lib/intel2";
 import { fmtUsd } from "@/lib/http";
 
 /* ==================================================================== *
@@ -168,6 +168,17 @@ export default function NarrativesPage() {
 
         <ProReveal
           title="Every narrative side by side"
+          value={(() => {
+            const ns = allNarratives();
+            const crowded = ns.filter((n) => n.fit === "crowded").length;
+            return crowded > 0
+              ? `${crowded} of ${ns.length} narratives are already crowded — ${ns
+                  .filter((n) => n.fit === "crowded")
+                  .map((n) => n.name)
+                  .join(", ")}`
+              : `None of the ${ns.length} narratives is crowded yet`;
+          })()}
+          clip={5}
           shown={0}
           rows={[]}
           more={[
