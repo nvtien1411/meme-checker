@@ -33,7 +33,7 @@ export default function PlansPage() {
     <div>
       <PageHead
         title="Plans"
-        note="what free answers, and what it cannot"
+        note="what free answers, and what it cannot answer"
         right={<Tag tone="neutral">prices are proposals</Tag>}
       />
 
@@ -100,8 +100,9 @@ export default function PlansPage() {
                 <span className="t-xs text-fg4">per month</span>
               </div>
               <p className="mt-1.5 t-xs leading-relaxed text-fg3">
-                <span className="text-fg2">Everything in Free, plus the wallet layer.</span> Who
-                bought the launch, what they have done before, and whether they are already selling.
+                <span className="text-fg2">Everything in Free, plus the layer beneath it.</span> Who
+                bought the launch, who called it, how many times the idea has already run, and what
+                all of those entities did afterwards.
               </p>
             </div>
 
