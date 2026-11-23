@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHead } from "@/components/Shell";
-import { Demo, Gated, Gauge, Panel, Split, Stat, Tag } from "@/components/ui";
+import { Demo, Gauge, Panel, ProReveal, Split, Stat, Tag } from "@/components/ui";
 import { DEMO_TOKENS, DEMO_WALLETS, WALLET_ROLE, shortAddr } from "@/lib/demo";
 import { fmtPrice, fmtUsd } from "@/lib/http";
 
@@ -193,39 +193,50 @@ export default async function WalletPage({ params }: { params: Promise<{ addr: s
           </Panel>
         </div>
 
-        <Gated
-          title="Full wallet investigation"
-          points={[
-            "Complete trade history with every entry, exit, size and timestamp",
+        <ProReveal
+          title="The rest of this wallet&#39;s history"
+          shown={1}
+          rows={[
+            <Panel key="hist" title="Full trade history" note="every entry and exit, newest first">
+              <div className="space-y-1">
+                {[
+                  { t: "2026-11-22 14:00", kind: "buy", token: "RATS", amount: "18.9%", usd: 12400 },
+                  { t: "2026-11-18 09:12", kind: "sell", token: "PEACH", amount: "62%", usd: 38800 },
+                  { t: "2026-11-15 22:41", kind: "buy", token: "TRIPLET", amount: "9.4%", usd: 9100 },
+                  { t: "2026-11-09 17:03", kind: "sell", token: "JELLY", amount: "100%", usd: 22100 },
+                ].map((tr) => (
+                  <div
+                    key={tr.t}
+                    className="flex items-baseline gap-2 border-b border-line py-1 last:border-b-0"
+                  >
+                    <span className="t-mono text-[9.5px] text-fg4">{tr.t}</span>
+                    <span
+                      className={`font-mono text-[9px] uppercase ${
+                        tr.kind === "buy" ? "text-good" : "text-bad"
+                      }`}
+                    >
+                      {tr.kind}
+                    </span>
+                    <span className="t-xs text-fg2">{tr.token}</span>
+                    <span className="ml-auto t-mono text-[10px] text-fg3">{tr.amount}</span>
+                    <span className="w-16 text-right t-mono text-[10px] text-fg4">
+                      {fmtUsd(tr.usd)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </Panel>,
+          ]}
+          more={[
             "PnL and ROI on every token it has touched, not just the ones in this scan",
             "Every wallet it has ever received from, with the funding trail ranked by size",
             "Other wallets seeded by the same funder, and which tokens they hit together",
-            "Its behaviour split by launch age: does it exit faster on newer or older tokens",
+            "Whether it exits faster on newer or older tokens",
             "Prior bundles it joined, and how each of those launches ended",
             "Alerts when this address next moves",
           ]}
-        >
-          <Panel title="Full trade history" note="every entry and exit, newest first">
-            <div className="space-y-1">
-              {[
-                { t: "2026-11-22 14:00", kind: "buy", token: "RATS", amount: "18.9%", usd: 12400, price: 0.0000121 },
-                { t: "2026-11-18 09:12", kind: "sell", token: "PEACH", amount: "62%", usd: 38800, price: 0.0042 },
-                { t: "2026-11-15 22:41", kind: "buy", token: "TRIPLET", amount: "9.4%", usd: 9100, price: 0.0008 },
-                { t: "2026-11-09 17:03", kind: "sell", token: "JELLY", amount: "100%", usd: 22100, price: 0.0021 },
-              ].map((tr) => (
-                <div key={tr.t} className="flex items-baseline gap-2 border-b border-line py-1 last:border-b-0">
-                  <span className="t-mono text-[9.5px] text-fg4">{tr.t}</span>
-                  <span className={`font-mono text-[9px] uppercase ${tr.kind === "buy" ? "text-good" : "text-bad"}`}>
-                    {tr.kind}
-                  </span>
-                  <span className="t-xs text-fg2">{tr.token}</span>
-                  <span className="ml-auto t-mono text-[10px] text-fg3">{tr.amount}</span>
-                  <span className="w-16 text-right t-mono text-[10px] text-fg4">{fmtUsd(tr.usd)}</span>
-                </div>
-              ))}
-            </div>
-          </Panel>
-        </Gated>
+          note="The last four movements of this address are shown in full. Everything older requires Pro"
+        />
 
         <Panel title="Related wallets" note="same funder, same behaviour" flush>
           <div>

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Demo, Gated, Gauge, Panel, Split, Stat, Tag } from "./ui";
+import { Demo, Gauge, Panel, ProReveal, Split, Stat, Tag } from "./ui";
 import { Timeline } from "./viz";
 import { DEMO_WALLETS, type DemoToken, type DemoWallet } from "@/lib/demo";
 import { fmtPrice, fmtUsd } from "@/lib/http";
@@ -122,16 +122,19 @@ export function BundleDeep({ demo }: { demo: DemoToken }) {
   const held = bundle.map((w) => w.held ?? 0).filter((h) => h > 0);
 
   return (
-    <Gated
-      title="Bundle wallets, opened up"
-      points={[
-        "Each wallet, its age, and the wallet that funded it",
-        "What it bought and what it has already sold",
+    <ProReveal
+      title="The wallets behind the bundle"
+      shown={2}
+      rows={bundle.map((w) => <WalletLine key={w.addr} w={w} />)}
+      more={[
+        "Each wallet's age, and the wallet that funded it",
+        "What it bought, what it has already sold, and what it still holds",
         "Its record on other launches: how many, and how many collapsed",
         "Typical holding time before the first sell",
         "Whether the group exits together or one at a time",
         "The launch-to-distribution timeline for this token",
       ]}
+      note={`${bundle.length} wallets in the bundle, ${totalBought.toFixed(1)}% of supply bought at block 0. The free view shows the two largest`}
     >
       <div className="space-y-2.5">
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
@@ -241,17 +244,15 @@ export function BundleDeep({ demo }: { demo: DemoToken }) {
           />
         </Panel>
 
-        <Gated
-          title="Exit playbook"
-          compact
-          points={[
-            "Where these wallets exited on their three prior bundles, in percent from peak",
-            "The median time between their first sell and a 50% drawdown",
-            "Whether they exit as a group or stagger, and the spread in seconds",
-            "How much of each prior launch they still held a week later",
-          ]}
-        >
-          <Panel title="Exit playbook" note="how this group exited their three prior bundles">
+        <ProReveal
+          title="The exit playbook"
+          shown={1}
+          rows={[
+            <Panel
+              key="playbook"
+              title="Exit playbook"
+              note="how this group exited their three prior bundles"
+            >
             <div className="space-y-2">
               {[
                 { token: "PEACH", peak: 612900, exitFrom: 0.42, hoursToPeak: 6, dumpHours: 2 },
@@ -280,8 +281,17 @@ export function BundleDeep({ demo }: { demo: DemoToken }) {
               collapse took under three hours. The pattern is not a guarantee here, but it is the
               only measured evidence of how this group behaves
             </p>
-          </Panel>
-        </Gated>
+            </Panel>,
+          ]}
+          more={[
+            "Where these wallets exited on their three prior bundles, in percent from peak",
+            "The median time between their first sell and a 50% drawdown",
+            "Whether they exit as a group or stagger, and the spread in seconds",
+            "How much of each prior launch they still held a week later",
+            "The same group's behaviour on the launches where they did not exit",
+          ]}
+          note="Three prior launches by this exact group, with the point they started selling"
+        />
 
         <div className="flex flex-wrap items-center gap-1.5">
           <Demo />
@@ -290,7 +300,7 @@ export function BundleDeep({ demo }: { demo: DemoToken }) {
           </span>
         </div>
       </div>
-    </Gated>
+    </ProReveal>
   );
 }
 

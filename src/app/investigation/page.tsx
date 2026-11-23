@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { PageHead } from "@/components/Shell";
-import { Demo, Gated, Panel, Tag, UpgradeStrip } from "@/components/ui";
+import { Demo, Gated, Panel, Tag } from "@/components/ui";
 import { DEMO_TOKENS } from "@/lib/demo";
 
 /* ==================================================================== *
@@ -58,7 +58,6 @@ export default function InvestigationPage() {
       />
 
       <div className="space-y-2.5 p-3 sm:p-4">
-        <UpgradeStrip what="The graph, every named edge and each edge's transaction are Pro — the free view shows the shape only" />
 
         <Panel title="How to use this" note="three rules, because a graph without rules is a picture">
           <div className="grid grid-cols-1 gap-x-5 sm:grid-cols-3">

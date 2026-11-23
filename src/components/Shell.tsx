@@ -153,7 +153,43 @@ function RailBody({ pathname, collapsed }: { pathname: string; collapsed: boolea
 }
 
 function RailFoot({ collapsed }: { collapsed: boolean }) {
+  // The rail is navigation. A plan card here competes with the list the reader
+  // came for, and a price box in a fixed column is the first thing to become
+  // furniture. Membership and the upgrade path live in the global strip, which
+  // is reachable from every page without occupying the workspace.
   const { pro, toggle } = useViewer();
+
+  return (
+    <div className="shrink-0 border-t border-line p-1.5">
+      <button
+        type="button"
+        onClick={toggle}
+        aria-pressed={pro}
+        title={pro ? "Pro preview on - click for the free view" : "Preview the paid layer"}
+        className={"navi w-full " + (collapsed ? "justify-center px-0" : "")}
+      >
+        <span aria-hidden className={"h-[5px] w-[5px] shrink-0 " + (pro ? "bg-acid" : "bg-fg4")} />
+        {!collapsed && (
+          <span className="min-w-0 flex-1 text-left font-mono text-[9.5px] uppercase tracking-[0.06em]">
+            {pro ? "pro preview \u00b7 on" : "preview pro"}
+          </span>
+        )}
+      </button>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * TopStrip - the global membership + upgrade entry point.
+ *
+ * A HUD row, not a banner. It states where you are on the left and what your
+ * tier is on the right, and it is the only upgrade control in the chrome.
+ * Everything else the product says about Pro is attached to a finding.
+ * ------------------------------------------------------------------ */
+
+function TopStrip() {
+  const pathname = usePathname() ?? "";
+  const { pro } = useViewer();
   const [used, setUsed] = useState<number | null>(null);
 
   useEffect(() => {
@@ -167,113 +203,68 @@ function RailFoot({ collapsed }: { collapsed: boolean }) {
     };
   }, []);
 
-  // Collapsed rail cannot show a plan card without becoming a wall of glyphs,
-  // so it shows the state as colour on one control and keeps the full card for
-  // the expanded rail.
-  if (collapsed) {
-    return (
-      <div className="shrink-0 border-t border-line p-1.5">
-        <button
-          type="button"
-          onClick={toggle}
-          aria-pressed={pro}
-          aria-label={pro ? "Pro plan active — switch to the free view" : "Switch to the Pro view"}
-          title={pro ? "PRO" : "FREE"}
-          className="flex h-7 w-full items-center justify-center border transition-colors"
-          style={{ borderColor: pro ? "rgba(198,255,67,0.4)" : "var(--color-line)" }}
-        >
-          <span
-            className={`font-mono text-[8.5px] uppercase tracking-[0.08em] ${pro ? "text-acid" : "text-fg4"}`}
-          >
-            {pro ? "pro" : "free"}
-          </span>
-        </button>
-      </div>
-    );
-  }
+  const crumb =
+    pathname === "/" ? "scanner" : pathname.replace(/^\//, "").split("/").slice(0, 2).join(" / ");
 
   const limit = PLAN.free.scansPerDay;
   const left = used === null ? null : Math.max(0, limit - used);
+  const spent = used !== null && used >= limit;
 
   return (
-    <div className="shrink-0 space-y-1.5 border-t border-line p-2">
-      {/* membership + quota, as one object */}
-      <div
-        className={`border p-2 ${pro ? "border-acid/35 bg-acid/[0.06]" : "border-line bg-surf/40"}`}
-      >
-        <div className="flex items-center gap-1.5">
-          <span aria-hidden className={`h-[5px] w-[5px] shrink-0 ${pro ? "bg-acid" : "bg-fg4"}`} />
-          <span
-            className={`font-mono text-[9.5px] uppercase tracking-[0.08em] ${pro ? "text-acid" : "text-fg2"}`}
+    <div className="sticky top-0 z-20 hidden h-9 items-center gap-3 border-b border-line bg-bg/92 px-4 backdrop-blur-sm lg:flex">
+      <span className="truncate font-mono text-[9.5px] uppercase tracking-[0.12em] text-fg4">
+        {crumb}
+      </span>
+
+      <div className="ml-auto flex items-center gap-2">
+        {pro ? (
+          <Link
+            href="/pricing"
+            className="flex items-center gap-1.5 border border-acid/35 px-2 py-[3px] transition-colors hover:bg-acid/10"
           >
-            {pro ? "Pro" : "Free"}
-          </span>
-          <span className="ml-auto font-mono text-[9px] text-fg4">
-            {pro ? "unlimited" : left === null ? `${limit}/day` : `${left}/${limit} left`}
-          </span>
-        </div>
-
-        {!pro && (
+            <span aria-hidden className="h-[4px] w-[4px] bg-acid" />
+            <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-acid">
+              pro preview
+            </span>
+            <span className="font-mono text-[9px] text-acid/60">unlimited</span>
+          </Link>
+        ) : (
           <>
-            <div className="mt-1.5 flex gap-[2px]">
-              {Array.from({ length: limit }).map((_, i) => (
-                <span
-                  key={i}
-                  className={`h-[3px] flex-1 ${left !== null && i < limit - left ? "bg-fg4/40" : "bg-acid/60"}`}
-                />
-              ))}
-            </div>
-
-            <p className="mt-1.5 t-xs leading-snug text-fg4">
-              Bundle, sniper, insider, caller history and wallet tracing are locked
-            </p>
+            <span
+              className="flex items-center gap-1"
+              title={left === null ? limit + " scans a day on free" : left + " of " + limit + " scans left today"}
+            >
+              <span className="flex gap-[2px]" aria-hidden>
+                {Array.from({ length: limit }).map((_, i) => (
+                  <span
+                    key={i}
+                    className={
+                      "h-[3px] w-[5px] " +
+                      (left !== null && i < limit - left ? "bg-fg4/35" : spent ? "bg-warn" : "bg-fg3/70")
+                    }
+                  />
+                ))}
+              </span>
+              <span className="font-mono text-[9px] tabular-nums text-fg4">
+                {left === null ? limit + " scans" : spent ? "none left" : left + " left"}
+              </span>
+            </span>
 
             <Link
               href="/pricing"
-              className="mt-2 flex h-7 items-center justify-center gap-1 bg-acid font-mono text-[9.5px] font-semibold uppercase tracking-[0.07em] text-bg transition-colors hover:bg-acid2"
+              className="group flex items-center gap-1.5 border border-line px-2 py-[3px] transition-colors hover:border-acid/45 hover:bg-acid/[0.06]"
             >
-              Upgrade to Pro
-              <span aria-hidden>→</span>
+              <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-fg3 group-hover:text-fg2">
+                free
+              </span>
+              <span aria-hidden className="h-2.5 w-px bg-line" />
+              <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-acid">
+                upgrade
+              </span>
             </Link>
-
-            <button
-              type="button"
-              onClick={toggle}
-              className="mt-1 flex h-6 w-full items-center justify-center border border-line font-mono text-[8.5px] uppercase tracking-[0.06em] text-fg4 transition-colors hover:border-line2 hover:text-fg2"
-            >
-              or preview the paid layer
-            </button>
-          </>
-        )}
-
-        {pro && (
-          <>
-            <p className="mt-1.5 t-xs leading-snug text-fg3">
-              Every module is open. Figures marked DEMO are sample data, not readings.
-            </p>
-            <button
-              type="button"
-              onClick={toggle}
-              aria-pressed={pro}
-              className="mt-2 flex h-6 w-full items-center justify-center border border-acid/30 font-mono text-[8.5px] uppercase tracking-[0.06em] text-acid/80 transition-colors hover:bg-acid/10 hover:text-acid"
-            >
-              back to free view
-            </button>
           </>
         )}
       </div>
-
-      <Link href="/pricing" className="navi">
-        <G d="M8 2.5 9.7 6.3 14 7l-3 3 .7 4.2L8 12.4 4.3 14.2 5 10 2 7l4.3-.7z" />
-        <span className="flex-1">Plans</span>
-        {!pro && (
-          <span className="font-mono text-[8.5px] uppercase tracking-[0.06em] text-acid">pro</span>
-        )}
-      </Link>
-      <Link href="/login" className="navi">
-        <G d="M8 8.2a2.4 2.4 0 1 0 0-4.8 2.4 2.4 0 0 0 0 4.8zM3.2 13.2c0-2.2 2.2-3.4 4.8-3.4s4.8 1.2 4.8 3.4" />
-        <span className="flex-1">Account</span>
-      </Link>
     </div>
   );
 }
@@ -318,7 +309,15 @@ function MobilePlanChip() {
       }`}
     >
       <span aria-hidden className={`h-[4px] w-[4px] ${pro ? "bg-acid" : "bg-fg4"}`} />
-      {pro ? "pro" : "free"}
+      <span className={pro ? "text-acid" : "text-fg4"}>{pro ? "pro" : "free"}</span>
+      {!pro && (
+        <>
+          <span aria-hidden className="text-line2">
+            ·
+          </span>
+          <span className="text-acid">upgrade</span>
+        </>
+      )}
     </Link>
   );
 }
@@ -424,6 +423,7 @@ export function Shell({ children }: { children: ReactNode }) {
       )}
 
       <main id="main" className="min-w-0 flex-1 pt-12 lg:pt-0">
+        <TopStrip />
         {children}
       </main>
     </div>

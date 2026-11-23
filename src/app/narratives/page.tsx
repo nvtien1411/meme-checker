@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { PageHead } from "@/components/Shell";
-import { Demo, Gauge, Panel, Split, Tag, UpgradeStrip } from "@/components/ui";
+import { Demo, Gauge, Panel, Split, Tag } from "@/components/ui";
 import { DEMO_NARRATIVES, DEMO_TOKENS } from "@/lib/demo";
 import { fmtUsd } from "@/lib/http";
 
@@ -29,7 +29,6 @@ export default function NarrativesPage() {
       />
 
       <div className="space-y-2.5 p-3 sm:p-4">
-        <UpgradeStrip what="Copy index, prior instances and usual lifespan are Pro — free gives the category and the pitch" />
 
         <Panel title="How to read a narrative" note="three numbers decide it">
           <div className="grid grid-cols-1 gap-x-5 sm:grid-cols-3">

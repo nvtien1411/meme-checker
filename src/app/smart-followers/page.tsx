@@ -1,7 +1,8 @@
 import { PageHead } from "@/components/Shell";
-import { Demo, Gauge, Gated, Panel, Split, Stat, Tag, UpgradeStrip } from "@/components/ui";
+import { Demo, Gauge, Panel, ProReveal, Split, Stat, Tag } from "@/components/ui";
 import { FollowerEntryChart, Timeline } from "@/components/viz";
-import { DEMO_TIMELINE, DEMO_WALLETS } from "@/lib/demo";
+import Link from "next/link";
+import { DEMO_TIMELINE, DEMO_WALLETS, shortAddr } from "@/lib/demo";
 
 /* ==================================================================== *
  * SMART FOLLOWERS
@@ -48,7 +49,6 @@ export default function SmartFollowersPage() {
       />
 
       <div className="space-y-2.5 p-3 sm:p-4">
-        <UpgradeStrip what="Who bought after each post, and whether they were the exit — the whole module is Pro" />
 
         {/* the question, stated once */}
         <Panel title="The question this answers" note="one sentence, and every panel below is evidence for it">
@@ -235,17 +235,45 @@ export default function SmartFollowersPage() {
           </Panel>
         </div>
 
-        <Gated
-          title="The full Smart Follower graph"
-          points={[
+        <ProReveal
+          title="The rest of the follower set"
+          shown={2}
+          rows={REPEAT.map((f) => (
+            <div
+              key={f.addr}
+              className="panel flex flex-wrap items-baseline gap-x-3 gap-y-1 px-2.5 py-1.5"
+            >
+              <Link
+                href={`/wallets/${f.addr}`}
+                className="font-mono text-[10.5px] text-fg2 hover:text-acid"
+              >
+                {shortAddr(f.addr, 6, 4)}
+              </Link>
+              <span className="t-xs tabular-nums text-fg4">{f.calls} calls</span>
+              <span className="t-xs tabular-nums text-fg4">{f.tokens} tokens</span>
+              <span className="font-mono text-[10px] text-fg4">entry {f.entry}</span>
+              <span
+                className={`ml-auto font-mono text-[10.5px] tabular-nums ${
+                  f.result.startsWith("+") ? "text-good" : "text-bad"
+                }`}
+              >
+                {f.result}
+              </span>
+              <span className="w-14 text-right t-xs text-fg4">
+                {f.holding ? "still in" : "exited"}
+              </span>
+            </div>
+          ))}
+          more={[
             "Per-caller follower list with entry time, entry price and current position",
             "Which follower wallets were created within 24h of the call",
             "Funding connections between follower wallets and the caller's own wallet",
-            "Repeat-follower chains: the same addresses across three or more callers",
-            "Historical follower outcomes for every prior call, not just the current one",
+            "Repeat chains: the same addresses across three or more callers",
+            "Historical follower outcomes for every prior call, not just this one",
             "Wallet-cluster graph with edges labelled by the actual transfer",
             "Alerts when a tracked caller posts and a known cluster buys within five minutes",
           ]}
+          note="Four wallets that appear on every one of this caller's calls, with their real outcomes. The free view shows the two at the top of the list"
         />
 
         <p className="t-xs leading-relaxed text-fg4">

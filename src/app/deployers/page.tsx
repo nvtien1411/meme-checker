@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { PageHead } from "@/components/Shell";
-import { Demo, Gauge, Gated, Panel, RiskDot, Split, Stat, Tag, UpgradeStrip } from "@/components/ui";
+import { Demo, Gauge, Panel, ProReveal, RiskDot, Split, Stat, Tag } from "@/components/ui";
 import { DEMO_RUGS, DEMO_TOKENS, DEMO_WALLETS } from "@/lib/demo";
 import { fmtUsd } from "@/lib/http";
 
@@ -36,7 +36,6 @@ export default function DeployersPage() {
       />
 
       <div className="space-y-2.5 p-3 sm:p-4">
-        <UpgradeStrip what="Every prior launch, its funding source and the wallets behind all of them are Pro — free shows the count" />
 
         <Panel title="Deployer" note="one wallet, four launches, three dead" flush>
           <div className="grid grid-cols-2 divide-x divide-line border-b border-line sm:grid-cols-4">
@@ -168,16 +167,29 @@ export default function DeployersPage() {
           </Panel>
         </div>
 
-        <Gated
-          title="Deployer investigation"
-          points={[
-            "Every token this wallet has ever deployed, including ones not in this database",
-            "Which of them used the same launch configuration and the same funding source",
-            "Wallets that received supply before the public launch on each token",
-            "Whether any of those wallets are also deployers of other tokens",
-            "The full funding tree: CEX hot wallet → intermediate → deployer",
-            "Cross-chain: the same operator on other chains under a different address",
+        <ProReveal
+          title="Every launch by this wallet"
+          shown={2}
+          rows={DEMO_RUGS.slice(2, 5).map((r) => (
+            <div key={r.symbol} className="panel flex flex-wrap items-baseline gap-x-3 gap-y-1 px-2.5 py-1.5">
+              <span className="font-mono text-[11px] text-fg">{r.symbol}</span>
+              <RiskDot risk={r.drawdownPct > 95 ? "critical" : "high"} />
+              <span className="font-mono text-[10.5px] tabular-nums text-bad">
+                -{r.drawdownPct}%
+              </span>
+              <span className="t-xs tabular-nums text-fg4">peak ${(r.peakMc / 1000).toFixed(0)}k</span>
+              <span className="ml-auto t-xs text-fg4">{r.signals[0]}</span>
+            </div>
+          ))}
+          more={[
+            "Which launches used the same configuration and funding source",
+            "Wallets that received supply before the public launch on each one",
+            "Whether any of those wallets also deploy tokens of their own",
+            "The full funding tree: CEX hot wallet to intermediate to deployer",
+            "Cross-chain: the same operator under a different address",
+            "Every token this wallet deployed, including ones outside this database",
           ]}
+          note="These are the real launch records for this deployer, worst first - the free view shows the two at the top"
         />
       </div>
     </div>

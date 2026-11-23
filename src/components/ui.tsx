@@ -343,6 +343,109 @@ export function Gated({
 }
 
 /* ------------------------------------------------------------------ *
+ * ProReveal - the boundary drawn through real content.
+ *
+ * The old gate listed what Pro would show. A list of nouns is a brochure: the
+ * reader cannot tell whether the rows behind it are worth anything, because
+ * they have never seen one. This renders the actual rows and cuts after the
+ * first few, so the free reader sees real wallets, real numbers, real history
+ * and then the exact point where the data stops.
+ *
+ * Not blurred, not greyed. Clipping is honest: the rows that are shown are
+ * shown at full fidelity, and the ones below are labelled as not shown.
+ * ------------------------------------------------------------------ */
+
+export function ProReveal({
+  title,
+  rows = [],
+  shown = 3,
+  tail,
+  more,
+  note,
+  children,
+}: {
+  title: string;
+  /** The real rows, in their final form. Nothing here is written for the gate. */
+  rows?: ReactNode[];
+  /** Full paid content, when it is more than a list of rows. Shown only to Pro. */
+  children?: ReactNode;
+  /** How many a free reader sees. Enough to judge the shape, not to finish. */
+  shown?: number;
+  /** Content that only means anything once every row is visible. */
+  tail?: ReactNode;
+  /** What the remaining rows contain — specific, counted, no adjectives. */
+  more: string[];
+  note?: string;
+}) {
+  const { pro, setPro } = useViewer();
+  const total = rows.length;
+  const hidden = Math.max(0, total - shown);
+
+  if (pro) {
+    if (children) return <div className="space-y-2.5">{children}</div>;
+    return (
+      <div className="space-y-2.5">
+        {rows}
+        {tail}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="space-y-2.5">{rows.slice(0, shown)}</div>
+
+      {/* the cut. A border and a number, not a curtain. */}
+      <div className="relative mt-2.5 border border-dashed border-acid/30 bg-acid/[0.03]">
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-b border-acid/20 px-2.5 py-1.5">
+          <svg viewBox="0 0 10 10" className="h-[9px] w-[9px] shrink-0 self-center text-acid" aria-hidden fill="none">
+            <rect x="2" y="4.5" width="6" height="4.5" stroke="currentColor" strokeWidth="1" />
+            <path d="M3.2 4.5V3.2a1.8 1.8 0 0 1 3.6 0v1.3" stroke="currentColor" strokeWidth="1" />
+          </svg>
+          <span className="t-strong text-fg">{title}</span>
+          <span className="font-mono text-[9.5px] tabular-nums text-acid">
+            {hidden > 2 ? `+${hidden} more` : `${more.length} checks behind it`}
+          </span>
+          <Button
+            onClick={() => setPro(true)}
+            variant="ghost"
+            className="ml-auto"
+            aria-label="Open the paid layer"
+          >
+            open
+          </Button>
+        </div>
+
+        <ul className="grid grid-cols-1 gap-x-5 px-2.5 py-2 sm:grid-cols-2">
+          {more.map((m) => (
+            <li key={m} className="flex items-start gap-1.5">
+              <span aria-hidden className="mt-[6px] h-[3px] w-[3px] shrink-0 bg-acid/70" />
+              <span className="t-xs leading-snug text-fg3">{m}</span>
+            </li>
+          ))}
+        </ul>
+
+        {note && (
+          <p className="border-t border-acid/20 px-2.5 py-1.5 t-xs leading-relaxed text-fg4">{note}</p>
+        )}
+
+        <div className="flex items-center justify-end gap-2 border-t border-acid/20 px-2.5 py-1.5">
+          <span className="mr-auto font-mono text-[9px] uppercase tracking-[0.06em] text-fg4">
+            free view stops here
+          </span>
+          <Link
+            href="/pricing"
+            className="font-mono text-[9px] uppercase tracking-[0.06em] text-acid underline decoration-acid/30 underline-offset-2 hover:decoration-acid"
+          >
+            what pro includes
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
  * UpgradeStrip — a one-line contextual CTA.
  *
  * Sits above content the reader is already looking at, and names the specific

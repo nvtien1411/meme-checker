@@ -1,5 +1,5 @@
 import { PageHead } from "@/components/Shell";
-import { Demo, Gauge, Panel, Split, Tag, UpgradeStrip } from "@/components/ui";
+import { Demo, Gauge, Panel, Split, Tag } from "@/components/ui";
 import { Sparkline } from "@/components/viz";
 import { DEMO_TOKENS, DEMO_WALLETS, WALLET_ROLE } from "@/lib/demo";
 
@@ -51,7 +51,6 @@ export default function WalletsPage() {
       />
 
       <div className="space-y-2.5 p-3 sm:p-4">
-        <UpgradeStrip what="Full trade history, PnL and the funding trail behind each address are Pro" />
 
         <Panel title="Wallet memory" note="why an address is a record and not a row">
           <p className="t-xs leading-relaxed text-fg3">

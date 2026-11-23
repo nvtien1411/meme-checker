@@ -6,60 +6,221 @@ import { PageHead } from "@/components/Shell";
 import { Panel, Tag } from "@/components/ui";
 import { useViewer } from "@/lib/viewer";
 import { FREE_VALUE, PLAN, PRO_VALUE, SCAN_LIMIT } from "@/lib/plan";
+import { DEMO_CALLERS, DEMO_RUGS, DEMO_TOKENS, shortAddr } from "@/lib/demo";
 
 /* ==================================================================== *
- * PLANS
+ * PRO HUB
  *
- * The page exists to answer one question: what can I not see right now. So it
- * is built as a difference, not as a price table. Each group leads with the
- * sentence that names the gap, then lists what closes it.
+ * Two ways to sell this and only one of them works. A price table asks the
+ * reader to imagine the value; a worked example lets them check it. So the page
+ * is built as one investigation, start to finish, with the moment where free
+ * stops and Pro continues marked inside it.
  *
- * The switch at the top is the same store the rest of the product reads, so a
- * reader can turn Pro on and go straight back to the page they were on — the
- * value is demonstrated, not described.
+ * Nothing here is a screenshot. Every figure is read from the same demo dataset
+ * the rest of the product renders, so the page cannot drift from the product.
  * ==================================================================== */
 
-const GROUPS = ["Wallets", "Callers", "Narrative", "Investigation"] as const;
+const WALKTHROUGH = [
+  {
+    step: "01",
+    question: "Is this contract safe?",
+    body: "Free answers this completely: can you sell, is the supply fixed, can the liquidity be pulled. On a launchpad token the answer is almost always yes, and that is the entire problem — a clean contract on a bundled launch is still a bundled launch.",
+    free: true,
+  },
+  {
+    step: "02",
+    question: "Who bought the launch?",
+    body: "Top-10 concentration, bundle count, sniper count — as headline figures. Enough to know a group exists.",
+    free: true,
+  },
+  {
+    step: "03",
+    question: "Who are they, and what have they done before?",
+    body: "This is where the money is actually lost. Each wallet's age, the wallet that funded it, its record on prior launches, what it has already sold, and how long it typically holds.",
+    free: false,
+  },
+  {
+    step: "04",
+    question: "Is the caller selling into their own followers?",
+    body: "Exit price against the price at the moment they posted. Above 1.0 means they sold higher than the price their own post produced.",
+    free: false,
+  },
+  {
+    step: "05",
+    question: "Has this narrative already run?",
+    body: "How many times, its peak each time, and how long it took to collapse on each attempt.",
+    free: false,
+  },
+];
 
-export default function PlansPage() {
+export default function PricingPage() {
   const { pro, toggle } = useViewer();
-  const [group, setGroup] = useState<(typeof GROUPS)[number]>("Wallets");
+  const [group, setGroup] = useState(PRO_VALUE[0].group);
 
   const active = PRO_VALUE.find((g) => g.group === group) ?? PRO_VALUE[0];
   const totalPro = PRO_VALUE.reduce((n, g) => n + g.items.length, 0);
   const totalFree = FREE_VALUE.reduce((n, g) => n + g.items.length, 0);
 
+  const worstCaller = [...DEMO_CALLERS].sort((a, b) => b.exitVsCall - a.exitVsCall)[0];
+  const bestCaller = [...DEMO_CALLERS].sort((a, b) => a.exitVsCall - b.exitVsCall)[0];
+  const token = DEMO_TOKENS[0];
+  const rug = DEMO_RUGS[0];
+
   return (
     <div>
       <PageHead
-        title="Plans"
+        title="Pro"
         note="what free answers, and what it cannot answer"
-        right={<Tag tone="neutral">prices are proposals</Tag>}
+        right={<Tag tone="neutral">no billing yet</Tag>}
       />
 
       <div className="space-y-2.5 p-3 sm:p-4">
-        {/* ---------- the two tiers, side by side ---------- */}
-        <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
-          {/* free */}
+        {/* ---------- the lead: one worked case, not a headline ---------- */}
+        <div className="panel overflow-hidden">
+          <div className="grid grid-cols-1 divide-y divide-line lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:divide-x lg:divide-y-0">
+            <div className="p-3 sm:p-4">
+              <div className="t-eyebrow">the case that sells this product</div>
+              <h2 className="mt-1.5 text-[17px] font-semibold leading-snug tracking-[-0.02em] text-fg" style={{ fontFamily: "var(--font-display)" }}>
+                {rug.symbol} passed every contract check and still lost {rug.drawdownPct}%
+              </h2>
+              <p className="mt-2 t-body leading-relaxed text-fg2">
+                Free would have told you the contract was clean — mint revoked, no freeze authority,
+                no transfer tax, LP burned. All true. What free cannot tell you is that the same
+                wallet had seeded five launches before it, that three of them collapsed, and that the
+                buyers at block 0 had been funded by one address eleven minutes earlier.
+              </p>
+              <div className="mt-3 divide-y divide-line border-t border-line">
+                {[
+                  ["peak market cap", `$${(rug.peakMc / 1000).toFixed(0)}k`],
+                  ["final drawdown", `-${rug.drawdownPct}%`],
+                  ["the signal free misses", rug.signals[0]],
+                  ["deployer", shortAddr(rug.deployer, 6, 4)],
+                ].map(([k, v]) => (
+                  <div key={k} className="flex items-baseline justify-between gap-3 py-[5px]">
+                    <span className="t-xs text-fg4">{k}</span>
+                    <span className="text-right t-mono text-[10.5px] text-fg3">{v}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Link
+                  href={`/deployers/${rug.deployer}`}
+                  className="flex h-7 items-center border border-line px-2 font-mono text-[9.5px] uppercase tracking-[0.06em] text-fg3 transition-colors hover:border-line2 hover:text-fg"
+                >
+                  open the deployer
+                </Link>
+                <Link
+                  href={`/token/${rug.chain}/${rug.mint}`}
+                  className="flex h-7 items-center border border-line px-2 font-mono text-[9.5px] uppercase tracking-[0.06em] text-fg3 transition-colors hover:border-line2 hover:text-fg"
+                >
+                  open the token
+                </Link>
+              </div>
+            </div>
+
+            <div className="bg-surf2/40 p-3 sm:p-4">
+              <div className="t-eyebrow">what a caller actually did</div>
+              <div className="mt-2 space-y-2">
+                {[worstCaller, bestCaller].map((c) => {
+                  const bad = c.exitVsCall > 1;
+                  return (
+                    <div key={c.handle} className="border border-line bg-surf/60 p-2">
+                      <div className="flex items-baseline gap-2">
+                        <Link href={`/callers/${c.handle}`} className="font-mono text-[11px] text-fg2 hover:text-acid">
+                          @{c.handle}
+                        </Link>
+                        <span className="t-xs tabular-nums text-fg4">
+                          {(c.followers / 1000).toFixed(0)}k followers
+                        </span>
+                        <span
+                          className={`ml-auto font-mono text-[11px] tabular-nums ${bad ? "text-bad" : "text-good"}`}
+                        >
+                          {c.exitVsCall.toFixed(2)}x
+                        </span>
+                      </div>
+                      <p className="mt-1 t-xs leading-relaxed text-fg3">
+                        {bad
+                          ? `Sold at ${c.exitVsCall.toFixed(2)}x the price their own post created. ${c.soldAfter}% of their position went after followers arrived.`
+                          : `Sold at ${c.exitVsCall.toFixed(2)}x the price their post created — below their own call. Rare, and worth knowing which kind you are following.`}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="mt-2 t-xs leading-relaxed text-fg4">
+                Exit price divided by the price at the moment they posted. One number, and it is the
+                only one that separates a caller you can follow from a caller who is using you
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* ---------- the walkthrough: where free stops ---------- */}
+        <Panel
+          title="One investigation, start to finish"
+          note="five questions in the order a trader asks them"
+          flush
+        >
+          {WALKTHROUGH.map((w) => (
+            <div
+              key={w.step}
+              className={`flex gap-3 border-b border-line px-3 py-2 last:border-b-0 ${w.free ? "" : "bg-acid/[0.025]"}`}
+            >
+              <span
+                className={`mt-[1px] shrink-0 font-mono text-[10px] tabular-nums ${w.free ? "text-fg4" : "text-acid"}`}
+              >
+                {w.step}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-baseline gap-2">
+                  <span className={`t-xs font-semibold ${w.free ? "text-fg2" : "text-fg"}`}>
+                    {w.question}
+                  </span>
+                  <span
+                    className={`font-mono text-[8.5px] uppercase tracking-[0.07em] ${w.free ? "text-good" : "text-acid"}`}
+                  >
+                    {w.free ? "free" : "pro"}
+                  </span>
+                </div>
+                <p className="mt-0.5 t-xs leading-relaxed text-fg3">{w.body}</p>
+              </div>
+            </div>
+          ))}
+          <div className="flex flex-wrap items-center gap-2 bg-surf2/50 px-3 py-2">
+            <span className="min-w-0 flex-1 t-xs leading-relaxed text-fg3">
+              Steps 3 through 5 are the three questions that decide whether a trade is a trade or a
+              donation. Free ends at step 2
+            </span>
+            {!pro && (
+              <button
+                type="button"
+                onClick={toggle}
+                className="shrink-0 border border-acid/40 px-2 py-[3px] font-mono text-[9px] uppercase tracking-[0.06em] text-acid transition-colors hover:bg-acid/10"
+              >
+                open all of it
+              </button>
+            )}
+          </div>
+        </Panel>
+
+        {/* ---------- the boundary, by group ---------- */}
+        <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
           <section className="panel flex flex-col">
             <div className="border-b border-line px-3 py-2.5">
               <div className="flex items-baseline gap-2">
                 <h2 className="t-section text-fg">Free</h2>
                 <Tag tone="good">active</Tag>
-                <span className="ml-auto font-mono text-[9.5px] text-fg4">
-                  {SCAN_LIMIT} scans a day
-                </span>
+                <span className="ml-auto font-mono text-[9.5px] text-fg4">{SCAN_LIMIT}/day</span>
               </div>
               <div className="mt-1.5 flex items-baseline gap-1">
-                <span className="t-mono text-[24px] leading-none text-fg">$0</span>
+                <span className="t-mono text-[22px] leading-none text-fg">$0</span>
                 <span className="t-xs text-fg4">forever, no account</span>
               </div>
               <p className="mt-1.5 t-xs leading-relaxed text-fg3">
-                Every check that produces a verdict. Enough to decide not to buy something — which
-                is most of what this tool is for.
+                Every check that produces a verdict. Enough to decide not to buy something — which is
+                most of what this tool is for
               </p>
             </div>
-
             <div className="flex-1 divide-y divide-line">
               {FREE_VALUE.map((g) => (
                 <div key={g.group} className="px-3 py-2">
@@ -75,11 +236,10 @@ export default function PlansPage() {
                 </div>
               ))}
             </div>
-
             <div className="border-t border-line p-2.5">
               <Link
-                href="/"
-                className="flex h-8 items-center justify-center border border-line font-mono text-[10.5px] uppercase tracking-[0.07em] text-fg3 transition-colors hover:border-line2 hover:text-fg"
+                href={`/token/${token.chain}/${token.mint}`}
+                className="flex h-8 items-center justify-center border border-line font-mono text-[10px] uppercase tracking-[0.07em] text-fg3 transition-colors hover:border-line2 hover:text-fg"
               >
                 scan a token
               </Link>
@@ -87,7 +247,6 @@ export default function PlansPage() {
             </div>
           </section>
 
-          {/* pro */}
           <section className="panel flex flex-col border-acid/40">
             <div className="border-b border-line bg-acid/[0.04] px-3 py-2.5">
               <div className="flex items-baseline gap-2">
@@ -96,32 +255,32 @@ export default function PlansPage() {
                 <span className="ml-auto font-mono text-[9.5px] text-fg4">unlimited</span>
               </div>
               <div className="mt-1.5 flex items-baseline gap-1">
-                <span className="t-mono text-[24px] leading-none text-acid">${PLAN.pro.price}</span>
+                <span className="t-mono text-[22px] leading-none text-acid">${PLAN.pro.price}</span>
                 <span className="t-xs text-fg4">per month</span>
               </div>
               <p className="mt-1.5 t-xs leading-relaxed text-fg3">
                 <span className="text-fg2">Everything in Free, plus the layer beneath it.</span> Who
                 bought the launch, who called it, how many times the idea has already run, and what
-                all of those entities did afterwards.
+                all of those entities did afterwards
               </p>
             </div>
 
             <div className="flex-1 p-3">
-              {/* the difference, group by group, chosen not listed */}
               <div className="flex flex-wrap gap-1">
-                {GROUPS.map((g) => (
+                {PRO_VALUE.map((g) => (
                   <button
-                    key={g}
+                    key={g.group}
                     type="button"
-                    onClick={() => setGroup(g)}
-                    aria-pressed={group === g}
+                    onClick={() => setGroup(g.group)}
+                    aria-pressed={group === g.group}
                     className={`border px-2 py-[3px] font-mono text-[9.5px] uppercase tracking-[0.05em] transition-colors ${
-                      group === g
+                      group === g.group
                         ? "border-acid/50 bg-acid/10 text-acid"
                         : "border-line text-fg4 hover:border-line2 hover:text-fg2"
                     }`}
                   >
-                    {g}
+                    {g.group}
+                    <span className="ml-1 text-[8.5px] opacity-60">{g.items.length}</span>
                   </button>
                 ))}
               </div>
@@ -129,14 +288,9 @@ export default function PlansPage() {
               <p className="mt-2.5 t-body leading-relaxed text-fg2">{active.lead}</p>
 
               <ul className="mt-2 space-y-1">
-                {active.items.slice(0, 3).map((i) => (
+                {active.items.map((i) => (
                   <li key={i} className="flex items-start gap-1.5">
-                    <svg
-                      viewBox="0 0 10 10"
-                      className="mt-[3px] h-[8px] w-[8px] shrink-0 text-acid"
-                      aria-hidden
-                      fill="none"
-                    >
+                    <svg viewBox="0 0 10 10" className="mt-[3px] h-[8px] w-[8px] shrink-0 text-acid" aria-hidden fill="none">
                       <rect x="2" y="4.5" width="6" height="4.5" stroke="currentColor" strokeWidth="1" />
                       <path d="M3.2 4.5V3.2a1.8 1.8 0 0 1 3.6 0v1.3" stroke="currentColor" strokeWidth="1" />
                     </svg>
@@ -146,11 +300,6 @@ export default function PlansPage() {
               </ul>
 
               <p className="mt-2 border-t border-line pt-2 t-xs text-fg4">
-                {active.items.length - 3 > 0 && (
-                  <>
-                    +{active.items.length - 3} more in this group.{" "}
-                  </>
-                )}
                 {totalPro} items across {PRO_VALUE.length} groups — every one a question free cannot
                 answer, not a cosmetic difference
               </p>
@@ -159,7 +308,7 @@ export default function PlansPage() {
             <div className="border-t border-line p-2.5">
               {pro ? (
                 <>
-                  <div className="flex h-8 items-center justify-center border border-acid/40 bg-acid/10 font-mono text-[10.5px] uppercase tracking-[0.07em] text-acid">
+                  <div className="flex h-8 items-center justify-center border border-acid/40 bg-acid/10 font-mono text-[10px] uppercase tracking-[0.07em] text-acid">
                     preview active
                   </div>
                   <button
@@ -175,14 +324,13 @@ export default function PlansPage() {
                   <button
                     type="button"
                     onClick={toggle}
-                    className="flex h-8 w-full items-center justify-center gap-1.5 bg-acid font-mono text-[10.5px] font-semibold uppercase tracking-[0.07em] text-bg transition-colors hover:bg-acid2"
+                    className="flex h-8 w-full items-center justify-center gap-1.5 bg-acid font-mono text-[10px] font-semibold uppercase tracking-[0.07em] text-bg transition-colors hover:bg-acid2"
                   >
-                    Preview the paid layer
+                    open every module
                     <span aria-hidden>→</span>
                   </button>
                   <p className="mt-1.5 t-xs leading-relaxed text-fg4">
-                    Nothing is charged and no account is created. The switch opens every module so
-                    you can judge it, then turns off again — billing starts only when the wallet
+                    Nothing is charged and no account is created. Billing starts only when the wallet
                     data ships, and the modules say DEMO until it does
                   </p>
                 </>
@@ -191,44 +339,35 @@ export default function PlansPage() {
           </section>
         </div>
 
-        {/* ---------- the accounting ---------- */}
+        {/* ---------- the cost accounting ---------- */}
         <Panel title="Why the wallet layer costs money" note="the honest reason, not a paywall">
           <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-2">
             <p className="t-xs leading-relaxed text-fg3">
               A contract check is one request to a public API. It is cheap, cacheable, and it can be
               free forever. Reading a launch block, tracing funding two hops back and classifying a
               wallet&apos;s entire trade history is a thousand RPC calls per token. The subscription
-              pays for that, not for a gate in front of information that already existed.
+              pays for that, not for a gate in front of information that already existed
             </p>
             <div className="mt-2 sm:mt-0">
-              <div className="space-y-0">
-                {[
-                  ["free scan", "~5 API calls"],
-                  ["pro scan", "~1,400 RPC calls"],
-                  ["bundle trace", "launch block, every tx, every funder"],
-                  ["wallet classification", "full history per wallet"],
-                ].map(([k, v]) => (
-                  <div
-                    key={k}
-                    className="flex items-baseline justify-between gap-3 border-b border-line py-[5px] last:border-b-0"
-                  >
-                    <span className="shrink-0 t-xs text-fg4">{k}</span>
-                    <span className="text-right t-mono text-[10.5px] text-fg3">{v}</span>
-                  </div>
-                ))}
-              </div>
+              {[
+                ["free scan", "~5 API calls"],
+                ["pro scan", "~1,400 RPC calls"],
+                ["bundle trace", "launch block, every tx, every funder"],
+                ["wallet classification", "full history per wallet"],
+              ].map(([k, v]) => (
+                <div key={k} className="flex items-baseline justify-between gap-3 border-b border-line py-[5px] last:border-b-0">
+                  <span className="shrink-0 t-xs text-fg4">{k}</span>
+                  <span className="text-right t-mono text-[10.5px] text-fg3">{v}</span>
+                </div>
+              ))}
             </div>
           </div>
         </Panel>
 
-        {/* ---------- the full comparison ---------- */}
-        <Panel title="Every difference" note="wallets is open — the other groups expand" flush>
+        {/* ---------- the full list ---------- */}
+        <Panel title="Every difference" note="wallets open — the other groups expand" flush>
           {PRO_VALUE.map((g, gi) => (
-            <details
-              key={g.group}
-              open={gi === 0}
-              className="group border-b border-line last:border-b-0"
-            >
+            <details key={g.group} open={gi === 0} className="group border-b border-line last:border-b-0">
               <summary className="flex cursor-pointer list-none items-baseline gap-2 px-3 py-2 hover:bg-surf2/60">
                 <span aria-hidden className="t-mono text-[9px] text-acid transition-transform group-open:rotate-90">
                   ›
@@ -241,7 +380,7 @@ export default function PlansPage() {
                 <div className="p-3">
                   <div className="t-eyebrow">free</div>
                   <p className="mt-1 t-xs leading-relaxed text-fg4">
-                    The headline figure only — enough to know whether the thing exists.
+                    The headline figure only — enough to know whether the thing exists
                   </p>
                 </div>
                 <div className="p-3">
@@ -265,7 +404,7 @@ export default function PlansPage() {
             {[
               "Who called a token, with a link to the post — discovery is always free",
               "The risk verdict and every contract check that produced it",
-              "No feature is hidden to make a screenshot look better: every module either exists or is labelled not built",
+              "No feature is hidden to make a screenshot look better: every module either exists or is labelled",
               "No fake scarcity, no countdown, no trial that silently charges",
               "No ranking of tokens by how much they paid",
               "Nothing on any report is advice",
@@ -276,31 +415,6 @@ export default function PlansPage() {
               </li>
             ))}
           </ul>
-        </Panel>
-
-        <Panel title="Group" note="for Telegram communities that check constantly">
-          <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-            <div>
-              <div className="flex items-baseline gap-2">
-                <span className="t-mono text-[20px] text-fg">$79</span>
-                <span className="t-xs text-fg4">per month</span>
-                <Tag tone="neutral">not built</Tag>
-              </div>
-              <p className="mt-1 t-xs leading-relaxed text-fg3">
-                Everything in Pro for every member, plus the bot answering any contract pasted in
-                the group, alerts posted into the group when a tracked wallet moves, and a
-                leaderboard of who called what and how each call ended.
-              </p>
-            </div>
-            <div className="mt-2 sm:mt-0">
-              <Link
-                href="/login"
-                className="flex h-8 items-center justify-center border border-line px-3 font-mono text-[10px] uppercase tracking-[0.06em] text-fg3 transition-colors hover:border-line2 hover:text-fg"
-              >
-                join waitlist
-              </Link>
-            </div>
-          </div>
         </Panel>
       </div>
     </div>

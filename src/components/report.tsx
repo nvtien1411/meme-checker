@@ -5,7 +5,8 @@ import Link from "next/link";
 import type { AnalysisResult, CheckState } from "@/lib/types";
 import { CHAIN_BY_ID } from "@/lib/chains";
 import { fmtAge, fmtChange, fmtPct, fmtPrice, fmtUsd } from "@/lib/http";
-import { Demo, Gauge, Gated, Panel, RiskDot, Split, Stat, Tag, UpgradeStrip } from "./ui";
+import { callerByHandle, shortAddr } from "@/lib/demo";
+import { Demo, Gauge, Panel, ProReveal, RiskDot, Split, Stat, Tag } from "./ui";
 import { BundleDeep, BundleFree } from "./BundleIntel";
 import {
   DistributionBar,
@@ -523,7 +524,6 @@ function WalletsTab({ demo }: { demo: DemoToken | null }) {
 
   return (
     <div className="space-y-2.5">
-      <UpgradeStrip what="Bundle wallets, their funders, their record elsewhere and their exit history are Pro" />
 
       <div className="flex flex-wrap items-center gap-1.5">
         <Demo />
@@ -575,9 +575,24 @@ function WalletsTab({ demo }: { demo: DemoToken | null }) {
         </div>
       </Panel>
 
-      <Gated
-        title="Traced funding origins"
-        points={[
+      <ProReveal
+        title="Where the money actually came from"
+        shown={1}
+        rows={fresh.slice(0, 3).map((w) => (
+          <div key={w.addr} className="panel flex flex-wrap items-baseline gap-x-3 gap-y-1 px-2.5 py-1.5">
+            <Link href={`/wallets/${w.addr}`} className="font-mono text-[10.5px] text-fg2 hover:text-acid">
+              {shortAddr(w.addr, 6, 4)}
+            </Link>
+            <span className="t-xs text-fg4">
+              created {w.born ? new Date(w.born).toISOString().slice(0, 10) : "unknown"}
+            </span>
+            <span className="t-xs tabular-nums text-fg4">{w.pct?.toFixed(1)}% held</span>
+            <span className="ml-auto font-mono text-[10px] text-warn">
+              {w.funder ? `funded by ${shortAddr(w.funder, 4, 4)}` : "funder not traced"}
+            </span>
+          </div>
+        ))}
+        more={[
           "Which exchange hot wallet funded each bundle member, and when",
           "Every other token that same funder has seeded",
           "The full multi-hop trail from source to buy, with each hop's timestamp",
@@ -585,6 +600,7 @@ function WalletsTab({ demo }: { demo: DemoToken | null }) {
           "How much of each prior launch they exited, and at what point in the curve",
           "Whether the deployer wallet has ever received from the same source",
         ]}
+        note="Wallets with no history that bought this launch, and the wallet that paid for them"
       />
     </div>
   );
@@ -771,18 +787,55 @@ function CallersTab({ data, demo }: { data: AnalysisResult; demo: DemoToken | nu
         </span>
       </div>
 
-      <Gated
-        title="Caller intelligence"
-        points={[
+      <ProReveal
+        title="The rest of the caller set"
+        shown={2}
+        rows={calls.slice(0, 5).map((call) => {
+          const caller = callerByHandle(call.handle);
+          return (
+            <div
+              key={call.handle + call.mint}
+              className="panel flex flex-wrap items-baseline gap-x-3 gap-y-1 px-2.5 py-1.5"
+            >
+              <Link
+                href={`/callers/${call.handle}`}
+                className="font-mono text-[11px] text-fg2 hover:text-acid"
+              >
+                @{call.handle}
+              </Link>
+              {caller && (
+                <Tag tone="neutral">
+                  {caller.followers >= 1000
+                    ? (caller.followers / 1000).toFixed(1) + "k"
+                    : caller.followers}{" "}
+                  followers
+                </Tag>
+              )}
+              <span className="t-xs text-fg4">{call.at}</span>
+              <span className="ml-auto t-mono text-[10px] text-fg3">
+                called at {fmtUsd(call.mcAtCall)}
+              </span>
+              <span
+                className={`w-12 text-right font-mono text-[10px] tabular-nums ${
+                  call.outcome === "won" ? "text-good" : call.outcome === "lost" ? "text-bad" : "text-fg4"
+                }`}
+              >
+                {call.outcome}
+              </span>
+            </div>
+          );
+        })}
+        more={[
           "Full call history with win rate, median multiple and dead-call share",
-          "Wallet behind each account, and whether it bought before or after posting",
+          "The wallet behind each account, and whether it bought before or after posting",
           "Share of their own position sold after followers arrived",
           "Exit price against the price at the moment they posted",
-          "Smart followers — wallets that repeatedly buy after this account posts",
+          "Smart followers - wallets that repeatedly buy after this account posts",
           "Repeat-follower overlap with other callers",
           "Coordination signals: shared funding, synchronised entry, cross-caller networks",
           "Scripted timeline of who bought, when, and who sold into whom",
         ]}
+        note="Every account that posted this contract, newest first. The free view shows the two most recent"
       />
 
       {demo && (

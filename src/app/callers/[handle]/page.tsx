@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHead } from "@/components/Shell";
-import { Demo, Gauge, Gated, Panel, Split, Stat, Tag } from "@/components/ui";
+import { Demo, Gauge, Panel, ProReveal, Split, Stat, Tag } from "@/components/ui";
 import { FollowerEntryChart, Timeline } from "@/components/viz";
 import { DEMO_TIMELINE, callerByHandle, callsByHandle } from "@/lib/demo";
 import { fmtUsd } from "@/lib/http";
@@ -198,17 +198,37 @@ export default async function CallerPage({ params }: { params: Promise<{ handle:
           ))}
         </Panel>
 
-        <Gated
-          title="What VIP adds to this profile"
-          points={[
+        <ProReveal
+          title="Everything behind this record"
+          shown={2}
+          rows={calls.slice(0, 4).map((c) => (
+            <div key={c.mint} className="panel flex flex-wrap items-baseline gap-x-3 gap-y-1 px-2.5 py-1.5">
+              <span className="font-mono text-[11px] text-fg">{c.symbol}</span>
+              <span
+                className={`font-mono text-[9px] uppercase ${
+                  c.outcome === "won" ? "text-good" : c.outcome === "lost" ? "text-bad" : "text-fg4"
+                }`}
+              >
+                {c.outcome}
+              </span>
+              <span className="t-xs tabular-nums text-fg4">called at {fmtUsd(c.mcAtCall)}</span>
+              <span className="t-xs tabular-nums text-fg4">peak {fmtUsd(c.peakMc)}</span>
+              <span className="ml-auto t-mono text-[10px] tabular-nums text-fg3">
+                {c.hoursToPeak !== null ? `${(c.peakMc / c.mcAtCall).toFixed(1)}x` : "flat"}
+              </span>
+              <span className="t-xs text-fg4">{c.at}</span>
+            </div>
+          ))}
+          more={[
             "The wallet behind the account, and its position before each call",
             "Exact buy time, post time and first sell time for every call, to the second",
-            "Repeat-follower wallets: which addresses appear on three or more of their calls",
+            "Repeat-follower wallets: which addresses appear on three or more calls",
             "Follower overlap with other callers, and whether those wallets are one group",
             "Which smart wallets copy the whole call and which exit first",
             "Funding connections between the caller's wallet and pre-call buyers",
-            "Historical follower outcomes: how many who bought still hold, and how many are underwater",
+            "How many followers who bought still hold, and how many are underwater",
           ]}
+          note="The last four calls on record with their real market caps. The free view shows the two most recent"
         />
 
         <p className="t-xs leading-relaxed text-fg4">
