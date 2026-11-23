@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { PageHead } from "@/components/Shell";
-import { Demo, Gated, Panel, Tag } from "@/components/ui";
+import { Demo, Panel, ProReveal, Tag } from "@/components/ui";
+import { ExitOrderTable, WalletNetworkView } from "@/components/Intelligence";
+import { exitOrdering } from "@/lib/intel";
 import { DEMO_TOKENS } from "@/lib/demo";
 
 /* ==================================================================== *
@@ -152,7 +154,7 @@ export default function InvestigationPage() {
               {[
                 "The wallet that funded the deployer also funded the largest launch-block buyer",
                 "That buyer holds 18.7% and has not sold",
-                "Three callers posted within 13 minutes of each other, two of them after the price had already moved",
+                "Three callers posted inside a 19-minute window, the last of them six minutes after the first",
                 "The same deployer's previous token is in this graph because the funder is shared",
               ].map((t) => (
                 <li key={t} className="flex items-start gap-1.5">
@@ -202,17 +204,33 @@ export default function InvestigationPage() {
           </Panel>
         </div>
 
-        <Gated
-          title="The full investigation canvas"
-          points={[
-            "Expand any node into its own graph without losing the first one",
-            "Click an edge to see the actual transaction behind it",
-            "Add any wallet, token or caller to the canvas by address",
-            "Save a canvas and return to it — the graph keeps updating as new data lands",
-            "Compare two canvases side by side to find a shared wallet",
-            "Export the evidence for a canvas as a dated record",
-          ]}
-        />
+        <div>
+          <div className="mb-1.5 flex flex-wrap items-baseline gap-2">
+            <h2 className="t-section text-fg">Who keeps showing up</h2>
+            <span className="t-xs text-fg4">
+              the wallet network derived from every recorded launch, and who exits first
+            </span>
+          </div>
+          <ProReveal
+            title="The full relationship graph"
+            shown={0}
+            rows={[]}
+            more={[
+              "Every address that appears on two or more of the same launches",
+              "Which of them bought inside the creation block on every shared launch",
+              "The group's measured holding time and the point of the peak it exits at",
+              "Whether the group leaves together or in sequence, in minutes",
+              "How many of those launches collapsed after the group left",
+              "Which single wallet left first, launch by launch",
+            ]}
+            note="Edges are co-appearance on a launch, drawn from history rather than inferred from a funding trace"
+          >
+            <div className="space-y-2.5">
+              <WalletNetworkView />
+              <ExitOrderTable rows={exitOrdering().slice(0, 12)} />
+            </div>
+          </ProReveal>
+        </div>
       </div>
     </div>
   );

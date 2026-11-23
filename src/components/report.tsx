@@ -8,6 +8,7 @@ import { fmtAge, fmtChange, fmtPct, fmtPrice, fmtUsd } from "@/lib/http";
 import { callerByHandle, shortAddr } from "@/lib/demo";
 import { Demo, Gauge, Panel, ProReveal, RiskDot, Split, Stat, Tag } from "./ui";
 import { BundleDeep, BundleFree } from "./BundleIntel";
+import { WalletNetworkView } from "./Intelligence";
 import {
   DistributionBar,
   ExitCurve,
@@ -574,6 +575,31 @@ function WalletsTab({ demo }: { demo: DemoToken | null }) {
           </p>
         </div>
       </Panel>
+
+      <div>
+        <div className="mb-1.5 flex flex-wrap items-baseline gap-2">
+          <h3 className="t-section text-fg">Do these wallets know each other?</h3>
+          <span className="t-xs text-fg4">
+            every address that keeps appearing on the same launches, and what the group does
+            collectively
+          </span>
+        </div>
+        <ProReveal
+          title="The network behind this launch"
+          shown={0}
+          rows={[]}
+          more={[
+            "Every wallet that appears on two or more of the same recorded launches",
+            "Which of them bought inside the creation block on every shared launch",
+            "The group's median holding time and the point of the peak it exits at",
+            "Whether the group leaves together or in sequence, measured in minutes",
+            "How many of those launches collapsed after the group left",
+          ]}
+          note="Computed from the launch history, not from a funding trace — an edge here means co-appearance, which is a reason to look, not proof of ownership"
+        >
+          <WalletNetworkView />
+        </ProReveal>
+      </div>
 
       <ProReveal
         title="Where the money actually came from"

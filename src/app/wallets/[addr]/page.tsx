@@ -4,6 +4,9 @@ import { PageHead } from "@/components/Shell";
 import { Demo, Gauge, Panel, ProReveal, Split, Stat, Tag } from "@/components/ui";
 import { DEMO_TOKENS, DEMO_WALLETS, WALLET_ROLE, shortAddr } from "@/lib/demo";
 import { fmtPrice, fmtUsd } from "@/lib/http";
+import { classifyWallet, crossTokenMemory, walletProfile } from "@/lib/intel";
+import { ExitOrderTable } from "@/components/Intelligence";
+import { exitOrdering } from "@/lib/intel";
 
 /* ==================================================================== *
  * WALLET PROFILE
@@ -35,11 +38,24 @@ export default async function WalletPage({ params }: { params: Promise<{ addr: s
 
   if (appearances.length === 0) notFound();
 
+  // The launch history is the real evidence; the per-token rows above only say
+  // where the address turned up.
+  const profile = walletProfile(decoded);
+  const dna = profile ? classifyWallet(profile) : null;
+  const memory = crossTokenMemory(decoded);
+  const exits = exitOrdering().filter(
+    (r) => r.addr.toLowerCase() === decoded.toLowerCase(),
+  );
+
   const first = appearances[0].wallet;
   const role = WALLET_ROLE[decoded] ?? first.tags?.[0] ?? "unclassified";
   const born = first.born;
-  const priorLaunches = Math.max(...appearances.map((a) => a.wallet.priorLaunches ?? 0));
-  const priorRugs = Math.max(...appearances.map((a) => a.wallet.priorRugs ?? 0));
+
+  // One source of truth for the record. `profile` is derived from the launch
+  // rows; the per-token `priorLaunches` figures in demo.ts are a second, older
+  // source, and reading both is how the same page said 4/7 here and 4/5 there.
+  const priorLaunches = profile ? profile.launchCount : 0;
+  const priorRugs = profile ? profile.rugCount : 0;
   const totalPct = appearances.reduce((n, a) => n + (a.wallet.pct ?? 0), 0);
   const funder = first.funder;
 
@@ -113,6 +129,129 @@ export default async function WalletPage({ params }: { params: Promise<{ addr: s
           )}
         </Panel>
 
+        {/* the behaviour, measured rather than tagged */}
+        {profile && dna && (
+          <Panel
+            title="Wallet DNA"
+            note={`derived from ${profile.launchCount} launches — the label carries the rows that produced it`}
+            flush
+          >
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-line px-3 py-2">
+              <span className="font-mono text-[13px] text-fg">{dna.label}</span>
+              <Tag tone={dna.confidence >= 0.7 ? "bad" : "warn"}>
+                confidence {(dna.confidence * 100).toFixed(0)}%
+              </Tag>
+              {dna.confidence < 0.4 && (
+                <span className="t-xs text-warn">
+                  treat as a guess — the sample is too small to call it a pattern
+                </span>
+              )}
+            </div>
+
+            <ul className="space-y-1 px-3 py-2">
+              {dna.evidence.map((e) => (
+                <li key={e} className="flex items-start gap-1.5">
+                  <span aria-hidden className="mt-[6px] h-[3px] w-[3px] shrink-0 bg-acid" />
+                  <span className="t-xs leading-snug text-fg3">{e}</span>
+                </li>
+              ))}
+            </ul>
+
+            <div className="grid grid-cols-2 divide-x divide-line border-t border-line sm:grid-cols-4">
+              {[
+                {
+                  k: "launches recorded",
+                  v: String(profile.launchCount),
+                  s: `${profile.rugCount} collapsed`,
+                },
+                {
+                  k: "median hold",
+                  v:
+                    profile.medianHoldMin === null
+                      ? "never sold"
+                      : profile.medianHoldMin < 90
+                        ? `${Math.round(profile.medianHoldMin)}m`
+                        : `${(profile.medianHoldMin / 60).toFixed(1)}h`,
+                  s: "before first sell",
+                },
+                {
+                  k: "typical exit",
+                  v:
+                    profile.medianExitAtPeak === null
+                      ? "—"
+                      : `${(profile.medianExitAtPeak * 100).toFixed(0)}%`,
+                  s: "of the peak",
+                },
+                {
+                  k: "launch entries",
+                  v: `${profile.bundleCount}/${profile.launchCount}`,
+                  s: "bought in the creation block",
+                },
+              ].map((c) => (
+                <div key={c.k} className="p-2.5">
+                  <div className="t-eyebrow">{c.k}</div>
+                  <div className="mt-0.5 font-mono text-[15px] leading-none tabular-nums text-fg">
+                    {c.v}
+                  </div>
+                  <div className="mt-1 t-xs text-fg4">{c.s}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="border-t border-line px-3 py-1.5">
+              <p className="t-xs leading-relaxed text-fg4">
+                Every figure is computed from the launch rows on this page. A label is only shown when
+                the rows support it, and the confidence falls when they do not
+              </p>
+            </div>
+          </Panel>
+        )}
+
+        {/* cross-token memory */}
+        {memory && memory.launches.length > 1 && (
+          <Panel
+            title="Where else it appears"
+            note={`${memory.launches.length} recorded launches — ${memory.extra} of them not reachable from this token alone`}
+            flush
+          >
+            <div className="grid grid-cols-[minmax(0,1fr)_72px_52px_52px_60px] items-baseline gap-x-2 border-b border-line bg-surf2/40 px-3 py-1">
+              <span className="t-eyebrow">launch</span>
+              <span className="t-eyebrow text-right">date</span>
+              <span className="t-eyebrow text-right">bought</span>
+              <span className="t-eyebrow text-right">sold</span>
+              <span className="t-eyebrow text-right">outcome</span>
+            </div>
+            {memory.launches.map((l) => (
+              <div
+                key={l.symbol + l.at}
+                className="grid grid-cols-[minmax(0,1fr)_72px_52px_52px_60px] items-baseline gap-x-2 border-b border-line px-3 py-[5px] last:border-b-0"
+              >
+                <span className="truncate t-xs font-semibold text-fg2">{l.symbol}</span>
+                <span className="text-right font-mono text-[9.5px] text-fg4">{l.at.slice(5)}</span>
+                <span className="text-right font-mono text-[10px] tabular-nums text-fg3">
+                  {l.bought > 0 ? `${l.bought.toFixed(1)}%` : "—"}
+                </span>
+                <span className="text-right font-mono text-[10px] tabular-nums text-fg4">
+                  {l.sold > 0 ? `${l.sold}%` : "—"}
+                </span>
+                <span
+                  className={`text-right font-mono text-[9px] uppercase tracking-[0.05em] ${
+                    l.rugged ? "text-bad" : "text-good"
+                  }`}
+                >
+                  {l.rugged ? "collapsed" : "survived"}
+                </span>
+              </div>
+            ))}
+            <div className="border-t border-line px-3 py-1.5">
+              <p className="t-xs leading-relaxed text-fg4">
+                This is the memory the product builds as you scan. An address seen once is a data point;
+                seen on repeat launches it is a participant, and the record above is the evidence
+              </p>
+            </div>
+          </Panel>
+        )}
+
         {/* where it appears */}
         <Panel title="Appearances" note="every token in this scan that lists this address" flush>
           <div className="grid grid-cols-[minmax(0,1fr)_64px_56px_56px] items-baseline gap-x-2 border-b border-line bg-surf2/40 px-3 py-1">
@@ -150,7 +289,7 @@ export default async function WalletPage({ params }: { params: Promise<{ addr: s
         </Panel>
 
         <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
-          <Panel title="Behaviour" note="what the record shows, not a label">
+          <Panel title="Behaviour on this token" note="the row for this token only — the record above covers all five launches">
             <div className="space-y-0">
               <Split label="first sell after launch" tone="warn">
                 {first.firstSell !== undefined && first.firstSell > 0 ? `${formatSecs(first.firstSell)}` : "never sold"}
@@ -192,6 +331,18 @@ export default async function WalletPage({ params }: { params: Promise<{ addr: s
             </div>
           </Panel>
         </div>
+
+        {exits.length > 0 && (
+          <div>
+            <div className="mb-1.5 flex items-baseline gap-2">
+              <h2 className="t-section text-fg">Its exits, in order</h2>
+              <span className="t-xs text-fg4">
+                whether it leaves before or after everyone else in the same launch
+              </span>
+            </div>
+            <ExitOrderTable rows={exits} />
+          </div>
+        )}
 
         <ProReveal
           title="The rest of this wallet&#39;s history"

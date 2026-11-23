@@ -6,7 +6,10 @@ import { PageHead } from "@/components/Shell";
 import { Panel, Tag } from "@/components/ui";
 import { useViewer } from "@/lib/viewer";
 import { FREE_VALUE, PLAN, PRO_VALUE, SCAN_LIMIT } from "@/lib/plan";
-import { DEMO_CALLERS, DEMO_RUGS, DEMO_TOKENS, shortAddr } from "@/lib/demo";
+import { DEMO_CALLERS, DEMO_RUGS, DEMO_TOKENS } from "@/lib/demo";
+import { CORE_BUNDLE } from "@/components/Intelligence";
+import { classifyWallet, groupBehaviour, walletProfile } from "@/lib/intel";
+import { HISTORY_WALLETS } from "@/lib/launches";
 
 /* ==================================================================== *
  * PRO HUB
@@ -20,7 +23,8 @@ import { DEMO_CALLERS, DEMO_RUGS, DEMO_TOKENS, shortAddr } from "@/lib/demo";
  * the rest of the product renders, so the page cannot drift from the product.
  * ==================================================================== */
 
-const WALKTHROUGH = [
+function walkthrough(leadDna: { label: string; evidence: string[] } | null, leadLaunches: number) {
+  return [
   {
     step: "01",
     question: "Is this contract safe?",
@@ -36,7 +40,9 @@ const WALKTHROUGH = [
   {
     step: "03",
     question: "Who are they, and what have they done before?",
-    body: "This is where the money is actually lost. Each wallet's age, the wallet that funded it, its record on prior launches, what it has already sold, and how long it typically holds.",
+    body: leadDna
+      ? `This is where the money is actually lost. The largest of the group classifies as "${leadDna.label}" across ${leadLaunches} launches — ${leadDna.evidence[1]?.toLowerCase() ?? "with a measurable exit habit"}.`
+      : "This is where the money is actually lost. Each wallet's age, funding source, record on prior launches, and how long it typically holds.",
     free: false,
   },
   {
@@ -51,7 +57,8 @@ const WALKTHROUGH = [
     body: "How many times, its peak each time, and how long it took to collapse on each attempt.",
     free: false,
   },
-];
+  ];
+}
 
 export default function PricingPage() {
   const { pro, toggle } = useViewer();
@@ -65,6 +72,13 @@ export default function PricingPage() {
   const bestCaller = [...DEMO_CALLERS].sort((a, b) => a.exitVsCall - b.exitVsCall)[0];
   const token = DEMO_TOKENS[0];
   const rug = DEMO_RUGS[0];
+
+  // The hero case is computed, not written. If the launch history changes, the
+  // numbers on the sales page change with it — a pricing page that can disagree
+  // with the product is worse than no pricing page.
+  const cluster = groupBehaviour(CORE_BUNDLE);
+  const lead = walletProfile(HISTORY_WALLETS.b1);
+  const leadDna = lead ? classifyWallet(lead) : null;
 
   return (
     <div>
@@ -93,8 +107,18 @@ export default function PricingPage() {
                 {[
                   ["peak market cap", `$${(rug.peakMc / 1000).toFixed(0)}k`],
                   ["final drawdown", `-${rug.drawdownPct}%`],
-                  ["the signal free misses", rug.signals[0]],
-                  ["deployer", shortAddr(rug.deployer, 6, 4)],
+                  [
+                    "the group's median hold",
+                    cluster.medianHoldMin === null
+                      ? "not measured"
+                      : cluster.medianHoldMin < 90
+                        ? `${Math.round(cluster.medianHoldMin)} min`
+                        : `${(cluster.medianHoldMin / 60).toFixed(1)} h`,
+                  ],
+                  [
+                    "launches they collapsed",
+                    `${cluster.collapsesAfterExit} of ${cluster.coLaunches.length}`,
+                  ],
                 ].map(([k, v]) => (
                   <div key={k} className="flex items-baseline justify-between gap-3 py-[5px]">
                     <span className="t-xs text-fg4">{k}</span>
@@ -161,7 +185,7 @@ export default function PricingPage() {
           note="five questions in the order a trader asks them"
           flush
         >
-          {WALKTHROUGH.map((w) => (
+          {walkthrough(leadDna, lead?.launchCount ?? 0).map((w) => (
             <div
               key={w.step}
               className={`flex gap-3 border-b border-line px-3 py-2 last:border-b-0 ${w.free ? "" : "bg-acid/[0.025]"}`}
