@@ -84,7 +84,9 @@ export function holdersFromRc(rep: RcReport): { rows: Holder[]; total: number | 
     return {
       rank: i + 1,
       address: addr,
-      balance: num(h.amount) ?? num(h.uiAmount),
+      // uiAmount is already divided by the mint's decimals; amount is the raw
+      // integer. Preferring amount rendered 172,385 tokens as "172385.35B".
+      balance: num(h.uiAmount) ?? num(h.amount),
       pct,
       label,
       labelBasis: basis,

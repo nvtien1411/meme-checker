@@ -14,6 +14,7 @@ import {
   SignalsSection,
   VerdictMasthead,
 } from "@/components/report";
+import { CallersSection, ForensicsSection, NarrativeIntelSection } from "@/components/forensics";
 import { Section, Slab } from "@/components/ui";
 import { ReportSkeleton } from "./skeleton";
 
@@ -71,6 +72,13 @@ async function Report({ chain, address }: { chain: ChainId; address: string }) {
     );
   }
 
+  const forensicsReady = data.forensics?.enabled ?? false;
+  // Numbering follows what the page can actually answer. While the wallet layer
+  // is unbuilt, giving it section 01 put five "not measured" lines where the
+  // first piece of evidence should be — the report read as broken at the top.
+  // It still appears, and says it was not run; it just stops claiming the lead.
+  const n = (i: number) => (forensicsReady ? i : i - 1).toString().padStart(2, "0");
+
   return (
     <div>
       <VerdictMasthead data={data} />
@@ -78,38 +86,68 @@ async function Report({ chain, address }: { chain: ChainId; address: string }) {
       <div className="grid grid-cols-1 items-start gap-x-10 gap-y-0 px-4 pt-2 sm:px-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:px-8">
         {/* main document column */}
         <div className="min-w-0 pb-14">
-          <Section
-            id="checks"
-            index="01"
-            title="Checks"
-            note="worst first — open a row for the number behind it"
-            right={`${data.checks.length}`}
-            first
-          >
-            <CheckLedger checks={data.checks} />
-          </Section>
+          {forensicsReady && (
+            <Section
+              id="wallets"
+              index={n(1)}
+              title="Wallet forensics"
+              note="who bought the launch, and what they have done since"
+              first
+            >
+              <ForensicsSection data={data.forensics} chain={data.token.chain} />
+            </Section>
+          )}
 
           <Section
             id="holders"
-            index="02"
+            index={n(2)}
             title="Holder distribution"
             note="pools, burns and curves removed"
+            first={!forensicsReady}
           >
             <HolderSection data={data} />
           </Section>
 
-          <Section id="signals" index="03" title="Liquidity and flow">
+          <Section
+            id="callers"
+            index={n(3)}
+            title="Who called it"
+            note="what the account did with its own position"
+          >
+            <CallersSection data={data.callers} />
+          </Section>
+
+          <Section id="narrative" index={n(4)} title="Narrative" note="the one section that is not measured">
+            <NarrativeIntelSection data={data.narrativeIntel} />
+            <div className="mt-5">
+              <ContextSection data={data} />
+            </div>
+          </Section>
+
+          <Section id="signals" index={n(5)} title="Liquidity and flow">
             <SignalsSection data={data} />
           </Section>
 
           <Section
-            id="context"
-            index="04"
-            title="Narrative and project"
-            note="the only section that is not measured"
+            id="checks"
+            index={n(6)}
+            title="Every check"
+            note="worst first — open a row for the number behind it"
+            right={`${data.checks.length}`}
           >
-            <ContextSection data={data} />
+            <CheckLedger checks={data.checks} />
           </Section>
+
+          {!forensicsReady && (
+            <Section
+              id="wallets"
+              index="—"
+              title="Wallet forensics"
+              note="listed last because this build does not run it"
+            >
+              <ForensicsSection data={data.forensics} chain={data.token.chain} />
+            </Section>
+          )}
         </div>
 
         {/* dossier column */}

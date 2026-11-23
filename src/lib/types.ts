@@ -186,6 +186,148 @@ export interface ExitAnalysis {
   note: string | null;
 }
 
+/* ------------------------------- forensics -----------------------------
+ * Wallet-behaviour layer. Every field is nullable because the backend
+ * ships these incrementally: a module exists on the page from the start
+ * and fills in as the pipeline learns to answer it. A null is rendered as
+ * unknown — never as zero, never as a pass, never as a warning.
+ *
+ * `enabled` is the build switch. While the pipeline does not populate this
+ * layer, blocks stay `enabled: false` and the UI renders the locked state
+ * it would show a free user — a card that names the module and says what
+ * it would answer, never invented values.
+ * ------------------------------------------------------------------ */
+
+export type ForensicsStatus = "sold" | "transferred" | "holding" | "unknown";
+
+export interface ForensicsWallet {
+  address: string;
+  /** Wallet that sent this one its opening balance, when traced. */
+  funder: string | null;
+  /** First activity of this wallet — the age signal. */
+  firstSeenAt: string | null;
+  /** Share of supply this wallet bought at launch. */
+  boughtPct: number | null;
+  /** Share of what it bought that it has since sold. */
+  soldPct: number | null;
+  /** USD price it paid on average, so the reader can see its cost basis. */
+  avgEntryPrice: number | null;
+  avgSellPrice: number | null;
+  /** Seconds from launch to its first sell. */
+  firstSellOffsetSec: number | null;
+  /** Hours held before that first sell. */
+  holdHours: number | null;
+  stillHoldsPct: number | null;
+  status: ForensicsStatus;
+  /** Launches this wallet appeared on before this one. */
+  priorLaunches: number | null;
+  priorRugs: number | null;
+}
+
+export interface BundleGroup {
+  id: string;
+  wallets: ForensicsWallet[];
+  /** Sum of what the group still holds. */
+  supplyPct: number | null;
+  /** Minutes between the first and last wallet being funded pre-launch. */
+  fundedWindowMin: number | null;
+  /** Share of wallets that bought near-identical amounts — bot signature. */
+  uniformBuyRatio: number | null;
+  /** Share of wallets that sold inside the same slot — atomic exit. */
+  sellSynchrony: number | null;
+  holdTimeMedianHours: number | null;
+  /** Whether the group is shown in full or only counted. */
+  revealed: boolean;
+}
+
+export interface SniperSet {
+  count: number | null;
+  supplyPct: number | null;
+  sold: number | null;
+  transferred: number | null;
+  holding: number | null;
+  /** Median cost basis vs current price, as a multiple. */
+  profitMultiple: number | null;
+  wallets: ForensicsWallet[];
+  revealed: boolean;
+}
+
+export interface WalletForensics {
+  /** False when no launch-block read was possible at all. */
+  available: boolean;
+  /** False until the backend populates this layer. Drives the locked card. */
+  enabled: boolean;
+  bundle: { count: number | null; supplyPct: number | null; groups: BundleGroup[] };
+  sniper: SniperSet;
+  insider: { walletCount: number | null; supplyPct: number | null };
+  fresh: { count: number | null; supplyPct: number | null };
+  /** Seconds from the first insider sell to a 50% drawdown. */
+  exitWindowSeconds: number | null;
+  note: string | null;
+  asOf: string | null;
+}
+
+/* ------------------------------- callers -----------------------------
+ * Who told you about it, and what they did with their own money.
+ * ------------------------------------------------------------------ */
+
+export interface CallerPost {
+  handle: string;
+  displayName: string | null;
+  followers: number | null;
+  postUrl: string;
+  postedAt: string;
+  /** Percent the token had already moved in the 3 min before the post. */
+  prePostRunUpPct: number | null;
+  /** Wallet behind the account, when it could be matched. */
+  wallet: string | null;
+  /** Seconds from wallet buy to post. Negative means he called before buying. */
+  leadSeconds: number | null;
+  /** Share of his position sold after posting. */
+  postCallSoldPct: number | null;
+  /** Average sell price divided by price at post. Above 1 means he sold into followers. */
+  exitVsCallPrice: number | null;
+}
+
+export interface CallerIntel {
+  available: boolean;
+  posts: CallerPost[];
+  /** Mid-tier accounts calling inside one short window — a coordinated group. */
+  cabalScore: number | null;
+  cabalWindowMin: number | null;
+  cabalHandles: string[];
+  /** 0-100, higher means more of the reply volume is automated. */
+  botEngagementPct: number | null;
+  /** Accounts that renamed themselves shortly before calling. */
+  renamedAccounts: number | null;
+  note: string | null;
+  asOf: string | null;
+}
+
+/* ------------------------------ narrative ---------------------------- */
+
+export interface NarrativeInstance {
+  address: string;
+  symbol: string | null;
+  peakMarketCap: number | null;
+  hoursToPeak: number | null;
+  hoursToMinus90: number | null;
+}
+
+export interface NarrativeIntel {
+  available: boolean;
+  /** How many of this narrative already exist in the window. 1 is the original. */
+  copyIndex: number | null;
+  firstMover: boolean | null;
+  /** Share of mentions that carry no contract address — content, not shilling. */
+  organicScore: number | null;
+  /** Median lifespan of prior instances, in hours. */
+  survivalMedianHours: number | null;
+  priorInstances: NarrativeInstance[];
+  note: string | null;
+}
+
+
 /* ------------------------------- checks ------------------------------ */
 
 export type CheckState = "pass" | "fail" | "warn" | "unknown";
@@ -229,6 +371,13 @@ export interface AnalysisResult {
   deployer: DeployerAnalysis;
   security: SecurityData;
   exit: ExitAnalysis;
+  /**
+   * Optional layers. Absent means the backend has not built them yet, which
+   * the UI must show as "not measured" rather than as a clean result.
+   */
+  forensics?: WalletForensics;
+  callers?: CallerIntel;
+  narrativeIntel?: NarrativeIntel;
   checks: Check[];
   verdict: Verdict;
   provenance: SourceStatus[];
