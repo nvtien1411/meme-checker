@@ -609,7 +609,11 @@ export function TabBar({
         >
           {t.label}
           {active === t.id && (
-            <span aria-hidden className="absolute inset-x-0 -bottom-px h-[2px] bg-acid" />
+            <span
+              aria-hidden
+              className="mc-edge-grow absolute inset-x-0 -bottom-px h-[2px] bg-acid"
+              style={{ transformOrigin: "left center" }}
+            />
           )}
         </button>
       ))}

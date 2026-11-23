@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageHead } from "@/components/Shell";
 import { Demo, Panel, ProReveal, Tag } from "@/components/ui";
+import { Graph, type GraphEdge, type GraphNode } from "@/components/Graph";
 import { ExitOrderTable, WalletNetworkView } from "@/components/Intelligence";
 import { exitOrdering } from "@/lib/intel";
 import { DEMO_TOKENS } from "@/lib/demo";
@@ -15,35 +16,36 @@ import { DEMO_TOKENS } from "@/lib/demo";
 
 export const metadata = { title: "Investigation" };
 
-type Node = { id: string; kind: "token" | "wallet" | "caller" | "deployer"; label: string; sub?: string; x: number; y: number };
-type Edge = { from: string; to: string; label: string; tone: "info" | "bad" | "acid" | "warn" };
-
-const NODES: Node[] = [
-  { id: "rats", kind: "token", label: "RATS", sub: "launch", x: 50, y: 50 },
-  { id: "dev", kind: "deployer", label: "deployer", sub: "3cJu…vyw", x: 17, y: 20 },
-  { id: "funder", kind: "wallet", label: "funder", sub: "9xQe…4Ks", x: 17, y: 50 },
-  { id: "b1", kind: "wallet", label: "bundle #1", sub: "18.7%", x: 17, y: 78 },
-  { id: "ins1", kind: "wallet", label: "insider", sub: "3.4%", x: 50, y: 16 },
-  { id: "cole", kind: "caller", label: "@cryptocole", sub: "58.4k", x: 83, y: 24 },
-  { id: "mira", kind: "caller", label: "@degenmira", sub: "18.9k", x: 83, y: 44 },
-  { id: "trench", kind: "caller", label: "@soltrenches", sub: "96.4k", x: 83, y: 64 },
-  { id: "peach", kind: "token", label: "PEACH", sub: "rugged", x: 50, y: 88 },
+/* Discovery order: the token first, then what the scan reached outward. The
+   graph's entrance sequence is this order, so the animation reports what was
+   found when rather than decorating. */
+const GRAPH_NODES: GraphNode[] = [
+  { id: "rats", label: "RATS", sub: "launch", kind: "token", order: 0, href: "/token/solana/CwnbD9FpaFSNou634knczXVCRUjTqmzwCrs3AiQvpump" },
+  { id: "dev", label: "deployer", sub: "3cJu…vyw", kind: "deployer", order: 1, href: "/deployers/3cJu879xPq7vXNbE2mKfTdRsWy4aHnLz8QpVd6Rdvyw" },
+  { id: "b1", label: "bundle #1", sub: "18.7%", kind: "wallet", order: 2, href: "/wallets/BBPzEyKTdRm3wXqNa4vJhSc8LkPyU2gFtZoQx6RRbMNk" },
+  { id: "funder", label: "funder", sub: "9xQe…4Ks", kind: "wallet", order: 3 },
+  { id: "ins1", label: "insider", sub: "3.4%", kind: "wallet", order: 4 },
+  { id: "cole", label: "@cryptocole", sub: "58.4k", kind: "caller", order: 5, href: "/callers/cryptocole" },
+  { id: "mira", label: "@degenmira", sub: "18.9k", kind: "caller", order: 6, href: "/callers/degenmira" },
+  { id: "trench", label: "@soltrenches", sub: "96.4k", kind: "caller", order: 7, href: "/callers/soltrenches" },
+  { id: "peach", label: "PEACH", sub: "rugged", kind: "launch", order: 8 },
 ];
 
-const EDGES: Edge[] = [
-  { from: "dev", to: "rats", label: "deployed", tone: "acid" },
-  { from: "funder", to: "b1", label: "funded", tone: "info" },
-  { from: "funder", to: "dev", label: "funded", tone: "bad" },
-  { from: "b1", to: "rats", label: "bought block 0", tone: "bad" },
-  { from: "ins1", to: "rats", label: "received 3.4%", tone: "warn" },
-  { from: "cole", to: "rats", label: "posted", tone: "info" },
-  { from: "mira", to: "rats", label: "posted +6m", tone: "info" },
-  { from: "trench", to: "rats", label: "posted −13m", tone: "info" },
-  { from: "dev", to: "peach", label: "deployed", tone: "bad" },
-  { from: "funder", to: "peach", label: "funded", tone: "bad" },
+const GRAPH_EDGES: GraphEdge[] = [
+  { from: "dev", to: "rats", label: "deployed", tone: "acid", directed: true },
+  { from: "funder", to: "b1", label: "funded", tone: "info", directed: true },
+  { from: "funder", to: "dev", label: "funded", tone: "bad", directed: true },
+  { from: "b1", to: "rats", label: "bought block 0", tone: "bad", directed: true },
+  { from: "ins1", to: "rats", label: "received 3.4%", tone: "warn", directed: true },
+  { from: "cole", to: "rats", label: "posted", tone: "info", directed: true },
+  { from: "mira", to: "rats", label: "posted +6m", tone: "info", directed: true },
+  { from: "trench", to: "rats", label: "posted −13m", tone: "info", directed: true },
+  { from: "dev", to: "peach", label: "deployed", tone: "bad", directed: true },
+  // co-appearance only — no direction, so no particles
+  { from: "b1", to: "ins1", label: "same launch block", tone: "warn" },
 ];
 
-const TONE_STROKE = { info: "#4ea8ff", bad: "#ff4d5e", acid: "#c6ff43", warn: "#f7c14a" };
+
 
 export default function InvestigationPage() {
   return (
@@ -76,67 +78,26 @@ export default function InvestigationPage() {
           </div>
         </Panel>
 
-        <Panel title="RATS — connected entities" note="click a node in a live build; here the layout is fixed" flush>
-          <div className="relative w-full bg-surf" style={{ aspectRatio: "16 / 10", minHeight: 340 }}>
-            <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
-              {EDGES.map((e, i) => {
-                const a = NODES.find((n) => n.id === e.from);
-                const b = NODES.find((n) => n.id === e.to);
-                if (!a || !b) return null;
-                return (
-                  <line
-                    key={i}
-                    x1={a.x}
-                    y1={a.y}
-                    x2={b.x}
-                    y2={b.y}
-                    stroke={TONE_STROKE[e.tone]}
-                    strokeWidth="0.22"
-                    strokeOpacity="0.55"
-                    strokeDasharray={e.tone === "warn" ? "0.8 0.8" : undefined}
-                    vectorEffect="non-scaling-stroke"
-                  />
-                );
-              })}
-            </svg>
-
-            {NODES.map((n) => {
-              const kindCls =
-                n.kind === "token"
-                  ? "border-acid/50 bg-acid/10 text-acid"
-                  : n.kind === "deployer"
-                    ? "border-bad/50 bg-bad/10 text-bad"
-                    : n.kind === "caller"
-                      ? "border-info/50 bg-info/10 text-info"
-                      : "border-line2 bg-surf2 text-fg2";
-              return (
-                <div
-                  key={n.id}
-                  className="absolute -translate-x-1/2 -translate-y-1/2"
-                  style={{ left: `${n.x}%`, top: `${n.y}%` }}
-                >
-                  <div className={`border px-2 py-1 ${kindCls}`}>
-                    <div className="whitespace-nowrap font-mono text-[9.5px] uppercase tracking-[0.04em]">
-                      {n.label}
-                    </div>
-                    {n.sub && <div className="t-mono text-[8px] opacity-70">{n.sub}</div>}
-                  </div>
-                </div>
-              );
-            })}
+        <Panel
+          title="RATS — connected entities"
+          note="select a node to isolate its relationships; the graph redraws from the record"
+          flush
+        >
+          <div className="p-2.5">
+            <Graph nodes={GRAPH_NODES} edges={GRAPH_EDGES} height={420} />
           </div>
 
           {/* the legend is the edge list, not a colour key */}
           <div className="border-t border-line px-3 py-2">
             <span className="t-eyebrow">relationships drawn</span>
             <div className="mt-1 flex flex-wrap gap-1">
-              {EDGES.map((e) => {
-                const a = NODES.find((n) => n.id === e.from);
-                const b = NODES.find((n) => n.id === e.to);
+              {GRAPH_EDGES.map((e) => {
+                const a = GRAPH_NODES.find((n) => n.id === e.from);
+                const b = GRAPH_NODES.find((n) => n.id === e.to);
                 return (
                   <span key={`${e.from}-${e.to}`} className="border border-line px-1.5 py-[1px]">
                     <span className="font-mono text-[9px] text-fg3">
-                      {a?.label} → {b?.label}
+                      {a?.label} {e.directed ? "→" : "·"} {b?.label}
                     </span>
                     <span className="ml-1 font-mono text-[8.5px] uppercase tracking-[0.04em] text-fg4">
                       {e.label}

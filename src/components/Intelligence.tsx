@@ -304,7 +304,7 @@ export function ExitOrderTable({ rows }: { rows: ExitOrderRow[] }) {
 
   return (
     <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-[minmax(0,1fr)_240px]">
-      <Panel title="Who sells first" note="every exit, ordered within its own launch" flush>
+      <Panel className="mc-rows" title="Each exit, ordered" note="every exit, ordered within its own launch" flush>
         <div className="grid grid-cols-[minmax(0,1fr)_40px_44px_46px] items-baseline gap-x-2 border-b border-line bg-surf2/40 px-3 py-1">
           <span className="t-eyebrow">wallet · launch</span>
           <span className="t-eyebrow text-right">order</span>

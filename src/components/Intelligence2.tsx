@@ -41,7 +41,7 @@ export function CallerTable({ limit = 6 }: { limit?: number }) {
 
   return (
     <div className="space-y-2.5">
-      <Panel flush>
+      <Panel flush className="mc-rows">
         <div className="grid grid-cols-[minmax(0,1fr)_58px_54px_54px] items-baseline gap-x-2 border-b border-line bg-surf2/40 px-3 py-1 sm:grid-cols-[minmax(0,1fr)_64px_58px_58px_70px]">
           <span className="t-eyebrow">caller</span>
           <span className="t-eyebrow text-right">exit/call</span>

@@ -199,6 +199,26 @@ body {
   transition: background-color 100ms linear;
 }
 
+/* Data rows arrive in sequence rather than all at once. The delay is capped at
+ * eight rows: past that the last row would wait nearly half a second, which
+ * reads as slow rather than as discovery. Applied with nth-child so no component
+ * has to pass an index. */
+.mc-rows > .drow,
+.mc-rows > a.drow,
+.mc-rows > button.drow {
+  animation: mc-enter var(--t-base) var(--e-out) both;
+}
+
+.mc-rows > *:nth-child(1) { animation-delay: 0ms; }
+.mc-rows > *:nth-child(2) { animation-delay: 22ms; }
+.mc-rows > *:nth-child(3) { animation-delay: 44ms; }
+.mc-rows > *:nth-child(4) { animation-delay: 66ms; }
+.mc-rows > *:nth-child(5) { animation-delay: 88ms; }
+.mc-rows > *:nth-child(6) { animation-delay: 110ms; }
+.mc-rows > *:nth-child(7) { animation-delay: 132ms; }
+.mc-rows > *:nth-child(n + 8) { animation-delay: 150ms; }
+
+
 .drow:hover {
   background: var(--color-surf2);
 }
@@ -287,8 +307,295 @@ body {
 }
 
 /* ==================================================================== *
- * MOTION — 120-180ms, linear-ish, only where state changed
+ * MOTION SYSTEM
+ *
+ * One language. Four durations, two easings, and a rule that decides which to
+ * use. The point of writing them down is that the next component does not invent
+ * a fifth.
+ *
+ *   --t-fast    90ms   state on a control: hover, press, toggle
+ *   --t-base   160ms   a small object entering or leaving: row, chip, tag
+ *   --t-slow   280ms   a region: panel, tab content, drawer
+ *   --t-draw   640ms   a path being traced: an edge, a connector, a sweep
+ *
+ *   --e-out    cubic-bezier(0.22, 1, 0.36, 1)     decelerate — most things
+ *   --e-in-out cubic-bezier(0.65, 0, 0.35, 1)     symmetric — layout, drawers
+ *
+ * Rules:
+ *   1. Motion reports a change of state. If nothing changed, nothing moves.
+ *   2. Nothing loops unless it represents something ongoing — a live scan, a
+ *      tracked wallet. A decorative loop is the first thing to look cheap.
+ *   3. Transform and opacity only. Anything that triggers layout on every frame
+ *      is a bug at 40 rows.
+ *   4. Everything below has a reduced-motion counterpart at the end of the file.
  * ==================================================================== */
+
+:root {
+  --t-fast: 90ms;
+  --t-base: 160ms;
+  --t-slow: 280ms;
+  --t-draw: 640ms;
+  --e-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --e-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* ---- 1. data arriving ------------------------------------------------
+ *
+ * A row or a panel that appears because data was found. 3px of travel is
+ * enough to read as "this just arrived"; 20px reads as a slideshow.
+ * -------------------------------------------------------------------- */
+
+.mc-enter {
+  animation: mc-enter var(--t-base) var(--e-out) both;
+}
+
+@keyframes mc-enter {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* staggered arrival for lists. The delay is set by --i on the element, so a
+ * table can arrive as a sequence without any JS scheduling. */
+.mc-stagger {
+  animation: mc-enter var(--t-base) var(--e-out) both;
+  animation-delay: calc(var(--i, 0) * 28ms);
+}
+
+/* ---- 2. a value that changed ----------------------------------------
+ *
+ * When a number updates in place — a score, a price, a count — the number
+ * itself flashes rather than the whole row moving. Motion that moves the
+ * layout on every update is unusable on a live feed.
+ * -------------------------------------------------------------------- */
+
+.mc-flash {
+  animation: mc-flash 700ms var(--e-out) both;
+}
+
+@keyframes mc-flash {
+  0% {
+    color: var(--color-acid);
+  }
+  100% {
+    color: inherit;
+  }
+}
+
+/* ---- 3. scanning -----------------------------------------------------
+ *
+ * Three distinct states, because a scan is not one indeterminate wait:
+ * pending (nothing known yet), active (in flight), done (resolved). A single
+ * spinner cannot express that difference and is why scanning looks fake.
+ * -------------------------------------------------------------------- */
+
+.mc-pending {
+  opacity: 0.42;
+}
+
+.mc-active {
+  position: relative;
+  overflow: hidden;
+}
+
+/* the travelling light that says "this one is being worked on right now" */
+.mc-active::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(198 255 67 / 0.16) 50%,
+    transparent
+  );
+  animation: mc-sweep 1.5s var(--e-in-out) infinite;
+}
+
+@keyframes mc-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(350%);
+  }
+}
+
+.mc-done {
+  animation: mc-enter var(--t-base) var(--e-out) both;
+}
+
+/* a module that resolved with a finding worth looking at */
+.mc-resolved-hot {
+  animation: mc-resolve-hot 900ms var(--e-out) both;
+}
+
+@keyframes mc-resolve-hot {
+  0% {
+    background-color: rgb(255 77 94 / 0.14);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+/* ---- 4. tracing a path -----------------------------------------------
+ *
+ * An edge that is being followed. stroke-dashoffset is the only honest way to
+ * draw a line from A to B: the direction of travel is then the direction of the
+ * relationship, which matters when the edge means "funded" rather than "shares
+ * a holder".
+ * -------------------------------------------------------------------- */
+
+.mc-draw {
+  stroke-dasharray: var(--len, 300);
+  stroke-dashoffset: var(--len, 300);
+  animation: mc-draw var(--t-draw) var(--e-out) forwards;
+}
+
+@keyframes mc-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* a dot travelling along an established edge. Offset-path carries it along the
+ * real geometry, so it follows the line rather than approximating with a
+ * transform animation. */
+.mc-flow {
+  offset-rotate: auto;
+  animation: mc-flow 3.2s linear infinite;
+  animation-delay: var(--d, 0s);
+}
+
+@keyframes mc-flow {
+  from {
+    offset-distance: 0%;
+    opacity: 0;
+  }
+  10%,
+  90% {
+    opacity: 1;
+  }
+  to {
+    offset-distance: 100%;
+    opacity: 0;
+  }
+}
+
+/* ---- 5. network activation -------------------------------------------
+ *
+ * Nodes light up as their entity is identified, in the order the scan found
+ * them. The delay is the discovery order, not a random stagger — the sequence
+ * is the information.
+ * -------------------------------------------------------------------- */
+
+.mc-node-on {
+  animation: mc-node-on 420ms var(--e-out) both;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+@keyframes mc-node-on {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  60% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* restrained idle. Only for entities that are still live — a tracked wallet, a
+ * token still being watched. 2% scale at 3s is visible at rest and invisible
+ * while reading. */
+.mc-breathe {
+  animation: mc-breathe 3.6s var(--e-in-out) infinite;
+  transform-origin: center;
+}
+
+@keyframes mc-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+}
+
+/* ---- 6. progress -----------------------------------------------------
+ *
+ * A determinate bar for a job with a known number of steps. Width is animated
+ * rather than transform: scaleX because the bar has a 1px border that scale
+ * would distort.
+ * -------------------------------------------------------------------- */
+
+.mc-progress {
+  transition: width var(--t-slow) var(--e-out);
+}
+
+/* the tab underline grows from the left on selection. A bar that simply
+ * appears reads as a re-render; one that grows reads as a choice. */
+.mc-edge-grow {
+  animation: mc-edge-grow var(--t-base) var(--e-out) both;
+}
+
+@keyframes mc-edge-grow {
+  from {
+    transform: scaleX(0.2);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+/* ---- 7. focus and selection -----------------------------------------
+ *
+ * The accent edge that marks the active row already exists as a pseudo-element.
+ * This makes it grow rather than appear, which reads as selection rather than
+ * re-render.
+ * -------------------------------------------------------------------- */
+
+.mc-edge-on::before {
+  animation: mc-edge-on var(--t-base) var(--e-out) both;
+}
+
+@keyframes mc-edge-on {
+  from {
+    transform: scaleY(0.3);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+/* ==================================================================== *
+ * REDUCED MOTION
+ *
+ * Not "make it fast". Someone who asks for reduced motion is asking not to be
+ * moved. Everything that travels, sweeps or breathes stops; everything that
+ * merely fades keeps a short fade, because a hard cut on data arrival is more
+ * jarring than a 90ms dissolve.
+ * ==================================================================== */
+
+
+
 
 .fade-up {
   animation: fade-up 160ms cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -333,15 +640,6 @@ body {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
 
 /* ==================================================================== *
  * UTILITIES
@@ -385,4 +683,70 @@ body {
 :focus-visible {
   outline: 1px solid var(--color-acid);
   outline-offset: 1px;
+}
+
+/* ==================================================================== *
+ * REDUCED MOTION — one authoritative block
+ *
+ * Someone who asks for reduced motion is asking not to be moved, not asking
+ * for the same motion faster. So:
+ *
+ *   travelling  stops entirely (sweeps, particle flow, idle breathing)
+ *   arriving    becomes a short opacity fade, because a hard cut on data
+ *               arrival is more jarring than a 90ms dissolve
+ *   interactive stays instant; nothing should feel laggy either way
+ *
+ * The blanket rule is last and is the safety net for anything added later that
+ * forgets to opt in.
+ * ==================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  /* travelling motion stops */
+  .mc-active::after,
+  .mc-flow,
+  .mc-breathe,
+  .pulse-dot {
+    animation: none !important;
+  }
+
+  /* arrival keeps a dissolve, loses the travel */
+  .mc-enter,
+  .mc-stagger,
+  .mc-done,
+  .mc-node-on,
+  .mc-rows > .drow,
+  .mc-rows > a.drow,
+  .mc-rows > button.drow {
+    animation: mc-fade-only var(--t-fast) linear both !important;
+    animation-delay: 0ms !important;
+  }
+
+  /* a path is not drawn over time; it is simply present */
+  .mc-draw {
+    animation: none !important;
+    stroke-dasharray: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+
+  /* state flashes and growing indicators are decoration, not information */
+  .mc-flash,
+  .mc-resolved-hot,
+  .mc-edge-grow,
+  .mc-edge-on::before,
+  .grow-x {
+    animation: none !important;
+  }
+
+  .mc-progress {
+    transition: none !important;
+  }
+
+  @keyframes mc-fade-only {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
 }

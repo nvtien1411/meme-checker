@@ -61,7 +61,7 @@ export function WalletDirectory() {
 
   return (
     <div className="space-y-2.5">
-      <Panel flush>
+      <Panel flush className="mc-rows">
         <div className="grid grid-cols-[minmax(0,1fr)_74px_46px_52px] items-baseline gap-x-2 border-b border-line bg-surf2/40 px-3 py-1 sm:grid-cols-[minmax(0,1fr)_96px_52px_56px_60px]">
           <span className="t-eyebrow">wallet</span>
           <span className="hidden t-eyebrow sm:block">behaviour</span>
