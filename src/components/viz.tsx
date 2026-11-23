@@ -1,316 +1,126 @@
 "use client";
 
-import type { Check, Holder } from "@/lib/types";
-import { countStates, sortBySeverity, STATE_META } from "@/lib/check-order";
-
-export { sortBySeverity, countStates };
+import type { Holder } from "@/lib/types";
 
 /* ==================================================================== *
- * VISUALISATION v2
+ * VIZ v5
  *
- * Each graphic here answers a question the numbers alone cannot. The
- * previous set was small and marginal; the risk gauge in particular read as
- * a donut chart with a number in it rather than as a measurement of danger.
- *
- * Changes of substance:
- *  - RiskArc: a 270° gauge with graduated ticks and the score at 76px. It
- *    reads as an instrument. Fills toward danger, and the word "risk" sits
- *    inside it so it cannot be read inverted.
- *  - Concentration: three labelled bands with the numbers printed on the
- *    bar itself — you no longer have to look at a legend and map colours.
- *  - ExitLadder: a price-impact curve with marked positions, not a bar.
+ * Every graphic here answers a question the reader already asked. Nothing is
+ * drawn because the page looked empty.
  * ==================================================================== */
 
-/* ------------------------------------------------------------------ *
- * RiskArc
- *
- * A 270° instrument, not a donut. 12 ticks mark the scale; the arc strokes
- * from the 7-o'clock position clockwise toward the 5-o'clock position, so
- * more arc means more risk. Sized to dominate the masthead.
- * ------------------------------------------------------------------ */
-
-const BAND_COLOR: Record<string, string> = {
-  avoid: "#ff2d55",
-  risky: "#ff6a1f",
-  watch: "#ffb020",
-  clean: "#1fd1a0",
+const LABEL_WORD: Record<string, string> = {
+  pool: "pool",
+  burn: "burn",
+  exchange: "cex",
+  contract: "contract",
+  creator: "creator",
+  team: "team",
 };
 
-export function RiskArc({
-  score,
-  band,
-  size = 188,
-  neutralNumber = false,
-}: {
-  score: number;
-  band: keyof typeof BAND_COLOR;
-  size?: number;
-  /** Render the figure in plain text colour, letting the arc carry the state. */
-  neutralNumber?: boolean;
-}) {
-  const stroke = 7;
-  const r = (size - stroke) / 2 - 16;
-  const cx = size / 2;
-  const cy = size / 2;
-
-  // 270° sweep starting at 135° (lower-left) going clockwise
-  const START = 135;
-  const SWEEP = 270;
-  const arcLen = (SWEEP / 360) * 2 * Math.PI * r;
-  const filled = (Math.max(0, Math.min(100, score)) / 100) * arcLen;
-
-  function pt(deg: number, radius: number) {
-    const rad = (deg * Math.PI) / 180;
-    return [cx + radius * Math.cos(rad), cy + radius * Math.sin(rad)];
-  }
-
-  const [sx, sy] = pt(START, r);
-  const [ex, ey] = pt(START + SWEEP, r);
-  const color = BAND_COLOR[band];
-
-  return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden>
-        {/* graduations */}
-        {Array.from({ length: 13 }).map((_, i) => {
-          const deg = START + (SWEEP / 12) * i;
-          const major = i % 3 === 0;
-          const [x1, y1] = pt(deg, r + (major ? 9 : 12));
-          const [x2, y2] = pt(deg, r + 15);
-          return (
-            <line
-              key={i}
-              x1={x1}
-              y1={y1}
-              x2={x2}
-              y2={y2}
-              stroke={deg <= START + (filled / arcLen) * SWEEP ? color : "#2e2e38"}
-              strokeWidth={major ? 1.5 : 1}
-            />
-          );
-        })}
-
-        {/* track */}
-        <path
-          d={`M ${sx} ${sy} A ${r} ${r} 0 1 1 ${ex} ${ey}`}
-          fill="none"
-          stroke="#1c1c23"
-          strokeWidth={stroke}
-          strokeLinecap="round"
-        />
-
-        {/* value */}
-        <path
-          d={`M ${sx} ${sy} A ${r} ${r} 0 1 1 ${ex} ${ey}`}
-          fill="none"
-          stroke={color}
-          strokeWidth={stroke}
-          strokeLinecap="round"
-          strokeDasharray={`${filled} ${arcLen}`}
-          className="arc-draw"
-          style={{ ["--arc-len" as string]: `${arcLen}` }}
-        />
-      </svg>
-
-      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-        <span
-          className={`t-verdict ${neutralNumber ? "text-lit-50" : ""}`}
-          style={neutralNumber ? undefined : { color }}
-        >
-          {Math.round(score)}
-        </span>
-        <span className="mt-2 font-mono text-[8.5px] uppercase tracking-[0.18em] text-mute-600">
-          risk / 100
-        </span>
-      </div>
-    </div>
-  );
+export function compact(n: number): string {
+  const abs = Math.abs(n);
+  if (abs >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
+  if (abs >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
+  if (abs >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
+  return n.toFixed(0);
 }
 
 /* ------------------------------------------------------------------ *
- * CheckRibbon
- *
- * Eight segments, one per check, in the order shown below. Reading left to
- * right tells you how many things went wrong before you parse a single
- * word.
+ * Distribution bar — three bands, each labelled with the number it
+ * represents. No legend lookup, no arc, no gradient.
  * ------------------------------------------------------------------ */
 
-export function CheckRibbon({
-  checks,
-  showLegend = true,
+export function DistributionBar({
+  largest,
+  top10,
+  linked,
 }: {
-  checks: Check[];
-  showLegend?: boolean;
+  largest: number | null;
+  top10: number | null;
+  linked: number | null;
 }) {
-  const ordered = sortBySeverity(checks);
-  const c = countStates(checks);
+  if (top10 === null) {
+    return <p className="t-xs text-fg4">Holder shares could not be computed for this token</p>;
+  }
+
+  const l = largest ?? 0;
+  const nextNine = Math.max(0, top10 - l);
+  const rest = Math.max(0, 100 - top10);
+
+  const bands = [
+    { pct: l, cls: l >= 10 ? "bg-bad" : l >= 5 ? "bg-hot" : "bg-warn", name: "largest" },
+    { pct: nextNine, cls: "bg-warn/55", name: "next nine" },
+    { pct: rest, cls: "bg-line2", name: "everyone else" },
+  ];
 
   return (
     <div>
-      <div className="flex gap-[3px]" role="img" aria-label={`${c.fail} failed, ${c.warn} to watch, ${c.unknown} unknown, ${c.pass} passed`}>
-        {ordered.map((x, i) => (
-          <span
-            key={x.id}
-            title={`${x.label} — ${x.reading}`}
-            className="bar-grow h-[6px] flex-1"
-            style={{
-              backgroundColor: STATE_META[x.state].color,
-              opacity: x.state === "unknown" ? 0.55 : 1,
-              animationDelay: `${i * 45}ms`,
-            }}
+      <div className="flex h-2.5 w-full overflow-hidden bg-surf3">
+        {bands.map((b) => (
+          <div
+            key={b.name}
+            className={`${b.cls} grow-x`}
+            style={{ width: `${b.pct}%` }}
+            title={`${b.name}: ${b.pct.toFixed(1)}%`}
           />
         ))}
       </div>
-      <div className={`mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[9.5px] uppercase tracking-[0.09em] ${showLegend ? "" : "hidden"}`}>
-        {c.fail > 0 && <span className="text-bad-400">{c.fail} failed</span>}
-        {c.warn > 0 && <span className="text-warn-400">{c.warn} to watch</span>}
-        {c.unknown > 0 && <span className="text-mute-500">{c.unknown} unknown</span>}
-        {c.pass > 0 && <span className="text-ok-400">{c.pass} passed</span>}
-      </div>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ *
- * ConcentrationBar
- *
- * Three bands, labelled on the bar. The largest-wallet share is printed at
- * the band it describes, so no legend lookup is required.
- * ------------------------------------------------------------------ */
-
-export function ConcentrationBar({
-  top10,
-  largest,
-  linkedPct,
-}: {
-  top10: number | null;
-  largest: number | null;
-  linkedPct?: number | null;
-}) {
-  if (top10 === null || largest === null) {
-    return (
-      <p className="t-small text-mute-600">
-        Concentration unavailable — no holder list was returned for this chain
-      </p>
-    );
-  }
-
-  const largestR = Math.round(largest * 10) / 10;
-  const top10R = Math.round(top10 * 10) / 10;
-  const restOfTen = Math.max(0, Math.round((top10R - largestR) * 10) / 10);
-  const rest = Math.max(0, Math.round((100 - top10R) * 10) / 10);
-
-  const tone = largestR >= 10 ? "#ff2d55" : largestR >= 5 ? "#ffb020" : "#52525f";
-
-  return (
-    <div>
-      <div className="flex h-[34px] w-full overflow-hidden rounded-[1px]">
-        <div
-          className="relative flex items-center overflow-hidden pl-2"
-          style={{ width: `${largestR}%`, backgroundColor: tone, minWidth: largestR > 0 ? 26 : 0 }}
-          title={`largest single wallet ${largestR}%`}
-        >
-        </div>
-        <div
-          className="relative flex items-center justify-center overflow-hidden bg-warn-500/35"
-          style={{ width: `${restOfTen}%` }}
-          title={`other nine of the top 10 ${restOfTen}%`}
-        >
-        </div>
-        <div
-          className="relative flex items-center justify-end overflow-hidden bg-ink-650 pr-2"
-          style={{ width: `${rest}%` }}
-          title={`everyone else ${rest}%`}
-        >
-          <span className="truncate font-mono text-[10px] tabular-nums text-mute-500">
-            {rest}% everyone else
+      <div className="mt-1.5 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+        <span className="t-xs text-fg3">
+          largest <span className="t-mono text-bad">{l.toFixed(1)}%</span>
+        </span>
+        <span className="t-xs text-fg3">
+          next nine <span className="t-mono text-warn">{nextNine.toFixed(1)}%</span>
+        </span>
+        <span className="t-xs text-fg4">
+          everyone else <span className="t-mono">{rest.toFixed(1)}%</span>
+        </span>
+        {linked !== null && linked > 0 && (
+          <span className="t-xs text-hot">
+            linked by shared funding <span className="t-mono">{linked.toFixed(1)}%</span>
           </span>
-        </div>
+        )}
       </div>
-
-      <dl className="mt-2.5 grid grid-cols-3 gap-3">
-        <div>
-          <dt className="flex items-center gap-1.5 t-meta text-mute-600">
-            <span aria-hidden className="h-[3px] w-3 rounded-[1px]" style={{ backgroundColor: tone }} />
-            largest wallet
-          </dt>
-          <dd className="mt-0.5 font-mono text-[13px] tabular-nums text-lit-200">{largestR}%</dd>
-        </div>
-        <div>
-          <dt className="flex items-center gap-1.5 t-meta text-mute-600">
-            <span aria-hidden className="h-[3px] w-3 rounded-[1px] bg-warn-500/60" />
-            next nine
-          </dt>
-          <dd className="mt-0.5 font-mono text-[13px] tabular-nums text-lit-200">{restOfTen}%</dd>
-        </div>
-        <div>
-          <dt className="flex items-center gap-1.5 t-meta text-mute-600">
-            <span aria-hidden className="h-[3px] w-3 rounded-[1px] bg-ink-600" />
-            everyone else
-          </dt>
-          <dd className="mt-0.5 font-mono text-[13px] tabular-nums text-lit-200">{rest}%</dd>
-        </div>
-      </dl>
-
-      <p className="mt-2 t-meta text-mute-500">
-        top 10 combined{" "}
-        <span className="font-mono tabular-nums text-lit-100">{top10R}%</span>
-      </p>
-
-      {linkedPct !== null && linkedPct !== undefined && (
-        <p className="mt-2.5 t-meta text-mute-500">
-          Wallets sharing a funding source hold{" "}
-          <span className="font-mono tabular-nums text-lit-200">{linkedPct.toFixed(1)}%</span> between
-          them
-        </p>
-      )}
     </div>
   );
 }
 
 /* ------------------------------------------------------------------ *
- * HolderMap
+ * HolderMap — bubble per top holder, area proportional to share.
  *
- * The idea worth taking from Bubblemaps: concentration is spatial, not a
- * percentage in a column. Bubbles are sized by real share of supply and
- * packed deterministically, so the shape of the distribution is legible
- * before any number is read — one enormous bubble and a scattering of specks
- * says "one wallet owns this" faster than 19.8% does.
- *
- * Deliberately not a cluster graph: shared-funding tracing is not run on this
- * build (it is Solana-only and skipped past seven days), so drawing links
- * between wallets would be inventing the single most consequential thing on
- * the page. These are holders, drawn to scale, nothing more.
- *
- * Packing is deterministic — no random, no seeded jitter — so the server and
- * client render identical markup.
+ * Packing is deterministic: a golden-angle spiral placed by descending
+ * radius. Server and client render identical markup, and no two bubbles
+ * overlap because each is pushed out until it clears the ones before it.
  * ------------------------------------------------------------------ */
 
-function packBubbles(
-  items: { id: string; r: number }[],
-  box = 100,
-): { id: string; r: number; x: number; y: number }[] {
-  const placed: { id: string; r: number; x: number; y: number }[] = [];
-  for (const it of items) {
-    let spot: { x: number; y: number } | null = null;
-    for (let ring = 0; ring < 46 && !spot; ring++) {
-      const dist = ring * 2.1;
-      const steps = ring === 0 ? 1 : Math.max(6, ring * 8);
-      for (let s = 0; s < steps; s++) {
-        const a = (s / steps) * Math.PI * 2 + ring * 0.7;
-        const x = box / 2 + Math.cos(a) * dist;
-        const y = box / 2 + Math.sin(a) * dist;
-        if (x - it.r < 1 || x + it.r > box - 1) continue;
-        if (y - it.r < 1 || y + it.r > box - 1) continue;
-        if (placed.every((p) => Math.hypot(p.x - x, p.y - y) >= p.r + it.r + 0.9)) {
-          spot = { x, y };
-          break;
-        }
+type Bubble = { id: string; r: number; x: number; y: number };
+
+function packBubbles(items: { id: string; r: number }[]): Bubble[] {
+  const sorted = [...items].sort((a, b) => b.r - a.r);
+  const out: Bubble[] = [];
+  const GA = Math.PI * (3 - Math.sqrt(5));
+
+  for (const it of sorted) {
+    let placed = false;
+    for (let step = 0; step < 900 && !placed; step++) {
+      const t = step * 0.55;
+      const rad = it.r + 0.9 * Math.sqrt(t) * 3.2;
+      const ang = t * GA;
+      const x = 50 + Math.cos(ang) * rad;
+      const y = 50 + Math.sin(ang) * rad;
+      if (x - it.r < 1 || x + it.r > 99 || y - it.r < 1 || y + it.r > 99) continue;
+      const clash = out.some((o) => {
+        const d = Math.hypot(o.x - x, o.y - y);
+        return d < o.r + it.r + 0.5;
+      });
+      if (!clash) {
+        out.push({ id: it.id, r: it.r, x, y });
+        placed = true;
       }
     }
-    if (spot) placed.push({ ...it, ...spot });
   }
-  return placed;
+  return out;
 }
 
 export function HolderMap({
@@ -320,41 +130,41 @@ export function HolderMap({
 }: {
   rows: Holder[];
   selected: string | null;
-  onSelect: (address: string | null) => void;
+  onSelect: (a: string | null) => void;
 }) {
-  const usable = rows.filter((h) => (h.pct ?? 0) > 0);
+  const usable = rows.filter((h) => h.pct !== null && (h.pct ?? 0) > 0);
   if (usable.length === 0) {
     return (
-      <div className="grid h-[196px] place-items-center">
-        <p className="t-small text-mute-500">No holder shares to plot</p>
+      <div className="grid h-[168px] place-items-center">
+        <p className="t-xs text-fg4">No holder shares to draw</p>
       </div>
     );
   }
 
   const max = Math.max(...usable.map((h) => h.pct ?? 0));
-  // Area proportional to share, with no additive floor: r ∝ √pct. A floor makes
-  // small holders look similar to each other and quietly understates how much
-  // the top wallet dominates, which is the one thing this graphic exists to show.
+  // Area proportional, no additive floor: r ∝ √pct. A floor would make a 1.7%
+  // holder look 90% the size of a 2.5% one and understate concentration, which
+  // is the one thing this graphic exists to show.
   const bubbles = packBubbles(
-    usable.map((h) => ({
-      id: h.address,
-      r: 13 * Math.sqrt((h.pct ?? 0) / max),
-    })),
+    usable.map((h) => ({ id: h.address, r: 12.5 * Math.sqrt((h.pct ?? 0) / max) })),
   );
+
+  const byId = new Map(usable.map((h) => [h.address, h]));
 
   return (
     <svg
       viewBox="0 0 100 100"
-      className="h-[196px] w-full"
+      className="h-[168px] w-full"
       role="img"
       aria-label={`Top ${usable.length} holders drawn to scale; the largest holds ${max.toFixed(2)} percent`}
     >
       {bubbles.map((b) => {
-        const h = usable.find((r) => r.address === b.id);
+        const h = byId.get(b.id);
         if (!h) return null;
         const pct = h.pct ?? 0;
-        const tone = pct >= 10 ? "#ff2d55" : pct >= 5 ? "#ffb020" : "#52525f";
         const isSel = selected === b.id;
+        const tone =
+          pct >= 10 ? "#ff4d5e" : pct >= 5 ? "#ff8a3d" : pct >= 2 ? "#f7c14a" : "#4e5761";
         return (
           <g key={b.id}>
             <circle
@@ -362,23 +172,23 @@ export function HolderMap({
               cy={b.y}
               r={b.r}
               fill={tone}
-              fillOpacity={isSel ? 0.42 : 0.16}
-              stroke={isSel ? "#c6f24e" : tone}
-              strokeWidth={isSel ? 0.9 : 0.5}
-              strokeOpacity={isSel ? 1 : 0.85}
-              className="cursor-pointer transition-[fill-opacity] duration-150 hover:fill-opacity-30"
+              fillOpacity={isSel ? 0.95 : 0.72}
+              stroke={isSel ? "#c6ff43" : tone}
+              strokeWidth={isSel ? 0.9 : 0.35}
+              strokeOpacity={isSel ? 1 : 0.55}
+              className="cursor-pointer"
               onClick={() => onSelect(isSel ? null : b.id)}
             >
               <title>{`#${h.rank} — ${pct.toFixed(2)}% of supply`}</title>
             </circle>
-            {b.r >= 8 && (
+            {b.r >= 7.5 && (
               <text
                 x={b.x}
                 y={b.y}
                 textAnchor="middle"
                 dominantBaseline="central"
                 className="pointer-events-none select-none font-mono"
-                style={{ fontSize: 6.6, fill: "#f4f4f8", fontWeight: 600 }}
+                style={{ fontSize: 6.4, fill: "#08090b", fontWeight: 600 }}
               >
                 {pct.toFixed(1)}%
               </text>
@@ -391,10 +201,7 @@ export function HolderMap({
 }
 
 /* ------------------------------------------------------------------ *
- * HolderDetail
- *
- * The node profile, reduced to what is actually known about a holder here:
- * share, balance, and the provider's label if it gave one. No inferred role.
+ * HolderDetail — the node profile for a picked wallet.
  * ------------------------------------------------------------------ */
 
 export function HolderDetail({
@@ -406,88 +213,65 @@ export function HolderDetail({
   explorer: (a: string) => string;
   onClose: () => void;
 }) {
-  const pct = holder.pct ?? 0;
-  const tone = pct >= 10 ? "text-bad-400" : pct >= 5 ? "text-warn-400" : "text-mute-300";
-
   return (
-    <div className="rise border-t border-ink-800 bg-ink-900 px-4 py-3">
-      <div className="flex items-start justify-between gap-3">
+    <div className="border-t border-line bg-surf2 p-2.5">
+      <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="flex items-baseline gap-2">
-            <span className="font-mono text-[10px] tabular-nums text-mute-600">
-              #{holder.rank}
-            </span>
-            <a
-              href={explorer(holder.address)}
-              target="_blank"
-              rel="noreferrer"
-              title={holder.address}
-              className="break-all font-mono text-[11px] leading-snug text-lit-100 underline decoration-ink-600 underline-offset-2 hover:text-brand-400"
-            >
-              {holder.address}
-            </a>
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-mono text-[10px] text-fg4">#{holder.rank}</span>
+            {holder.label && (
+              <span className="font-mono text-[9px] uppercase tracking-[0.06em] text-warn">
+                {LABEL_WORD[holder.label] ?? holder.label}
+              </span>
+            )}
           </div>
-          {holder.label ? (
-            <p className="mt-1 t-meta text-mute-500">
-              Labelled <span className="text-mute-300">{holder.label}</span>
-              {holder.labelBasis ? ` — ${holder.labelBasis}` : ""}
-            </p>
-          ) : (
-            <p className="mt-1 t-meta text-mute-600">
-              No provider label. Unclassified is not the same as suspicious
-            </p>
-          )}
+          <a
+            href={explorer(holder.address)}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-0.5 block break-all font-mono text-[10px] leading-snug text-fg2 underline decoration-line2 underline-offset-2 hover:text-acid"
+          >
+            {holder.address}
+          </a>
         </div>
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close holder detail"
-          className="shrink-0 font-mono text-[13px] leading-none text-mute-600 transition hover:text-lit-100"
+          aria-label="Close"
+          className="shrink-0 px-1 text-[11px] text-fg4 hover:text-fg"
         >
-          ×
+          ✕
         </button>
       </div>
 
-      <dl className="mt-2.5 grid grid-cols-2 gap-3 border-t border-ink-800 pt-2.5">
+      <div className="mt-2 grid grid-cols-2 gap-x-3">
         <div>
-          <dt className="t-meta text-mute-600">share of supply</dt>
-          <dd className={`mt-0.5 font-mono text-[14px] tabular-nums ${tone}`}>
-            {holder.pct === null ? "—" : `${pct.toFixed(2)}%`}
-          </dd>
+          <div className="t-eyebrow">share of supply</div>
+          <div className="t-mono text-[13px] text-fg">
+            {holder.pct === null ? "—" : `${holder.pct.toFixed(2)}%`}
+          </div>
         </div>
         <div>
-          <dt className="t-meta text-mute-600">balance</dt>
-          <dd className="mt-0.5 font-mono text-[14px] tabular-nums text-lit-200">
+          <div className="t-eyebrow">balance</div>
+          <div className="t-mono text-[13px] text-fg">
             {holder.balance === null ? "—" : compact(holder.balance)}
-          </dd>
+          </div>
         </div>
-      </dl>
+      </div>
+
+      {holder.labelBasis && <p className="mt-1.5 t-xs leading-snug text-fg4">{holder.labelBasis}</p>}
+      {!holder.label && (
+        <p className="mt-1.5 t-xs leading-snug text-fg4">
+          No label from the provider. Unclassified is not the same as clean
+        </p>
+      )}
     </div>
   );
 }
 
 /* ------------------------------------------------------------------ *
- * HolderRows
- *
- * Static bars scaled to the largest holder, so the shape of the
- * distribution is legible at a glance. Balance and share share a baseline.
+ * HolderRows — the table.
  * ------------------------------------------------------------------ */
-
-function compact(n: number): string {
-  if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
-  if (n >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
-  if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
-  return n.toFixed(0);
-}
-
-const LABEL_WORD: Record<string, string> = {
-  pool: "pool",
-  burn: "burn",
-  exchange: "cex",
-  contract: "contract",
-  creator: "creator",
-  team: "team",
-};
 
 export function HolderRows({
   rows,
@@ -503,69 +287,74 @@ export function HolderRows({
   const max = rows.reduce((m, h) => Math.max(m, h.pct ?? 0), 0) || 1;
 
   return (
-    <ul className="divide-y divide-ink-850">
+    <div>
       {rows.map((h) => {
         const pct = h.pct ?? 0;
-        const w = Math.max(0.6, (pct / max) * 100);
-        const tone = pct >= 10 ? "#ff2d55" : pct >= 5 ? "#ffb020" : "#52525f";
+        const w = Math.max(0.7, (pct / max) * 100);
+        const tone = pct >= 10 ? "bg-bad" : pct >= 5 ? "bg-hot" : pct >= 2 ? "bg-warn" : "bg-line2";
         const isSel = selected === h.address;
 
         return (
-          <li
+          <div
             key={h.address}
-            className={`row-acid grid grid-cols-[20px_minmax(0,1fr)_auto_auto] items-center gap-x-3 py-[7px] pl-4 pr-4 transition-colors ${
-              isSel ? "bg-ink-850" : "hover:bg-ink-850/70"
-            } ${onSelect ? "cursor-pointer" : ""}`}
+            role={onSelect ? "button" : undefined}
+            tabIndex={onSelect ? 0 : undefined}
             onClick={() => onSelect?.(isSel ? null : h.address)}
+            onKeyDown={(e) => {
+              if (onSelect && (e.key === "Enter" || e.key === " ")) {
+                e.preventDefault();
+                onSelect(isSel ? null : h.address);
+              }
+            }}
+            data-active={isSel}
+            className={`drow grid grid-cols-[18px_minmax(0,1fr)_60px_58px] items-center gap-x-2.5 border-b border-line px-3 py-[7px] last:border-b-0 ${
+              onSelect ? "cursor-pointer" : ""
+            }`}
           >
-            <span className="font-mono text-[10px] tabular-nums text-mute-600">{h.rank}</span>
+            <span className="t-mono text-[9.5px] text-fg4">{h.rank}</span>
 
             <div className="min-w-0">
-              <div className="flex items-baseline gap-2">
+              <div className="flex items-baseline gap-1.5">
                 <a
                   href={explorer(h.address)}
                   target="_blank"
                   rel="noreferrer"
                   title={h.address}
                   onClick={(e) => e.stopPropagation()}
-                  className="truncate font-mono text-[11.5px] text-mute-300 transition-colors hover:text-lit-100"
+                  className="truncate font-mono text-[11px] text-fg2 transition-colors hover:text-acid"
                 >
-                  {h.address.slice(0, 8)}…{h.address.slice(-6)}
+                  {h.address.slice(0, 6)}…{h.address.slice(-4)}
                 </a>
                 {h.label && (
-                  <span className="shrink-0 font-mono text-[9px] uppercase tracking-[0.06em] text-mute-600">
+                  <span className="shrink-0 font-mono text-[8.5px] uppercase tracking-[0.05em] text-fg4">
                     {LABEL_WORD[h.label] ?? h.label}
                   </span>
                 )}
               </div>
-              <div className="mt-[5px] h-[2px] w-full overflow-hidden bg-ink-800">
-                <div className="bar-grow h-full" style={{ width: `${w}%`, backgroundColor: tone }} />
+              <div className="mt-[4px] h-[2px] w-full overflow-hidden bg-surf3">
+                <div className={`h-full ${tone}`} style={{ width: `${w}%` }} />
               </div>
             </div>
 
             <span
-              className={`text-right font-mono text-[12px] tabular-nums ${
-                pct >= 10 ? "text-bad-400" : pct >= 5 ? "text-warn-400" : "text-mute-300"
+              className={`text-right t-mono text-[11.5px] tabular-nums ${
+                pct >= 10 ? "text-bad" : pct >= 5 ? "text-hot" : "text-fg2"
               }`}
             >
               {h.pct === null ? "—" : `${pct.toFixed(2)}%`}
             </span>
-            <span className="text-right font-mono text-[10px] tabular-nums text-mute-600">
+            <span className="text-right t-mono text-[10px] tabular-nums text-fg4">
               {h.balance === null ? "" : compact(h.balance)}
             </span>
-          </li>
+          </div>
         );
       })}
-    </ul>
+    </div>
   );
 }
 
 /* ------------------------------------------------------------------ *
- * ExitCurve
- *
- * Price impact against position size, plotted from the constant-product
- * estimate. Three marks: what you can sell before 1%, before 5%, and the
- * depth ceiling. A bar chart of the same numbers says less.
+ * ExitCurve — what you can sell before the price moves against you.
  * ------------------------------------------------------------------ */
 
 export function ExitCurve({
@@ -579,93 +368,40 @@ export function ExitCurve({
 }) {
   if (maxSell5pct === null) {
     return (
-      <p className="t-small leading-relaxed text-mute-500">
+      <p className="t-xs leading-relaxed text-fg4">
         Pool reserves could not be read, so exit depth cannot be estimated
       </p>
     );
   }
 
-  const ceiling = maxSell5pct;
-  const fmt = (n: number) =>
-    n >= 1e6 ? `$${(n / 1e6).toFixed(2)}M` : n >= 1e3 ? `$${(n / 1e3).toFixed(1)}K` : `$${n.toFixed(0)}`;
-
-  // impact curve: x = size, y = slippage, constant product approximation
-  const W = 100;
-  const H = 44;
-  const points: string[] = [];
-  const samples = 48;
-  for (let i = 0; i <= samples; i++) {
-    const frac = (i / samples) * 1.6; // up to 160% of the 5% ceiling
-    const x = frac / 1.6;
-    // s = x / (1 - x) for a linear-invariant pool
-    const slip = frac >= 0.98 ? 1 : frac / (1 - frac);
-    const y = Math.min(1, slip / 0.4);
-    points.push(`${(x * W).toFixed(2)},${(H - y * H).toFixed(2)}`);
-  }
+  const rows = [
+    { label: "1% slippage", value: maxSell1pct, tone: "text-good", bar: "bg-good" },
+    { label: "5% slippage", value: maxSell5pct, tone: "text-warn", bar: "bg-warn" },
+  ];
+  const scale = Math.max(maxSell5pct, maxSell1pct ?? 0) || 1;
 
   return (
-    <div>
-      <div className="relative">
-        <svg
-          viewBox={`0 0 ${W} ${H}`}
-          preserveAspectRatio="none"
-          className="h-[74px] w-full"
-          role="img"
-          aria-label={`Selling ${fmt(ceiling)} moves the price 5 percent; a position under ${fmt(maxSell1pct ?? ceiling / 5)} moves it about 1 percent.`}
-        >
-          <defs>
-            <linearGradient id="exitFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#ff6a1f" stopOpacity="0.22" />
-              <stop offset="100%" stopColor="#ff6a1f" stopOpacity="0.01" />
-            </linearGradient>
-          </defs>
-          <polygon points={`0,${H} ${points.join(" ")} ${W},${H}`} fill="url(#exitFill)" />
-          <polyline
-            points={points.join(" ")}
-            fill="none"
-            stroke="#ff6a1f"
-            strokeWidth="1.1"
-            vectorEffect="non-scaling-stroke"
-          />
-          {/* the 5% line */}
-          <line
-            x1="0"
-            y1={H * 0.5}
-            x2={W}
-            y2={H * 0.5}
-            stroke="#2e2e38"
-            strokeWidth="0.6"
-            strokeDasharray="2 2"
-            vectorEffect="non-scaling-stroke"
-          />
-        </svg>
-        <span className="absolute left-0 top-[6px] font-mono text-[9px] uppercase tracking-[0.08em] text-mute-600">
-          price impact
-        </span>
-        <span className="absolute bottom-0 right-0 font-mono text-[9px] uppercase tracking-[0.08em] text-mute-600">
-          position size →
-        </span>
-      </div>
-
-      <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-ink-800 pt-3">
-        <div>
-          <dt className="t-meta text-mute-600">before 1% impact</dt>
-          <dd className="mt-0.5 font-mono text-[15px] tabular-nums text-lit-100">
-            {maxSell1pct === null ? "—" : fmt(maxSell1pct)}
-          </dd>
+    <div className="space-y-2">
+      {rows.map((r) => (
+        <div key={r.label}>
+          <div className="flex items-baseline justify-between">
+            <span className="t-xs text-fg4">{r.label}</span>
+            <span className={`t-mono text-[12px] ${r.tone}`}>
+              {r.value === null ? "—" : `$${Math.round(r.value).toLocaleString("en-US")}`}
+            </span>
+          </div>
+          <div className="mt-1 h-[3px] w-full bg-surf3">
+            <div
+              className={`grow-x h-full ${r.bar}`}
+              style={{ width: `${((r.value ?? 0) / scale) * 100}%` }}
+            />
+          </div>
         </div>
-        <div>
-          <dt className="t-meta text-mute-600">before 5% impact</dt>
-          <dd className="mt-0.5 font-mono text-[15px] tabular-nums text-risk-400">
-            {fmt(ceiling)}
-          </dd>
-        </div>
-      </dl>
-
+      ))}
       {liquidityUsd !== null && (
-        <p className="mt-2 t-meta text-mute-600">
-          Constant-product estimate on {fmt(liquidityUsd)} of pooled liquidity. Single pool,
-          no routing or MEV
+        <p className="t-xs leading-relaxed text-fg4">
+          Pool holds <span className="t-mono text-fg3">${liquidityUsd.toLocaleString("en-US")}</span> in
+          total. These figures are an estimate from reserves, not a quote
         </p>
       )}
     </div>
@@ -673,10 +409,7 @@ export function ExitCurve({
 }
 
 /* ------------------------------------------------------------------ *
- * FlowBar
- *
- * Buy/sell split as a single continuous bar with the two figures anchored
- * to their own side, so the comparison is positional rather than numeric.
+ * FlowBar — buy vs sell volume.
  * ------------------------------------------------------------------ */
 
 export function FlowBar({
@@ -692,107 +425,194 @@ export function FlowBar({
   buys: number | null;
   sells: number | null;
 }) {
-  if (buyVol === null || sellVol === null || buyVol + sellVol === 0) {
-    return (
-      <div>
-        <p className="t-small leading-relaxed text-mute-500">
-          The trade tape did not return a volume split, so pressure cannot be measured
-        </p>
-        {(buys !== null || sells !== null) && (
-          <p className="mt-1.5 t-meta text-mute-600">
-            {buys ?? 0} buys and {sells ?? 0} sells were counted; their sizes were not reported
-          </p>
-        )}
-      </div>
-    );
+  const total = (buyVol ?? 0) + (sellVol ?? 0);
+  if (total === 0) {
+    return <p className="t-xs text-fg4">No trade volume in the window</p>;
   }
-
-  const total = buyVol + sellVol;
-  const buyPct = (buyVol / total) * 100;
-  const tone = imbalance === null ? "#52525f" : imbalance > 0.15 ? "#1fd1a0" : imbalance < -0.2 ? "#ff2d55" : "#ffb020";
-
-  const fmt = (n: number) =>
-    n >= 1e6 ? `$${(n / 1e6).toFixed(2)}M` : n >= 1e3 ? `$${(n / 1e3).toFixed(1)}K` : `$${n.toFixed(0)}`;
+  const buyPct = ((buyVol ?? 0) / total) * 100;
 
   return (
     <div>
-      <div className="flex items-baseline justify-between">
-        <div>
-          <div className="t-meta text-mute-600">bought</div>
-          <div className="mt-0.5 font-mono text-[15px] tabular-nums text-ok-400">{fmt(buyVol)}</div>
-        </div>
-        <div className="text-right">
-          <div className="t-meta text-mute-600">sold</div>
-          <div className="mt-0.5 font-mono text-[15px] tabular-nums text-bad-400">{fmt(sellVol)}</div>
-        </div>
+      <div className="flex h-2 w-full overflow-hidden bg-surf3">
+        <div className="bg-good" style={{ width: `${buyPct}%` }} />
+        <div className="bg-bad" style={{ width: `${100 - buyPct}%` }} />
       </div>
-
-      <div className="mt-2.5 flex h-[6px] w-full overflow-hidden">
-        <div className="bar-grow bg-ok-500/80" style={{ width: `${buyPct}%` }} />
-        <div className="bar-grow flex-1 bg-bad-500/70" />
-      </div>
-
-      <div className="mt-2 flex items-baseline justify-between">
-        <span className="font-mono text-[10px] tabular-nums text-mute-500">
-          {buyPct.toFixed(1)}% / {(100 - buyPct).toFixed(1)}%
+      <div className="mt-1.5 flex items-baseline justify-between">
+        <span className="t-xs text-good">
+          buy <span className="t-mono">{buys ?? "—"}</span>
         </span>
-        {imbalance !== null && (
-          <span className="font-mono text-[10px] tabular-nums" style={{ color: tone }}>
-            net {imbalance > 0 ? "+" : ""}
-            {(imbalance * 100).toFixed(0)}%
-          </span>
-        )}
+        <span className="t-mono text-[11px] text-fg3">
+          {imbalance === null ? "" : `${imbalance > 0 ? "+" : ""}${(imbalance * 100).toFixed(0)}%`}
+        </span>
+        <span className="t-xs text-bad">
+          sell <span className="t-mono">{sells ?? "—"}</span>
+        </span>
       </div>
-
-      {(buys !== null || sells !== null) && (
-        <p className="mt-2 t-meta text-mute-600">
-          {buys ?? 0} buys · {sells ?? 0} sells in the sampled tape
-        </p>
-      )}
     </div>
   );
 }
 
 /* ------------------------------------------------------------------ *
- * CoverageDial — how much of the expected evidence actually arrived.
+ * FollowerEntryChart — when followers bought, relative to the post.
+ *
+ * The whole coordination argument is in the shape: if the tall bars sit to
+ * the left of the divider, those wallets were positioned before the post.
  * ------------------------------------------------------------------ */
 
-export function Meter({
-  label,
-  value,
-  hint,
+export function FollowerEntryChart({
+  buckets,
+  postIndex,
 }: {
-  label: string;
-  value: number | null;
-  hint?: string;
+  buckets: { label: string; pct: number }[];
+  postIndex: number;
 }) {
-  if (value === null) {
-    return <p className="t-meta text-mute-600">{label} not measured</p>;
-  }
-
-  const pct = Math.max(0, Math.min(100, value));
-  // Text tones are the lighter ramp step: the 500-level red on ink-950 falls
-  // just under AA, so the 400-level carries the number.
-  const tone = pct >= 80 ? "#4ee8bd" : pct >= 50 ? "#ffc857" : "#ff6383";
+  const max = Math.max(...buckets.map((b) => b.pct), 1);
 
   return (
     <div>
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="t-meta text-mute-600">{label}</span>
-        <span className="font-mono text-[12px] tabular-nums" style={{ color: tone }}>
-          {pct.toFixed(0)}%
-        </span>
+      <div className="flex h-[64px] items-end gap-[3px]">
+        {buckets.map((b, i) => {
+          const h = Math.max(3, (b.pct / max) * 100);
+          const before = i < postIndex;
+          return (
+            <div
+              key={b.label}
+              className={`w-full ${before ? "bg-info/70" : "bg-acid/70"}`}
+              style={{ height: `${h}%` }}
+              title={`${b.label}: ${b.pct}% of follower wallets`}
+            />
+          );
+        })}
       </div>
-      <div className="mt-1.5 flex h-[3px] w-full gap-[2px] overflow-hidden">
-        {Array.from({ length: 20 }).map((_, i) => (
-          <span
-            key={i}
-            className="flex-1"
-            style={{ backgroundColor: i < Math.round(pct / 5) ? tone : "#24242c" }}
-          />
-        ))}
+      <div className="mt-1 flex items-center justify-between border-t border-line pt-1">
+        <span className="t-xs text-info">before the post</span>
+        <span className="t-xs text-acid">after the post</span>
       </div>
-      {hint && <p className="mt-1.5 t-meta text-mute-600">{hint}</p>}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Timeline — the sequence, as timestamped events.
+ * ------------------------------------------------------------------ */
+
+export function Timeline({
+  events,
+}: {
+  events: { t: number; kind: string; text: string; wallets?: string[] }[];
+}) {
+  return (
+    <ol>
+      {events.map((e, i) => {
+        const tone =
+          e.kind === "post"
+            ? "bg-acid"
+            : e.kind === "distribute"
+              ? "bg-bad"
+              : e.kind === "surge"
+                ? "bg-hot"
+                : e.kind === "accumulate"
+                  ? "bg-info"
+                  : "bg-line2";
+        return (
+          <li key={`${e.t}-${i}`} className="relative flex gap-2.5 pb-2.5 last:pb-0">
+            <div className="relative flex w-3 shrink-0 justify-center">
+              <span className={`mt-[5px] h-[5px] w-[5px] shrink-0 ${tone}`} aria-hidden />
+              {i < events.length - 1 && (
+                <span
+                  aria-hidden
+                  className="absolute left-1/2 top-[13px] h-full w-px -translate-x-1/2 bg-line"
+                />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline gap-2">
+                <span className="shrink-0 t-mono text-[9.5px] tabular-nums text-fg4">
+                  {e.t === 0 ? "T+0" : e.t > 0 ? `T+${e.t}m` : `T−${Math.abs(e.t)}m`}
+                </span>
+                {e.kind === "post" && (
+                  <span className="font-mono text-[8.5px] uppercase tracking-[0.07em] text-acid">post</span>
+                )}
+              </div>
+              <p className="mt-0.5 t-xs leading-snug text-fg3">{e.text}</p>
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Sparkline — a small trend, no axes.
+ * ------------------------------------------------------------------ */
+
+export function Sparkline({
+  values,
+  tone = "acid",
+}: {
+  values: number[];
+  tone?: "acid" | "bad" | "good";
+}) {
+  if (values.length < 2) return null;
+  const max = Math.max(...values);
+  const min = Math.min(...values);
+  const range = max - min || 1;
+  const pts = values
+    .map((v, i) => `${(i / (values.length - 1)) * 100},${100 - ((v - min) / range) * 92 - 4}`)
+    .join(" ");
+  const color = tone === "bad" ? "#ff4d5e" : tone === "good" ? "#34e0a1" : "#c6ff43";
+
+  return (
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="h-8 w-full" aria-hidden>
+      <polyline
+        points={pts}
+        fill="none"
+        stroke={color}
+        strokeWidth="1.4"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * TabBar — underline on the panel baseline.
+ * ------------------------------------------------------------------ */
+
+export function TabBar({
+  tabs,
+  active,
+  onChange,
+}: {
+  tabs: { id: string; label: string; hint?: string }[];
+  active: string;
+  onChange: (id: string) => void;
+}) {
+  return (
+    <div
+      role="tablist"
+      aria-label="Sections"
+      className="no-bar flex gap-4 overflow-x-auto border-b border-line px-3"
+    >
+      {tabs.map((t) => (
+        <button
+          key={t.id}
+          role="tab"
+          type="button"
+          aria-selected={active === t.id}
+          id={`tab-${t.id}`}
+          aria-controls={`panel-${t.id}`}
+          onClick={() => onChange(t.id)}
+          title={t.hint}
+          className="relative shrink-0 whitespace-nowrap py-2 font-mono text-[10.5px] uppercase tracking-[0.06em] text-fg4 transition-colors hover:text-fg2 aria-[selected=true]:text-fg"
+        >
+          {t.label}
+          {active === t.id && (
+            <span aria-hidden className="absolute inset-x-0 -bottom-px h-[2px] bg-acid" />
+          )}
+        </button>
+      ))}
     </div>
   );
 }

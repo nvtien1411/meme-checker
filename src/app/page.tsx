@@ -1,295 +1,239 @@
-import { Suspense } from "react";
 import Link from "next/link";
-import { SearchBar } from "@/components/SearchBar";
-import { LiveSample, LiveSampleSkeleton } from "@/components/HeroReport";
-import { ChainMark } from "@/components/ChainMark";
-import { CHAINS } from "@/lib/chains";
+import { ScanInput } from "@/components/ScanInput";
+import { PageHead } from "@/components/Shell";
+import { Demo, Panel, RiskDot, Tag } from "@/components/ui";
+import { DEMO_CALLERS, DEMO_RUGS, DEMO_TOKENS } from "@/lib/demo";
+import { fmtUsd } from "@/lib/http";
 
 /* ==================================================================== *
- * LANDING
+ * SCANNER — the operational homepage
  *
- * The previous landing was a two-column hero — headline left, small card
- * right — over a strip of four stat boxes. That composition is the default
- * of every generated SaaS page, which is why it read as generic no matter
- * how the type was set.
+ * Not a landing page. There is no hero, no value proposition, no gradient
+ * banner. The product is a field you paste into, followed by everything you
+ * would otherwise have to open a second tab to see: what is moving, what
+ * just died, who is calling what.
  *
- * This version is built around a single idea: the product is a scanner, so
- * the input is the composition. The headline runs to the full measure, the
- * CA field sits directly beneath it as the largest control on the page, and
- * the evidence panel is deliberately offset rather than mirrored. Below
- * that, the page is a document — numbered sections, rules, no cards.
+ * The order is the order a trader works in: input → what is hot → what broke
+ * → who is talking. Each block is a rail into a deeper workspace, so the
+ * homepage is the top of a funnel rather than a wall.
  * ==================================================================== */
 
-const CHECKS = [
-  {
-    q: "Can you sell it?",
-    d: "Honeypot simulation on EVM, freeze authority on Solana. A token you cannot exit is not a position, it is a donation",
-  },
-  {
-    q: "Is the supply fixed?",
-    d: "A live mint is a dilution switch pointed at your entry. Graded harder on tokens under 30 days old",
-  },
-  {
-    q: "Can the liquidity be pulled?",
-    d: "The classic rug, expressed as one percentage: how much of the pool is locked or burned",
-  },
-  {
-    q: "Does one wallet hold too much?",
-    d: "Largest holder after removing pools, burns and exchange wallets — the seller who can move price against you",
-  },
-  {
-    q: "Is the supply one entity in disguise?",
-    d: "Wallets sharing a funding source are merged and counted once. Ten addresses from one wallet is one wallet",
-  },
-  {
-    q: "Has the creator done this before?",
-    d: "Every prior launch from the deployer wallet, and how each one ended. The strongest on-chain predictor there is",
-  },
-  {
-    q: "Is the trading real?",
-    d: "Buy and sell pressure by dollar volume, not transaction count. Wash trading inflates counts, not capital",
-  },
-  {
-    q: "Can you actually get out?",
-    d: "How much you can sell before price impact eats the position, from pool reserves",
-  },
-];
+export const metadata = { title: "Scanner" };
 
-export default function Home() {
+export default function HomePage() {
+  const hot = [...DEMO_TOKENS].sort((a, b) => b.vol24 / b.liq - a.vol24 / a.liq).slice(0, 5);
+  // Fresh excludes what is already listed above — the same token in two tables
+  // in one viewport spends space without adding a decision.
+  const hotMints = new Set(hot.map((t) => t.mint));
+  const fresh = DEMO_TOKENS.filter((t) => !hotMints.has(t.mint)).sort((a, b) => a.ageHours - b.ageHours);
+  const rugs = DEMO_RUGS.slice(0, 4);
+  const callers = [...DEMO_CALLERS].sort((a, b) => b.smartFollowers - a.smartFollowers).slice(0, 4);
+
   return (
     <div>
-      {/* ---------------------------------------------------------------- *
-       * HERO
-       * ---------------------------------------------------------------- */}
-      <section className="border-b border-ink-800">
-        <div className="grid grid-cols-1 gap-y-10 px-4 pb-10 pt-9 sm:px-6 lg:grid-cols-[minmax(0,1fr)_372px] lg:gap-x-14 lg:px-8 lg:pb-12 lg:pt-12">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
-              <span className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-mute-400">
-                on-chain risk intelligence
-              </span>
-              <span aria-hidden className="h-[3px] w-[3px] shrink-0 bg-ink-600" />
-              <ul className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                {CHAINS.map((c) => (
-                  <li key={c.id} className="flex items-center gap-1.5">
-                    <ChainMark chain={c.id} size={12} />
-                    <span
-                      className="font-mono text-[9.5px] uppercase tracking-[0.12em]"
-                      style={{ color: `color-mix(in srgb, ${c.tint} 62%, var(--color-mute-400))` }}
-                    >
-                      {c.short}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+      <PageHead
+        title="Scanner"
+        note="paste a contract, or start from what is moving"
+        right={
+          <>
+            <Demo />
+            <Tag tone="neutral">9 chains</Tag>
+          </>
+        }
+      />
 
-            <h1 className="mt-5 max-w-[17ch] t-hero text-lit-50">
-              Find out what could
-              <br />
-              <em className="not-italic text-bad-400">cost you money</em>
-              <br />
-              before you buy
-            </h1>
-
-            <p className="mt-4 max-w-[600px] t-body leading-relaxed text-mute-400">
-              Paste a contract address and get eight checks in the order that matters, each one
-              carrying the number behind it and the source it came from. What we cannot verify is
-              marked <span className="font-mono text-[12px] text-lit-200">unknown</span> — it never
-              quietly becomes a pass
-            </p>
-
-            {/* the console: the largest control on the page, on purpose */}
-            <div className="mt-7 max-w-[600px]">
-              <SearchBar size="lg" autoFocus />
-            </div>
-
-            <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-2.5 border-t border-ink-800 pt-4">
-              {[
-                ["8", "checks"],
-                ["5", "chains"],
-                ["0", "API keys"],
-                ["~3s", "typical"],
-              ].map(([n, label]) => (
-                <div key={label} className="flex items-baseline gap-1.5">
-                  <span className="font-mono text-[14px] tabular-nums text-lit-100">{n}</span>
-                  <span className="t-meta text-mute-600">{label}</span>
-                </div>
-              ))}
-              <span className="ml-auto font-mono text-[9px] uppercase tracking-[0.1em] text-mute-600">
-                research tool · not a signal service
-              </span>
-            </div>
-          </div>
-
-          {/* offset evidence panel */}
-          <div className="min-w-0 lg:pt-2">
-            <div className="mb-2.5 flex items-baseline justify-between">
-              <span className="t-label">live sample</span>
-              <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-mute-600">
-                bonk
-              </span>
-            </div>
-            <Suspense fallback={<LiveSampleSkeleton />}>
-              <LiveSample />
-            </Suspense>
-            <p className="mt-2 t-meta leading-relaxed text-mute-600">
-              Run against the live pipeline on every page load, for BONK. If a source fails this
-              says so instead of filling the gap
+      <div className="space-y-3 p-3 sm:p-4">
+        {/* ---------------- scan ---------------- */}
+        <section className="panel">
+          <div className="border-b border-line px-3 py-2">
+            <h2 className="t-section text-fg">Check a token</h2>
+            <p className="mt-0.5 t-xs text-fg4">
+              Every check carries the number behind it and the source it came from. What cannot be
+              verified is marked unknown — it never becomes a pass
             </p>
           </div>
-        </div>
-      </section>
+          <div className="p-3">
+            <ScanInput autoFocus />
+          </div>
+        </section>
 
-      {/* ---------------------------------------------------------------- *
-       * THE EIGHT CHECKS — a numbered ledger, not a feature grid
-       * ---------------------------------------------------------------- */}
-      <section className="px-4 py-12 sm:px-6 lg:px-8">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="t-display text-lit-50">What gets checked</h2>
-          <Link
-            href="/faq"
-            className="group inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-mute-500 transition-colors hover:text-lit-100"
+        {/* ---------------- hot ---------------- */}
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+          <Panel
+            title="Moving now"
+            note="volume against liquidity, highest first"
+            flush
+            right={
+              <Link href="/discover" className="text-acid hover:underline">
+                discover →
+              </Link>
+            }
           >
-            thresholds and blind spots
-            <span aria-hidden className="transition-transform group-hover:translate-x-0.5">
-              →
-            </span>
-          </Link>
-        </div>
-
-        <dl className="mt-6 grid grid-cols-2 gap-px border border-ink-800 bg-ink-800 sm:grid-cols-4">
-          {[
-            ["pass", "inside the band", "text-ok-400", "bg-ok-500"],
-            ["watch", "between bands", "text-warn-400", "bg-warn-500"],
-            ["fail", "outside the band", "text-bad-400", "bg-bad-500"],
-            ["unknown", "no data — not a pass", "text-mute-400", "bg-ink-500"],
-          ].map(([word, note, cls, dot]) => (
-            <div key={word} className="bg-ink-950 px-3.5 py-2.5">
-              <dt className="flex items-center gap-1.5">
-                <span aria-hidden className={`h-1 w-1 ${dot}`} />
-                <span className={`font-mono text-[9.5px] uppercase tracking-[0.1em] ${cls}`}>
-                  {word}
-                </span>
-              </dt>
-              <dd className="mt-1 t-meta text-mute-600">{note}</dd>
+            <div className="flex items-baseline gap-1.5 border-b border-line bg-surf2/30 px-3 py-1">
+              <span className="t-xs text-fg4">risk score, 0 clean to 100 critical — higher is worse</span>
             </div>
-          ))}
-        </dl>
-
-        <ol className="mt-7 grid grid-cols-1 gap-x-14 border-t border-ink-800 sm:grid-cols-2">
-          {CHECKS.map((c, i) => (
-            <li key={c.q} className="flex gap-4 border-b border-ink-800 py-4">
-              <span className="mt-[3px] w-6 shrink-0 font-mono text-[10px] tabular-nums tracking-[0.08em] text-brand-600">
-                {String(i + 1).padStart(2, "0")}
-              </span>
-              <div className="min-w-0">
-                <p className="t-body-strong text-lit-100">{c.q}</p>
-                <p className="mt-1.5 max-w-[52ch] t-small leading-relaxed text-mute-500">{c.d}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      {/* ---------------------------------------------------------------- *
-       * WHAT IT WILL NOT DO — the honesty block, in three columns
-       * ---------------------------------------------------------------- */}
-      <section className="border-y border-ink-800 bg-ink-925 px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-x-14 gap-y-8 lg:grid-cols-[minmax(0,300px)_minmax(0,1fr)]">
-          <div>
-            <h2 className="t-display text-lit-50">
-              What this
-              <br />
-              will not do
-            </h2>
-            <p className="mt-3 max-w-[34ch] t-small leading-relaxed text-mute-500">
-              The limits are part of the product. A tool that hides them is selling confidence,
-              not evidence
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-x-10 gap-y-6 sm:grid-cols-2">
-            {[
-              ["Predict price", "There is no forecast here and no target. It reports which rules a contract breaks."],
-              ["Call something safe", "Passing eight checks is a floor. Tokens that passed every check have still gone to zero."],
-              ["Fill gaps with guesses", "Missing data is shown as unknown, excluded from the score, and never counted as a pass."],
-              ["Invent wallet labels", "A wallet is only called a pool, a burn or an exchange when the provider says so."],
-            ].map(([t, d]) => (
-              <div key={t} className="border-l border-ink-700 pl-4">
-                <p className="t-body-strong text-lit-100">{t}</p>
-                <p className="mt-1.5 t-small leading-relaxed text-mute-500">{d}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ---------------------------------------------------------------- *
-       * HOW IT WORKS
-       * ---------------------------------------------------------------- */}
-      <section className="px-4 py-12 sm:px-6 lg:px-8">
-        <h2 className="t-display text-lit-50">How a check runs</h2>
-        <div className="mt-7 grid grid-cols-1 gap-x-10 border-t border-ink-800 sm:grid-cols-3">
-          {[
-            ["Paste the address", "The contract address, not the ticker. Chain is detected, or you pick one to skip the lookup."],
-            ["Every source is read", "DexScreener, GeckoTerminal, RugCheck, GoPlus and a Solana RPC. Each call is timed and listed, including the ones that failed."],
-            ["Read the failures first", "Checks are ordered worst-first. Open any row for the reading, its source, and what would change the answer."],
-          ].map(([t, d], i) => (
-            <div key={t} className="border-b border-ink-800 py-5 sm:border-b-0 sm:border-r sm:pr-8 sm:last:border-r-0">
-              <span className="font-mono text-[10px] tabular-nums tracking-[0.08em] text-mute-600">
-                0{i + 1}
-              </span>
-              <p className="mt-2 t-body-strong text-lit-100">{t}</p>
-              <p className="mt-1.5 t-small leading-relaxed text-mute-500">{d}</p>
+            <div className="grid grid-cols-[minmax(0,1fr)_repeat(2,minmax(0,72px))_56px] items-baseline gap-x-3 border-b border-line px-3 py-1">
+              <span className="t-eyebrow">token</span>
+              <span className="t-eyebrow text-right">mcap</span>
+              <span className="t-eyebrow text-right">vol/liq</span>
+              <span className="t-eyebrow text-right">risk</span>
             </div>
-          ))}
-        </div>
-      </section>
+            {hot.map((t) => {
+              const vp = t.vol24 / t.liq;
+              return (
+                <Link
+                  key={t.mint}
+                  href={`/token/${t.chain}/${t.mint}`}
+                  className="drow grid grid-cols-[minmax(0,1fr)_repeat(2,minmax(0,72px))_56px] items-center gap-x-3 border-b border-line px-3 py-1.5 last:border-b-0"
+                >
+                  <div className="flex min-w-0 items-baseline gap-1.5">
+                    <span className="truncate t-strong text-fg">{t.symbol}</span>
+                    <span className="shrink-0 t-xs text-fg4">{t.chain}</span>
+                    <span className="shrink-0 t-xs text-fg4">· {t.ageHours}h</span>
+                  </div>
+                  <span className="text-right t-mono text-[11.5px] text-fg2">{fmtUsd(t.mcap)}</span>
+                  <span
+                    className={`text-right t-mono text-[11.5px] ${
+                      vp > 8 ? "text-hot" : vp > 3 ? "text-warn" : "text-fg3"
+                    }`}
+                  >
+                    {vp.toFixed(1)}×
+                  </span>
+                  <span className="flex items-center justify-end gap-1.5">
+                    <span className="t-mono text-[10.5px] tabular-nums text-fg3">{t.score}</span>
+                    <RiskDot risk={t.risk} />
+                  </span>
+                </Link>
+              );
+            })}
+          </Panel>
 
-      {/* ---------------------------------------------------------------- *
-       * CLOSING
-       * ---------------------------------------------------------------- */}
-      <section className="border-t border-ink-800 px-4 py-14 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 items-end gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,520px)]">
-          <div>
-            <h2 className="max-w-[16ch] t-display text-lit-50">
-              Check one before the chart does it for you
-            </h2>
-            <p className="mt-3 max-w-[46ch] t-small leading-relaxed text-mute-500">
-              No signup, no wallet connection, no key. The same eight checks run on every token,
-              on every chain we support
-            </p>
-          </div>
-          <div>
-            <SearchBar size="sm" />
-          </div>
-        </div>
-      </section>
-
-      <footer className="border-t border-ink-800 px-4 py-6 sm:px-6 lg:px-8">
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-mute-600">
-            meme checker — research aid, not financial advice
-          </span>
-          <div className="ml-auto flex flex-wrap gap-x-5 gap-y-1">
-            {[
-              ["/faq", "method"],
-              ["/pricing", "plans"],
-              ["/check", "checker"],
-              ["https://t.me/", "telegram ↗"],
-            ].map(([href, label]) => (
+          <Panel title="Fresh launches" note="newest first" flush>
+            {fresh.map((t) => (
               <Link
-                key={label}
-                href={href}
-                className="font-mono text-[9px] uppercase tracking-[0.1em] text-mute-600 transition-colors hover:text-lit-200"
+                key={t.mint}
+                href={`/token/${t.chain}/${t.mint}`}
+                className="drow grid grid-cols-[minmax(0,1fr)_48px_52px] items-center gap-x-2.5 border-b border-line px-3 py-1.5 last:border-b-0"
               >
-                {label}
+                <span className="truncate t-strong text-fg">{t.symbol}</span>
+                <span className="text-right t-mono text-[10px] text-fg4">{t.ageHours}h</span>
+                <span className="flex items-center justify-end gap-1">
+                  <span className="t-mono text-[10px] tabular-nums text-fg3">{t.score}</span>
+                  <RiskDot risk={t.risk} />
+                </span>
               </Link>
             ))}
-          </div>
+            {fresh.length === 0 && (
+              <p className="px-3 py-2 t-xs text-fg4">Every tracked token is already listed above</p>
+            )}
+          </Panel>
         </div>
-      </footer>
+
+        {/* ---------------- rugs + callers ---------------- */}
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+          <Panel
+            title="Recently rugged"
+            note="confirmed collapses, with the signal that fired"
+            flush
+            right={
+              <Link href="/rugs" className="text-acid hover:underline">
+                database →
+              </Link>
+            }
+          >
+            {rugs.map((r) => (
+              <div key={r.mint} className="border-b border-line px-3 py-2 last:border-b-0">
+                <div className="flex flex-wrap items-baseline gap-x-2">
+                  <span className="t-strong text-fg">{r.symbol}</span>
+                  <Tag
+                    tone={r.flag === "confirmed" ? "bad" : r.flag === "reported" ? "hot" : "warn"}
+                  >
+                    {r.flag}
+                  </Tag>
+                  <span className="ml-auto t-mono text-[10.5px] text-bad">
+                    −{r.drawdownPct.toFixed(1)}%
+                  </span>
+                </div>
+                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <span className="t-xs text-fg4">peak {fmtUsd(r.peakMc)}</span>
+                  <span aria-hidden className="h-2.5 w-px bg-line" />
+                  <span className="t-xs text-fg3">{r.signals[0]}</span>
+                  <span className="t-mono text-[9.5px] text-fg4">· {r.at}</span>
+                </div>
+              </div>
+            ))}
+          </Panel>
+
+          <Panel
+            title="Callers worth checking"
+            note="ranked by wallets that repeatedly buy after their post"
+            flush
+            right={
+              <Link href="/callers" className="text-acid hover:underline">
+                all callers →
+              </Link>
+            }
+          >
+            {callers.map((c) => (
+              <Link
+                key={c.handle}
+                href={`/callers/${c.handle}`}
+                className="drow flex items-center gap-2.5 border-b border-line px-3 py-2 last:border-b-0"
+              >
+                <div className="grid h-6 w-6 shrink-0 place-items-center border border-line bg-surf2 font-mono text-[10px] text-fg2">
+                  {c.name.slice(0, 1)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="truncate t-strong text-fg">@{c.handle}</span>
+                    {c.exitVsCall > 1.3 && <Tag tone="bad">sells above call</Tag>}
+                  </div>
+                  <div className="mt-0.5 flex items-center gap-2">
+                    <span className="t-mono text-[10px] text-fg4">{c.followers.toLocaleString("en-US")}</span>
+                    <span className="t-mono text-[10px] text-fg4">·</span>
+                    <span className="t-mono text-[10px] text-fg4">
+                      {(c.wins / c.calls * 100).toFixed(0)}% win
+                    </span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="t-mono text-[13px] text-acid">{c.smartFollowers}</div>
+                  <div className="t-eyebrow">followers</div>
+                </div>
+              </Link>
+            ))}
+          </Panel>
+        </div>
+
+        {/* ---------------- what the tool does ---------------- */}
+        <Panel title="What a scan answers" note="eight questions, in the order that decides money">
+          <div className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
+            {[
+              ["Can you sell it", "freeze authority, honeypot simulation, transfer tax"],
+              ["Is the supply fixed", "mint authority, post-launch issuance"],
+              ["Can the liquidity be pulled", "LP lock, burn, ownership of the pool"],
+              ["Does one wallet hold too much", "top-10 share with pools and curves removed"],
+              ["Is the supply one entity in disguise", "shared funding, identical buy sizing, same-block entries"],
+              ["Has the creator done this before", "every prior launch and how each one ended"],
+              ["Is the trading real", "two-way flow, organic volume share, wash patterns"],
+              ["Can you actually get out", "size sellable before 5% slippage"],
+            ].map(([q, how]) => (
+              <div key={q} className="flex items-start gap-2 border-b border-line py-1.5 last:border-b-0 sm:[&:nth-last-child(2)]:border-b-0">
+                <span aria-hidden className="mt-[6px] h-[3px] w-[3px] shrink-0 bg-acid" />
+                <div className="min-w-0">
+                  <div className="t-xs text-fg2">{q}</div>
+                  <div className="t-xs text-fg4">{how}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Panel>
+
+        <p className="px-1 pb-2 t-xs leading-relaxed text-fg4">
+          Not a signal service and not advice. A failed lookup is never a verdict, and a module that
+          was never run is never a pass
+        </p>
+      </div>
     </div>
   );
 }

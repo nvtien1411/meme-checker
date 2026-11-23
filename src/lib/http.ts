@@ -12,8 +12,14 @@ export function fmtUsd(v: number | null | undefined, opts?: { compact?: boolean 
   if (v === null || v === undefined || !Number.isFinite(v)) return DASH;
   const abs = Math.abs(v);
   const compact = opts?.compact ?? abs >= 100_000;
-  if (compact && abs >= 1_000_000) return `$${(v / 1_000_000).toFixed(abs >= 10_000_000 ? 1 : 2)}M`;
-  if (compact && abs >= 1_000) return `$${(v / 1_000).toFixed(abs >= 10_000 ? 0 : 1)}K`;
+  if (compact && abs >= 1_000_000) {
+    const n = v / 1_000_000;
+    return `$${Number.isInteger(n) ? n.toFixed(0) : n.toFixed(abs >= 10_000_000 ? 1 : 2)}M`;
+  }
+  if (compact && abs >= 1_000) {
+    const n = v / 1_000;
+    return `$${Number.isInteger(n) ? n.toFixed(0) : n.toFixed(abs >= 10_000 ? 0 : 1)}K`;
+  }
   if (abs >= 1_000) return `$${v.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
   if (abs >= 1) return `$${v.toFixed(2)}`;
   if (abs === 0) return "$0";

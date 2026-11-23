@@ -4,8 +4,8 @@ import "./globals.css";
 import { Shell } from "@/components/Shell";
 import { ToastProvider } from "@/components/feedback";
 
-const grotesk = Inter({
-  variable: "--font-grotesk",
+const ui = Inter({
+  variable: "--font-ui",
   subsets: ["latin"],
   display: "swap",
 });
@@ -41,10 +41,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${grotesk.variable} ${display.variable} ${mono.variable}`}
+      className={`${ui.variable} ${display.variable} ${mono.variable}`}
       suppressHydrationWarning
     >
-      <body className="min-h-dvh bg-ink-950 font-sans text-[13.5px] antialiased">
+      <body className="min-h-dvh bg-bg font-sans text-[13px] antialiased">
         <ToastProvider>
           <a
             href="#main"

@@ -2,317 +2,336 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Suspense, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 
 /* ==================================================================== *
- * SHELL — TOP NAVIGATION
+ * SHELL — left rail + top context bar
  *
- * A horizontal bar rather than a rail. The rail was the right call when the
- * product was a dense report reader; it is the wrong call for a tool whose
- * primary action is a single field, because it pushes the content off-centre
- * and eats 216px of horizontal room on every screen.
+ * A rail, not a top bar. v3 tried a top bar and it was the wrong call for a
+ * product with nine workspaces: nine labels do not fit across a laptop, so
+ * they collapse into a menu and every destination costs two clicks.
  *
- * The bar is 56px, one line, one border. Left: reticle + wordmark. Centre-left:
- * four destinations. Right: the two surfaces that are not the product (the
- * bot, the account). Nothing else — a nav that carries a CTA competes with the
- * CTA on the page, and every page here already has one.
+ * The rail is a single vertical list; every destination is one click and the
+ * labels stay readable. It collapses to glyphs on demand and becomes a drawer
+ * under 900px.
  *
- * Active state is a 2px acid underline that sits on the bar's own baseline,
- * so the selected item is marked by the frame rather than by a pill.
+ * There is no marketing header. The product opens on the scanner, because a
+ * tool nobody reads does not need an introduction.
  * ==================================================================== */
 
-const NAV = [
-  { href: "/check", label: "Check" },
-  { href: "/dashboard", label: "History" },
-  { href: "/faq", label: "Method" },
-  { href: "/pricing", label: "Plans" },
+type NavItem = { href: string; label: string; glyph: ReactNode; badge?: string; group: string };
+
+function G({ d }: { d: string }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      className="navi-glyph h-[13px] w-[13px] shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.35"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d={d} />
+    </svg>
+  );
+}
+
+const NAV: NavItem[] = [
+  { group: "Scan", href: "/", label: "Scanner", glyph: <G d="M2 8h3l2-4 2 8 2-4h3" /> },
+  { group: "Scan", href: "/discover", label: "Discover", glyph: <G d="M8 2.5 9.7 6.3 14 7l-3 3 .7 4.2L8 12.4 4.3 14.2 5 10 2 7l4.3-.7z" /> },
+  { group: "Scan", href: "/compare", label: "Compare", glyph: <G d="M3 3v10M13 3v10M3 8h10M6.5 5.5 3 8l3.5 2.5M9.5 5.5 13 8l-3.5 2.5" /> },
+
+  { group: "Intelligence", href: "/wallets", label: "Wallets", glyph: <G d="M2.5 4.5h11v8h-11zM2.5 7h11M10.5 9.5h1.5" /> },
+  { group: "Intelligence", href: "/callers", label: "Callers", glyph: <G d="M6 7a2.2 2.2 0 1 0 0-4.4A2.2 2.2 0 0 0 6 7zM2 13c0-2 1.8-3.2 4-3.2s4 1.2 4 3.2M11 8.4a1.8 1.8 0 1 0 0-3.6M11.5 13c0-1.6-.6-2.6-1.5-3.2" /> },
+  { group: "Intelligence", href: "/smart-followers", label: "Smart Followers", glyph: <G d="M2.5 12.5c1.5-2.5 3.5-4 5.5-4s4 1.5 5.5 4M8 8.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" />, badge: "VIP" },
+  { group: "Intelligence", href: "/narratives", label: "Narratives", glyph: <G d="M3 3.5h10v7h-5l-3 2.5v-2.5H3z" /> },
+  { group: "Intelligence", href: "/deployers", label: "Deployers", glyph: <G d="M8 2.5 13 5v3.5c0 2.5-2 4-5 5.5-3-1.5-5-3-5-5.5V5z" /> },
+  { group: "Intelligence", href: "/investigation", label: "Investigation", glyph: <G d="M7 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM10.8 10.8 14 14" />, badge: "VIP" },
+
+  { group: "Workspace", href: "/watchlist", label: "Watchlist", glyph: <G d="M8 2.5 9.7 6.3 14 7l-3 3 .7 4.2L8 12.4 4.3 14.2 5 10 2 7l4.3-.7z" /> },
+  { group: "Workspace", href: "/alerts", label: "Alerts", glyph: <G d="M8 2.5a3.5 3.5 0 0 1 3.5 3.5v3l1 2h-9l1-2v-3A3.5 3.5 0 0 1 8 2.5zM6.5 12.5a1.5 1.5 0 0 0 3 0" />, badge: "3" },
+  { group: "Workspace", href: "/rugs", label: "Rug database", glyph: <G d="M3 3h10v10H3zM3 6.5h10M6.5 6.5V13" /> },
+  { group: "Workspace", href: "/history", label: "History", glyph: <G d="M8 4v4l2.5 1.5M8 14a6 6 0 1 1 0-12 6 6 0 0 1 0 12z" /> },
 ];
+
+const GROUPS = ["Scan", "Intelligence", "Workspace"];
 
 function Mark() {
   return (
-    <span aria-hidden className="relative grid h-[22px] w-[22px] shrink-0 place-items-center">
-      {/* a reticle: concentric rings, four cardinal ticks, one acid quadrant.
-          The product is a scanner, so the mark is a scanner. */}
-      <svg viewBox="0 0 22 22" className="h-full w-full">
-        <circle cx="11" cy="11" r="8.5" className="fill-none stroke-ink-600" strokeWidth="1" />
-        <circle cx="11" cy="11" r="4" className="fill-none stroke-ink-500" strokeWidth="1" />
-        <path d="M11 0.5v4M11 17.5v4M0.5 11h4M17.5 11h4" className="stroke-ink-500" strokeWidth="1" />
-        <path
-          d="M11 2.5a8.5 8.5 0 0 1 8.5 8.5"
-          className="fill-none stroke-brand-500"
-          strokeWidth="1.5"
-          strokeLinecap="square"
-        />
-        <circle cx="11" cy="11" r="1.3" className="fill-brand-500" />
-      </svg>
-    </span>
+    <svg viewBox="0 0 20 20" className="h-[15px] w-[15px] shrink-0" aria-hidden>
+      <path
+        d="M10 2.4v3.2M10 14.4v3.2M2.4 10h3.2M14.4 10h3.2"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        className="text-fg3"
+        strokeLinecap="round"
+      />
+      <circle cx="10" cy="10" r="4.1" stroke="currentColor" strokeWidth="1.4" fill="none" className="text-fg2" />
+      <circle cx="10" cy="10" r="1.35" className="fill-acid" />
+    </svg>
   );
 }
 
-export function Shell({ children }: { children: ReactNode }) {
-  return <ShellFrame>{children}</ShellFrame>;
-}
+/* ------------------------------------------------------------------ *
+ * Rail
+ * ------------------------------------------------------------------ */
 
-function NavSkeleton() {
-  return (
-    <ul aria-hidden className="flex items-center gap-0.5">
-      {NAV.map((n) => (
-        <li
-          key={n.href}
-          className="flex h-14 items-center px-3 text-[12.5px] font-medium text-mute-600"
-        >
-          {n.label}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-/** The only component that reads the route. Suspending it alone keeps the page
- *  content out of the boundary. */
-function NavIsland({ render }: { render: (pathname: string) => ReactNode }) {
-  const pathname = usePathname() ?? "";
-  return <>{render(pathname)}</>;
-}
-
-/** The bar with no active item. Renders identically on the server, so it is a
- *  true fallback rather than a placeholder. */
-export function ShellBar() {
-  return (
-    <div className="flex min-h-dvh flex-col">
-      <header className="sticky top-0 z-40 border-b border-ink-800 bg-ink-950/90 backdrop-blur-md">
-        <div className="flex h-14 items-center gap-1 px-4 sm:px-6 lg:px-8">
-          <Link href="/" aria-label="Meme Checker home" className="flex shrink-0 items-center gap-2.5 pr-4">
-            <Mark />
-            <span className="hidden flex-col leading-none sm:flex">
-              <span
-                className="text-[12.5px] font-semibold tracking-[-0.02em] text-lit-100"
-                style={{ fontFamily: "var(--font-display)" }}
-              >
-                Meme Checker
-              </span>
-              <span className="mt-[3px] font-mono text-[8.5px] uppercase tracking-[0.16em] text-mute-500">
-                on-chain intel
-              </span>
-            </span>
-          </Link>
-        </div>
-      </header>
-    </div>
-  );
-}
-
-function ShellFrame({ children }: { children: ReactNode }) {
-  const [open, setOpen] = useState(false);
-
-  const isActiveIn = (pathname: string) => (href: string) => {
-    if (href === "/check")
-      return pathname === "/" || pathname.startsWith("/check") || pathname.startsWith("/token");
+function RailBody({ pathname, collapsed }: { pathname: string; collapsed: boolean }) {
+  const active = (href: string) => {
+    if (href === "/") return pathname === "/";
     return pathname === href || pathname.startsWith(`${href}/`);
   };
 
   return (
-    <div className="flex min-h-dvh flex-col">
-      {/* ---------------------------------------------------------------- *
-       * BAR
-       * ---------------------------------------------------------------- */}
-      <header className="sticky top-0 z-40 border-b border-ink-800 bg-ink-950/90 backdrop-blur-md">
-        <div className="flex h-14 items-center gap-1 px-4 sm:px-6 lg:px-8">
-          {/* identity */}
-          <Link
-            href="/"
-            aria-label="Meme Checker home"
-            className="group flex shrink-0 items-center gap-2.5 pr-4"
-          >
-            <Mark />
-            <span className="hidden flex-col leading-none sm:flex">
+    <>
+      <div className={`flex h-12 shrink-0 items-center border-b border-line ${collapsed ? "justify-center px-0" : "px-3"}`}>
+        <Link href="/" className="flex items-center gap-2" aria-label="Meme Checker">
+          <Mark />
+          {!collapsed && (
+            <span className="flex min-w-0 flex-col leading-none">
               <span
-                className="text-[12.5px] font-semibold tracking-[-0.02em] text-lit-100"
+                className="truncate text-[12.5px] font-semibold tracking-[-0.015em] text-fg"
                 style={{ fontFamily: "var(--font-display)" }}
               >
                 Meme Checker
               </span>
-              <span className="mt-[3px] font-mono text-[8.5px] uppercase tracking-[0.16em] text-mute-500">
-                on-chain intel
+              <span className="mt-[3px] font-mono text-[8px] uppercase tracking-[0.17em] text-fg4">
+                intel terminal
               </span>
             </span>
-          </Link>
+          )}
+        </Link>
+      </div>
 
-          <span aria-hidden className="mr-3 hidden h-5 w-px bg-ink-800 md:block" />
-
-          {/* destinations */}
-          <nav aria-label="Primary" className="hidden md:block">
-            <Suspense fallback={<NavSkeleton />}>
-              <NavIsland
-                render={(pathname) => (
-                  <ul className="flex items-center gap-0.5">
-              {NAV.map((n) => {
-                const active = isActiveIn(pathname)(n.href);
-                return (
-                  <li key={n.href}>
-                    <Link
-                      href={n.href}
-                      aria-current={active ? "page" : undefined}
-                      className={`relative flex h-14 items-center px-3 text-[12.5px] font-medium tracking-[-0.008em] transition-colors ${
-                        active ? "text-lit-50" : "text-mute-500 hover:text-lit-100"
-                      }`}
-                    >
-                      {n.label}
+      <nav aria-label="Primary" className="min-h-0 flex-1 overflow-y-auto px-1.5 py-2">
+        {GROUPS.map((g) => (
+          <div key={g} className="mb-3 last:mb-0">
+            {!collapsed && <div className="px-2 pb-1 t-eyebrow">{g}</div>}
+            <ul className="space-y-[1px]">
+              {NAV.filter((n) => n.group === g).map((n) => (
+                <li key={n.href}>
+                  <Link
+                    href={n.href}
+                    aria-current={active(n.href) ? "page" : undefined}
+                    title={collapsed ? n.label : undefined}
+                    className={`navi ${collapsed ? "justify-center px-0" : ""}`}
+                  >
+                    {n.glyph}
+                    {!collapsed && <span className="min-w-0 flex-1 truncate">{n.label}</span>}
+                    {!collapsed && n.badge && (
                       <span
-                        aria-hidden
-                        className={`absolute inset-x-3 -bottom-px h-[2px] transition-transform duration-200 ${
-                          active ? "scale-x-100 bg-brand-500" : "scale-x-0 bg-ink-600"
-                        } ${active ? "" : "group-hover:scale-x-100"}`}
-                      />
-                    </Link>
-                  </li>
-                );
-              })}
-                  </ul>
-                )}
-              />
-            </Suspense>
-          </nav>
-
-          {/* surfaces */}
-          <div className="ml-auto hidden items-center gap-1 md:flex">
-            <a
-              href="https://t.me/"
-              target="_blank"
-              rel="noreferrer"
-              className="group flex items-center gap-1.5 px-3 py-2 text-[12px] text-mute-500 transition-colors hover:text-lit-100"
-            >
-              Telegram bot
-              <span
-                aria-hidden
-                className="font-mono text-[9px] text-ink-500 transition-colors group-hover:text-brand-500"
-              >
-                ↗
-              </span>
-            </a>
-
-            <span aria-hidden className="mx-1 h-5 w-px bg-ink-800" />
-
-            <Link
-              href="/login"
-              className="flex items-center gap-2 px-3 py-2 text-[12px] text-mute-500 transition-colors hover:text-lit-100"
-            >
-              Account
-              <span className="border border-ink-600 px-1 py-[1px] font-mono text-[8.5px] uppercase tracking-[0.1em] text-mute-500">
-                beta
-              </span>
-            </Link>
-          </div>
-
-          {/* mobile trigger */}
-          <button
-            type="button"
-            onClick={() => setOpen((v) => !v)}
-            aria-expanded={open}
-            aria-controls="mobile-nav"
-            aria-label={open ? "Close menu" : "Open menu"}
-            className="ml-auto grid h-9 w-9 place-items-center border border-ink-700 text-mute-300 transition hover:border-brand-600 hover:text-brand-400 md:hidden"
-          >
-            <span aria-hidden className="flex w-4 flex-col gap-[3px]">
-              <span
-                className={`h-[1.5px] w-full bg-current transition-transform ${open ? "translate-y-[4.5px] rotate-45" : ""}`}
-              />
-              <span
-                className={`h-[1.5px] w-full bg-current transition-opacity ${open ? "opacity-0" : ""}`}
-              />
-              <span
-                className={`h-[1.5px] w-full bg-current transition-transform ${open ? "-translate-y-[4.5px] -rotate-45" : ""}`}
-              />
-            </span>
-          </button>
-        </div>
-
-        {/* ---------------------------------------------------------------- *
-         * MOBILE SHEET
-         * ---------------------------------------------------------------- */}
-        {open && (
-          <div id="mobile-nav" className="rise border-t border-ink-800 bg-ink-925 px-4 pb-3 md:hidden">
-            <ul className="divide-y divide-ink-800">
-              {NAV.map((n) => {
-                const active = false;
-                return (
-                  <li key={n.href}>
-                    <Link
-                      href={n.href}
-                      onClick={() => setOpen(false)}
-                      aria-current={active ? "page" : undefined}
-                      className="flex items-center justify-between py-3"
-                    >
-                      <span
-                        className={`text-[13px] ${active ? "text-brand-400" : "text-mute-300"}`}
+                        className={`shrink-0 self-center font-mono text-[8.5px] uppercase leading-none tracking-[0.06em] ${
+                          n.badge === "VIP" ? "text-acid" : "text-fg4"
+                        }`}
                       >
-                        {n.label}
+                        {n.badge}
                       </span>
-                      <span
-                        aria-hidden
-                        className={`font-mono text-[10px] ${active ? "text-brand-500" : "text-ink-500"}`}
-                      >
-                        {active ? "●" : "→"}
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
-              <li>
-                <a
-                  href="https://t.me/"
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={() => setOpen(false)}
-                  className="flex items-center justify-between py-3 text-[13px] text-mute-300"
-                >
-                  Telegram bot
-                  <span aria-hidden className="font-mono text-[10px] text-ink-500">
-                    ↗
-                  </span>
-                </a>
-              </li>
-              <li>
-                <Link
-                  href="/login"
-                  onClick={() => setOpen(false)}
-                  className="flex items-center justify-between py-3 text-[13px] text-mute-300"
-                >
-                  <span className="flex items-center gap-2">
-                    Account
-                    <span className="border border-ink-600 px-1 py-[1px] font-mono text-[8.5px] uppercase tracking-[0.1em] text-mute-500">
-                      beta
-                    </span>
-                  </span>
-                  <span aria-hidden className="font-mono text-[10px] text-ink-500">
-                    →
-                  </span>
-                </Link>
-              </li>
+                    )}
+                  </Link>
+                </li>
+              ))}
             </ul>
-
-            <p className="flex items-center gap-2 border-t border-ink-800 pt-3 font-mono text-[8.5px] uppercase tracking-[0.12em] text-mute-600">
-              <span aria-hidden className="live-dot h-1 w-1 rounded-full bg-brand-500" />
-              free tier · no wallet
-            </p>
           </div>
-        )}
-      </header>
+        ))}
+      </nav>
+    </>
+  );
+}
 
-      {/* scrim: the sheet is an overlay, so the page behind it must recede */}
-      {open && (
+function RailFoot({ collapsed }: { collapsed: boolean }) {
+  return (
+    <div className="shrink-0 border-t border-line p-1.5">
+      <Link
+        href="/pricing"
+        className={`navi ${collapsed ? "justify-center px-0" : ""}`}
+        title={collapsed ? "Plans" : undefined}
+      >
+        <G d="M8 2.5 9.7 6.3 14 7l-3 3 .7 4.2L8 12.4 4.3 14.2 5 10 2 7l4.3-.7z" />
+        {!collapsed && (
+          <>
+            <span className="flex-1">Plans</span>
+            <span className="font-mono text-[8.5px] uppercase tracking-[0.06em] text-acid">VIP</span>
+          </>
+        )}
+      </Link>
+      <Link
+        href="/login"
+        className={`navi ${collapsed ? "justify-center px-0" : ""}`}
+        title={collapsed ? "Account" : undefined}
+      >
+        <G d="M8 8.2a2.4 2.4 0 1 0 0-4.8 2.4 2.4 0 0 0 0 4.8zM3.2 13.2c0-2.2 2.2-3.4 4.8-3.4s4.8 1.2 4.8 3.4" />
+        {!collapsed && <span className="flex-1">Account</span>}
+      </Link>
+    </div>
+  );
+}
+
+/* The only component that reads the route. Suspending it alone keeps page
+   content out of the boundary — next.config has cacheComponents on. */
+function RailIsland({ collapsed }: { collapsed: boolean }) {
+  const pathname = usePathname() ?? "";
+  return (
+    <aside
+      className="rail hidden shrink-0 flex-col lg:flex"
+      style={{ width: collapsed ? "var(--rail-collapsed)" : "var(--rail)" }}
+    >
+      <RailBody pathname={pathname} collapsed={collapsed} />
+      <RailFoot collapsed={collapsed} />
+    </aside>
+  );
+}
+
+function RailSkeleton({ collapsed }: { collapsed: boolean }) {
+  return (
+    <aside
+      className="rail hidden shrink-0 flex-col lg:flex"
+      style={{ width: collapsed ? "var(--rail-collapsed)" : "var(--rail)" }}
+      aria-hidden
+    >
+      <div className="h-12 border-b border-line" />
+      <div className="min-h-0 flex-1" />
+      <div className="h-12 border-t border-line" />
+    </aside>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Mobile drawer
+ * ------------------------------------------------------------------ */
+
+function DrawerIsland({ onNavigate }: { onNavigate: () => void }) {
+  const pathname = usePathname() ?? "";
+  return (
+    <div onClick={onNavigate}>
+      <RailBody pathname={pathname} collapsed={false} />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Shell
+ * ------------------------------------------------------------------ */
+
+export function Shell({ children }: { children: ReactNode }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const [drawer, setDrawer] = useState(false);
+  const drawerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!drawer) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setDrawer(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [drawer]);
+
+  useEffect(() => {
+    document.body.style.overflow = drawer ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [drawer]);
+
+  return (
+    <div className="flex min-h-dvh">
+      <Suspense fallback={<RailSkeleton collapsed={collapsed} />}>
+        <RailIsland collapsed={collapsed} />
+      </Suspense>
+
+      {/* collapse control sits on the rail edge, not in a toolbar */}
+      <button
+        type="button"
+        onClick={() => setCollapsed((v) => !v)}
+        aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
+        className="fixed bottom-3 z-30 hidden h-6 w-6 place-items-center border border-line bg-surf text-fg4 transition-colors hover:border-line2 hover:text-fg lg:grid"
+        style={{ left: collapsed ? "calc(var(--rail-collapsed) + 6px)" : "calc(var(--rail) - 30px)" }}
+      >
+        <span aria-hidden className="font-mono text-[10px]">
+          {collapsed ? "›" : "‹"}
+        </span>
+      </button>
+
+      {/* mobile bar */}
+      <div className="fixed inset-x-0 top-0 z-30 flex h-12 items-center gap-3 border-b border-line bg-bg/95 px-3 backdrop-blur-sm lg:hidden">
         <button
           type="button"
-          aria-hidden
-          tabIndex={-1}
-          onClick={() => setOpen(false)}
-          className="fixed inset-x-0 bottom-0 top-14 z-30 cursor-default bg-ink-950/70 backdrop-blur-[2px] md:hidden"
-        />
+          onClick={() => setDrawer(true)}
+          aria-label="Open navigation"
+          aria-expanded={drawer}
+          className="grid h-7 w-7 place-items-center border border-line text-fg3"
+        >
+          <svg viewBox="0 0 14 14" className="h-3 w-3" aria-hidden>
+            <path d="M2 4h10M2 7h10M2 10h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+          </svg>
+        </button>
+        <Link href="/" className="flex items-center gap-2">
+          <Mark />
+          <span
+            className="text-[12.5px] font-semibold tracking-[-0.015em] text-fg"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            Meme Checker
+          </span>
+        </Link>
+        <Link
+          href="/pricing"
+          className="ml-auto border border-acid/40 px-2 py-[3px] font-mono text-[9px] uppercase tracking-[0.07em] text-acid"
+        >
+          VIP
+        </Link>
+      </div>
+
+      {/* drawer */}
+      {drawer && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <button
+            type="button"
+            aria-label="Close navigation"
+            onClick={() => setDrawer(false)}
+            className="absolute inset-0 bg-bg/80 backdrop-blur-sm"
+          />
+          <div
+            ref={drawerRef}
+            id="mobile-nav"
+            className="absolute inset-y-0 left-0 flex w-[240px] flex-col border-r border-line bg-bg"
+          >
+            <Suspense fallback={<div className="h-12 border-b border-line" />}>
+              <DrawerIsland onNavigate={() => setDrawer(false)} />
+            </Suspense>
+            <RailFoot collapsed={false} />
+          </div>
+        </div>
       )}
 
-      <main id="main" className="min-w-0 flex-1">
+      <main id="main" className="min-w-0 flex-1 pt-12 lg:pt-0">
         {children}
       </main>
+    </div>
+  );
+}
+
+export function PageHead({
+  title,
+  note,
+  right,
+  children,
+}: {
+  title: string;
+  note?: string;
+  right?: ReactNode;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="border-b border-line px-3 py-2.5 sm:px-4">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h1 className="t-section text-fg">{title}</h1>
+        {note && <span className="t-xs text-fg4">{note}</span>}
+        {right && <div className="ml-auto flex items-center gap-1.5">{right}</div>}
+      </div>
+      {children && <div className="mt-2">{children}</div>}
     </div>
   );
 }

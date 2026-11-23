@@ -1,336 +1,198 @@
-import type { Metadata } from "next";
-import Link from "next/link";
+import { PageHead } from "@/components/Shell";
+import { Panel, Tag } from "@/components/ui";
+import { MethodList, type MethodCheck } from "@/components/MethodList";
 
-export const metadata: Metadata = {
-  title: "Method",
-  description:
-    "What each check reads, where every threshold sits, and what the checks cannot see",
-};
+/* ==================================================================== *
+ * METHOD — every threshold, stated
+ *
+ * A tool that will not show its thresholds cannot be checked. Each check is
+ * listed with the bands it uses, what it cannot see, and its weight in the
+ * score, because a number nobody can audit is a number nobody should act on.
+ * ==================================================================== */
 
-type Band = { state: "pass" | "caution" | "fail"; label: string };
+export const metadata = { title: "Method" };
 
-type Check = {
-  id: string;
-  q: string;
-  reads: string;
-  bands: Band[];
-  unknown: string | null;
-  caveat: string;
-  weight: "gate" | "signal";
-};
-
-const CHECKS: Check[] = [
+export const CHECKS: MethodCheck[] = [
   {
     id: "sell",
-    q: "Can you sell it?",
-    reads: "Honeypot simulation (EVM) or freeze authority (Solana)",
+    q: "Can you sell it",
+    reads: "Freeze authority, honeypot simulation on a real route, transfer tax on the sell side",
+    weight: 20,
+    gate: true,
     bands: [
-      { state: "pass", label: "A simulated sell succeeds, or no authority can freeze your token account" },
-      { state: "fail", label: "The sell reverts, or the issuer can freeze your account at will" },
+      { state: "pass", label: "sellable", note: "no freeze authority, simulated sell succeeds, tax under 5%" },
+      { state: "warn", label: "tax present", note: "sell succeeds but the tax is between 5% and 15%" },
+      { state: "fail", label: "cannot sell", note: "freeze authority active, or the simulation reverts" },
+      { state: "unknown", label: "not read", note: "the simulation could not be run" },
     ],
-    unknown: "The simulator did not return a result. Treated as unanswered",
-    caveat:
-      "Solana has no honeypot mechanism. A sell can only be blocked there through the freeze authority, which is why this reads authority state rather than simulating a swap",
-    weight: "gate",
+    blind: "A tax that activates later, or a blacklist added after launch, is invisible until it happens",
   },
   {
-    id: "mint",
-    q: "Is the supply fixed?",
-    reads: "Mint authority state from RugCheck and GoPlus",
+    id: "supply",
+    q: "Is the supply fixed",
+    reads: "Mint authority, any issuance after launch, on the mint account directly",
+    weight: 14,
+    gate: true,
     bands: [
-      { state: "pass", label: "Mint authority revoked" },
-      { state: "caution", label: "Mint live, and the token is 30 days old or older" },
-      { state: "fail", label: "Mint live on a token younger than 30 days" },
+      { state: "pass", label: "fixed", note: "mint authority revoked" },
+      { state: "fail", label: "still mintable", note: "the deployer can create new supply" },
+      { state: "unknown", label: "not read", note: "the mint account could not be read" },
     ],
-    unknown: "Authority state not reported by either provider",
-    caveat:
-      "On a mature token a live mint is often a treasury or bridge function. It is graded as a caution rather than a failure so a four-year-old token is not judged by launch-day rules",
-    weight: "gate",
+    blind: "Nothing — this is a binary read of the mint account",
   },
   {
     id: "lp",
-    q: "Can the liquidity be pulled?",
-    reads: "LP lock percentage and burn state",
+    q: "Can the liquidity be pulled",
+    reads: "LP token holder, lock expiry, burn status, pool ownership",
+    weight: 16,
+    gate: true,
     bands: [
-      { state: "pass", label: "90% or more of the LP locked or burned" },
-      { state: "caution", label: "50% up to but not including 90% locked" },
-      { state: "fail", label: "Under 50% locked" },
+      { state: "pass", label: "locked or burned", note: "no wallet can withdraw the pool" },
+      { state: "warn", label: "locked, expiring", note: "locked but the lock ends within 30 days" },
+      { state: "fail", label: "withdrawable", note: "the deployer holds the LP" },
+      { state: "unknown", label: "not read", note: "LP ownership could not be determined" },
     ],
-    unknown: "The pool reported no lock or burn state we could read. A bonding curve, which has no LP token at all, is graded as a pass instead",
-    caveat:
-      "A bonding curve has no LP token to withdraw, which is treated as a pass rather than a gap",
-    weight: "gate",
+    blind: "A lock that is a promise from a third party is only as good as that party",
   },
   {
-    id: "top-wallet",
-    q: "Does one wallet hold too much?",
-    reads: "Largest holder after removing pools, burns and exchange wallets",
+    id: "concentration",
+    q: "Does one wallet hold too much",
+    reads: "Top-10 share after removing pools, burns, curves and launch vaults; the largest single wallet",
+    weight: 18,
+    gate: true,
     bands: [
-      { state: "pass", label: "6% or less if younger than 30 days; 15% or less at 30 days or older" },
-      { state: "caution", label: "Above 6% up to 12% if younger; above 15% up to 30% if older" },
-      { state: "fail", label: "Above 12% if younger; above 30% if older" },
+      { state: "pass", label: "spread", note: "largest under 5%, top ten under 25%" },
+      { state: "warn", label: "concentrated", note: "largest 5–15%, or top ten 25–40%" },
+      { state: "fail", label: "dominated", note: "largest over 15%, or top ten over 40%" },
+      { state: "unknown", label: "not read", note: "no holder list was returned" },
     ],
-    unknown: "No holder list available for the chain",
-    caveat:
-      "Two bands exist because the top holder of a years-old token is usually a custodian or a locked treasury, while the top holder of a week-old token is usually a launch bundle",
-    weight: "gate",
+    blind: "One entity across twenty wallets looks like a healthy spread until the funding is traced",
   },
   {
-    id: "cluster",
-    q: "Is the supply one entity in disguise?",
-    reads: "Shared funding sources among the top wallets, merged into single entities",
+    id: "entity",
+    q: "Is the supply one entity in disguise",
+    reads: "Shared funding between top holders, identical buy sizing, same-block entries",
+    weight: 14,
+    gate: false,
     bands: [
-      { state: "pass", label: "Under 10% of supply held by linked wallets" },
-      { state: "caution", label: "10% to 30%" },
-      { state: "fail", label: "30% or more" },
+      { state: "pass", label: "no links found", note: "no funding relationship between top holders was traced" },
+      { state: "warn", label: "some shared funding", note: "two or more top holders share a funder" },
+      { state: "fail", label: "one cluster", note: "more than a quarter of supply sits in linked wallets" },
+      { state: "unknown", label: "not traced", note: "funding tracing did not run on this token" },
     ],
-    unknown:
-      "Wallets could not be traced, the pair is older than seven days, or the chain is EVM",
-    caveat:
-      "An untraced wallet is reported as unknown, never as independent. Seven days is the cutoff because a wallet funded months ago says nothing about a launch bundle",
-    weight: "gate",
+    blind: "Wallets funded through separate exchanges, or funded long before the launch, will not link",
   },
   {
     id: "deployer",
-    q: "Has the creator done this before?",
-    reads: "Every prior token from the deployer wallet, and how each one ended",
+    q: "Has the creator done this before",
+    reads: "Every prior token the deployer launched, and whether its liquidity was withdrawn",
+    weight: 12,
+    gate: false,
     bands: [
-      { state: "pass", label: "Prior launches exist, none of which rugged" },
-      { state: "fail", label: "Any prior token rugged" },
+      { state: "pass", label: "clean record", note: "prior launches that did not collapse" },
+      { state: "fail", label: "prior rug", note: "at least one prior token lost its liquidity" },
+      { state: "unknown", label: "fresh wallet", note: "no history — which is not the same as a clean history" },
     ],
-    unknown: "Fresh wallet, or creator history not available",
-    caveat:
-      "A fresh wallet is unknown rather than safe: it has no rug history, but it also has no track record. Those are different claims",
-    weight: "gate",
+    blind: "A deployer using a new wallet each time is invisible, and that is the common case",
   },
   {
     id: "flow",
-    q: "Is the trading real?",
-    reads: "Buy and sell pressure by USD volume across the recent trade tape",
+    q: "Is the trading real",
+    reads: "Buy and sell volume on both sides, distinct traders, repeated identical sizes",
+    weight: 8,
+    gate: false,
     bands: [
-      { state: "pass", label: "Net buying above +15%" },
-      { state: "caution", label: "Between −20% and +15%" },
-      { state: "fail", label: "Net selling beyond −20%" },
+      { state: "pass", label: "two-way", note: "buy and sell volume both meaningful, many distinct traders" },
+      { state: "warn", label: "one-sided", note: "volume skews hard one way, or few distinct traders" },
+      { state: "fail", label: "wash", note: "repeated identical sizes between the same wallets" },
+      { state: "unknown", label: "not read", note: "no trade history was returned" },
     ],
-    unknown: "No trade tape returned for the pool",
-    caveat:
-      "This is a snapshot of a few hundred trades and it can flip sign between page loads, so it is a signal and never a hard failure on its own",
-    weight: "signal",
+    blind: "Wash trading spread across many wallets and slightly varied sizes defeats this",
   },
   {
     id: "exit",
-    q: "Can you actually get out?",
-    reads: "Constant-product estimate from pool reserves",
+    q: "Can you actually get out",
+    reads: "Pool reserves, price impact at 1% and 5% slippage",
+    weight: 12,
+    gate: false,
     bands: [
-      { state: "pass", label: "$10,000 or more before 5% price impact" },
-      { state: "caution", label: "$2,000 to $10,000" },
-      { state: "fail", label: "Under $2,000" },
+      { state: "pass", label: "deep enough", note: "over $10,000 sellable before 5% impact" },
+      { state: "warn", label: "thin", note: "$1,000–$10,000 sellable before 5% impact" },
+      { state: "fail", label: "trapped", note: "under $1,000 sellable before 5% impact" },
+      { state: "unknown", label: "not read", note: "pool reserves could not be read" },
     ],
-    unknown: "Pool reserves could not be read",
-    caveat:
-      "Single-pool only. Multi-pool routing, CEX depth and MEV are not modelled, so the figure is a floor rather than a precise number. Weighted as a signal rather than a gate because thin liquidity is a market condition, not a contract defect",
-    weight: "signal",
+    blind: "Liquidity is a market condition, not a contract defect — it can leave without anyone doing anything wrong",
   },
 ];
 
-const STATE: Record<Band["state"], { label: string; cls: string; dot: string }> = {
-  pass: { label: "Pass", cls: "text-ok-400", dot: "bg-ok-500" },
-  caution: { label: "Caution", cls: "text-warn-400", dot: "bg-warn-500" },
-  fail: { label: "Fail", cls: "text-bad-400", dot: "bg-bad-500" },
-};
-
 export default function MethodPage() {
+  const totalWeight = CHECKS.reduce((s, c) => s + c.weight, 0);
+
   return (
-    <div className="mx-auto w-full max-w-[820px] px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
-      <p className="t-label">method</p>
-      <h1 className="mt-2.5 t-display text-lit-50">How the checks work</h1>
-      <p className="mt-3 max-w-[58ch] t-body leading-relaxed text-mute-400">
-        Eight checks produce every verdict on this site. Each has up to four possible answers, not
-        two — and the band in the middle is where most tokens land
-      </p>
+    <div>
+      <PageHead
+        title="Method"
+        note="every threshold, and what each check cannot see"
+        right={<Tag tone="neutral">{CHECKS.length} checks · 100 weight</Tag>}
+      />
 
-      {/* legend */}
-      <dl className="mt-6 grid grid-cols-2 gap-px border border-ink-800 bg-ink-800 sm:grid-cols-4">
-        {[
-          { s: "pass", t: "Pass", d: "inside the safe band" },
-          { s: "caution", t: "Caution", d: "counts as a watch, not a failure" },
-          { s: "fail", t: "Fail", d: "drives the verdict" },
-          { s: "unknown", t: "Unknown", d: "excluded from the score, never a pass" },
-        ].map((x) => (
-          <div key={x.s} className="bg-ink-950 px-3.5 py-3">
-            <dt className="flex items-center gap-1.5">
-              <span
-                aria-hidden
-                className={`h-1 w-1 ${
-                  x.s === "unknown" ? "bg-ink-500" : STATE[x.s as Band["state"]].dot
-                }`}
-              />
-              <span
-                className={`font-mono text-[10px] uppercase tracking-[0.1em] ${
-                  x.s === "unknown" ? "text-mute-400" : STATE[x.s as Band["state"]].cls
-                }`}
-              >
-                {x.t}
-              </span>
-            </dt>
-            <dd className="mt-1.5 t-meta leading-relaxed text-mute-600">{x.d}</dd>
+      <div className="space-y-2.5 p-3 sm:p-4">
+        <Panel title="How the score works" note="three rules, and nothing hidden">
+          <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-3">
+            {[
+              ["a floor, not an average", "One disqualifying finding sets the minimum. Three fails cannot be averaged away by five passes — which is why a score of 34 can still be high risk"],
+              ["the band comes from counts", "The word next to the number is decided by how many checks failed, not by the number itself. Two fails is high risk whatever the arithmetic says"],
+              ["unknown is not zero", "A check that could not run contributes nothing and is counted separately. It never silently becomes a pass, and it is never treated as a warning"],
+            ].map(([k, v]) => (
+              <div key={k} className="border-b border-line pb-2 last:border-b-0 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-4 sm:last:border-r-0">
+                <div className="t-xs font-semibold text-fg2">{k}</div>
+                <p className="mt-0.5 t-xs leading-relaxed text-fg4">{v}</p>
+              </div>
+            ))}
           </div>
-        ))}
-      </dl>
+        </Panel>
 
-      {/* index */}
-      <nav aria-label="Checks" className="mt-7 border-y border-ink-800">
-        <div className="flex items-baseline justify-between py-2">
-          <span className="t-label">contents</span>
-          <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-mute-600">
-            8 checks
-          </span>
-        </div>
-        <ol className="grid grid-cols-1 border-t border-ink-800 sm:grid-cols-2">
-          {CHECKS.map((c, i) => (
-            <li key={c.id} className="border-b border-ink-850 sm:odd:border-r sm:odd:border-ink-850">
-              <a
-                href={`#${c.id}`}
-                className="group flex items-baseline gap-3 py-2 pr-4 transition-colors hover:bg-ink-900"
-              >
-                <span className="font-mono text-[10px] tabular-nums text-mute-600 group-hover:text-brand-400">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <span className="min-w-0 flex-1 text-[12.5px] text-mute-300 group-hover:text-lit-100">
-                  {c.q}
-                </span>
-                <span className="shrink-0 font-mono text-[8.5px] uppercase tracking-[0.1em] text-mute-600">
-                  {c.weight === "gate" ? "gate" : "signal"}
-                </span>
-              </a>
-            </li>
-          ))}
-        </ol>
-      </nav>
-
-      <div>
-        {CHECKS.map((c, i) => (
-          <article key={c.id} id={c.id} className="scroll-mt-[76px] border-b border-ink-800 py-6">
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <span className="font-mono text-[10px] tabular-nums tracking-[0.08em] text-brand-600">
-                {String(i + 1).padStart(2, "0")}
-              </span>
-              <h2 className="t-section text-lit-100">{c.q}</h2>
-              <span
-                className={`ml-auto font-mono text-[8.5px] uppercase tracking-[0.1em] ${
-                  c.weight === "gate" ? "text-mute-500" : "text-brand-500"
-                }`}
-              >
-                {c.weight === "gate" ? "can fail a token" : "signal only"}
-              </span>
-            </div>
-
-            <p className="mt-2.5 t-small leading-relaxed text-mute-400">
-              <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-mute-600">
-                reads{" "}
-              </span>
-              {c.reads}
-            </p>
-
-            <ul className="mt-3 space-y-1.5">
-              {c.bands.map((b) => (
-                <li key={b.state + b.label} className="flex gap-2.5">
-                  <span
-                    aria-hidden
-                    className={`mt-[7px] h-1 w-1 shrink-0 ${STATE[b.state].dot}`}
+        <Panel title="Weights" note="what the score is made of" flush>
+          <div className="px-3 py-2">
+            {CHECKS.map((c) => (
+              <div key={c.id} className="border-b border-line py-1 last:border-b-0">
+                <div className="flex items-baseline gap-2">
+                  <span className="min-w-0 flex-1 truncate t-xs text-fg3">{c.q}</span>
+                  {c.gate && <Tag tone="warn">gate</Tag>}
+                  <span className="t-mono text-[10px] text-fg4">{c.weight}/{totalWeight}</span>
+                </div>
+                <div className="mt-1 h-[2px] w-full bg-surf3">
+                  <div
+                    className={c.gate ? "h-full bg-bad/70" : "h-full bg-acid/70"}
+                    style={{ width: `${(c.weight / totalWeight) * 100}%` }}
                   />
-                  <span className="t-small leading-relaxed text-mute-300">
-                    <span className={`font-medium ${STATE[b.state].cls}`}>
-                      {STATE[b.state].label}
-                    </span>{" "}
-                    {b.label}
-                  </span>
-                </li>
-              ))}
-              {c.unknown && (
-                <li className="flex gap-2.5">
-                  <span aria-hidden className="mt-[7px] h-1 w-1 shrink-0 bg-ink-500" />
-                  <span className="t-small leading-relaxed text-mute-400">
-                    <span className="font-medium text-mute-300">Unknown</span> {c.unknown}
-                  </span>
-                </li>
-              )}
-            </ul>
-
-            <p className="mt-3 border-l border-ink-700 pl-3 t-meta leading-relaxed text-mute-500">
-              {c.caveat}
-            </p>
-          </article>
-        ))}
-      </div>
-
-      <section id="scoring" className="scroll-mt-[76px] py-6">
-        <h2 className="t-section text-lit-100">How the score is built</h2>
-        <div className="mt-3 space-y-2.5 t-small leading-relaxed text-mute-300">
-          <p>
-            Six checks are gates: sell, mint, liquidity, single wallet, cluster and creator
-            history. A gate failure adds 26 points. The two signals — trading balance and exit
-            depth — add 12. Cautions add 7, unanswered checks add 3, and the total is clamped to
-            100
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="border-t border-line px-3 py-1.5 t-xs text-fg4">
+            A gate check failing changes the band directly, regardless of weight
           </p>
-          <p>
-            Two gate failures, or any three failures, produce the worst band. One gate failure
-            produces high risk. So a signal can raise the score but cannot disqualify a token
-            alone, and no amount of passes averages away a gate failure
-          </p>
-        </div>
-      </section>
+        </Panel>
 
-      <section className="border-t border-ink-800 py-6">
-        <h2 className="t-section text-lit-100">Risk disclosure</h2>
-        <div className="mt-3 space-y-2.5 t-small leading-relaxed text-mute-300">
-          <p>
-            Meme Checker is a research aid. It is not financial advice, not a recommendation, and
-            not a guarantee that a token is safe. Tokens that pass every check have still gone to
-            zero, and tokens that fail several have still run
-          </p>
-          <p>
-            All data comes from third-party public APIs. It can be wrong, delayed, incomplete, or
-            describe a contract that has since changed. We do not audit contracts and we do not
-            verify project claims
-          </p>
-          <p>
-            A missing value is shown as <span className="text-lit-100">unknown</span> and is
-            excluded from the score. Unknown is never counted as a pass — if you see it, treat
-            that check as unanswered rather than satisfied
-          </p>
-        </div>
-      </section>
+        <MethodList checks={CHECKS} />
 
-      <section className="border-t border-ink-800 py-6">
-        <h2 className="t-section text-lit-100">Data sources</h2>
-        <ul className="mt-3 space-y-2">
-          {(
-            [
-              ["DexScreener", "pairs, price, liquidity, volume, age, project links"],
-              ["GeckoTerminal", "trade tape and pool discovery for chains DexScreener does not index"],
-              ["RugCheck", "Solana holders, authorities, creator history"],
-              ["GoPlus", "EVM contract security, honeypot, taxes"],
-              ["Solana RPC", "funding-source tracing for wallet clusters"],
-            ] as const
-          ).map(([n, d]) => (
-            <li key={n} className="flex flex-wrap items-baseline gap-x-2.5">
-              <span className="font-mono text-[11px] uppercase tracking-[0.06em] text-lit-200">
-                {n}
-              </span>
-              <span className="t-small text-mute-500">{d}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <div className="border-t border-ink-800 pt-6">
-        <Link
-          href="/check"
-          className="inline-flex glow-acid bg-brand-500 px-3.5 py-2 text-[12px] font-semibold text-ink-950 transition hover:bg-brand-400"
-        >
-          Check a token
-        </Link>
+        <Panel title="What this tool will not do" note="stated once, clearly">
+          <ul className="space-y-1">
+            {[
+              "It will not tell you a token is safe. A clean score means the measured checks were inside their bands",
+              "It will not predict a price. Nothing here is a forecast",
+              "It will not fill in a gap to look complete. A missing source makes the check unknown",
+              "It will not score a token on social hype alone, and a high follower count never improves a score",
+              "It will not accuse anyone. A coordination signal is a count of observed behaviour",
+            ].map((t) => (
+              <li key={t} className="flex items-start gap-1.5">
+                <span aria-hidden className="mt-[6px] h-[3px] w-[3px] shrink-0 bg-bad" />
+                <span className="t-xs leading-relaxed text-fg3">{t}</span>
+              </li>
+            ))}
+          </ul>
+        </Panel>
       </div>
     </div>
   );

@@ -1,435 +1,218 @@
 "use client";
 
 import { useState } from "react";
-import type { AnalysisResult, Check, CheckState } from "@/lib/types";
+import type { AnalysisResult, CheckState } from "@/lib/types";
 import { CHAIN_BY_ID } from "@/lib/chains";
 import { fmtAge, fmtChange, fmtPct, fmtPrice, fmtUsd } from "@/lib/http";
-import { CopyButton } from "./feedback";
-import { ChainChip } from "./ChainMark";
-import { QualityDot } from "./ui";
-import { CallersSection, ForensicsSection, NarrativeIntelSection } from "./forensics";
+import { Demo, Gauge, Locked, Panel, RiskDot, Split, Stat, Tag } from "./ui";
 import {
-  ConcentrationBar,
+  DistributionBar,
   ExitCurve,
   FlowBar,
+  FollowerEntryChart,
   HolderDetail,
   HolderMap,
   HolderRows,
-  Meter,
-  RiskArc,
+  TabBar,
+  Timeline,
 } from "./viz";
-import { sortBySeverity } from "@/lib/check-order";
+import {
+  DEMO_TIMELINE,
+  callersForMint,
+  tokenByMint,
+  type DemoToken,
+} from "@/lib/demo";
 
 /* ==================================================================== *
- * REPORT — console layout
+ * REPORT
  *
- * v3 was a document: one column of numbered sections, read top to bottom.
- * That is the wrong shape for this job, and it is why the last rebuild did
- * not look different. A trader opening a token does not read a memo — they
- * ask one of five questions and want the answer to that one question.
+ * Nine layers, one tab strip. The order is the order a decision is made in:
+ * verdict → who holds it → who bought the launch → who told you → the story →
+ * what you can get out → everything else.
  *
- * So the shape is now:
- *
- *   ┌──────────────────────────────────────────────────────────┐
- *   │ identity strip — token, chain, price, liquidity, age     │
- *   ├──────────────┬───────────────────────────────────────────┤
- *   │              │ tabs: Verdict · Wallets · Holders · …      │
- *   │  score rail  ├───────────────────────────────────────────┤
- *   │  (sticky)    │ module cards for the selected tab          │
- *   └──────────────┴───────────────────────────────────────────┘
- *
- * The rail never scrolls away, so the score and the counts stay on screen
- * while you read any layer. Cards are discrete so each module can be
- * scanned independently — which is the entire point of a console.
+ * Live data from /api/analyze always wins. The demo layer fills only what the
+ * pipeline cannot answer yet, and every field taken from it is marked DEMO at
+ * the point it appears — never as a footnote at the bottom.
  * ==================================================================== */
 
 const BAND = {
-  avoid: {
-    label: "Extreme risk",
-    color: "text-bad-400",
-    bg: "bg-bad-500",
-    wash: "rgba(240,55,92,0.30)",
-  },
-  risky: {
-    label: "High risk",
-    color: "text-risk-400",
-    bg: "bg-risk-500",
-    wash: "rgba(242,100,25,0.26)",
-  },
-  watch: {
-    label: "Watch",
-    color: "text-warn-400",
-    bg: "bg-warn-500",
-    wash: "rgba(232,163,23,0.22)",
-  },
-  clean: {
-    label: "No red flags",
-    color: "text-ok-400",
-    bg: "bg-ok-500",
-    wash: "rgba(25,199,155,0.22)",
-  },
+  avoid: { word: "Critical", cls: "text-bad", wash: "rgba(255,77,94,0.22)", dot: "bg-bad" },
+  risky: { word: "High risk", cls: "text-hot", wash: "rgba(255,138,61,0.20)", dot: "bg-hot" },
+  watch: { word: "Moderate", cls: "text-warn", wash: "rgba(247,193,74,0.18)", dot: "bg-warn" },
+  clean: { word: "Low risk", cls: "text-good", wash: "rgba(52,224,161,0.16)", dot: "bg-good" },
 } as const;
 
-const CHECK_GLYPH: Record<CheckState, string> = {
-  pass: "✓",
-  fail: "✕",
-  warn: "!",
-  unknown: "?",
+const GLYPH: Record<CheckState, string> = { pass: "✓", fail: "✕", warn: "!", unknown: "?" };
+const TONE: Record<CheckState, string> = {
+  pass: "text-good border-good/35",
+  fail: "text-bad border-bad/35",
+  warn: "text-warn border-warn/35",
+  unknown: "text-fg4 border-line2",
 };
 
-const CHECK_TONE: Record<CheckState, string> = {
-  pass: "text-ok-400 border-ok-600/50",
-  fail: "text-bad-400 border-bad-600/50",
-  warn: "text-warn-400 border-warn-600/50",
-  unknown: "text-mute-500 border-ink-600",
-};
-
-
-/* ------------------------------------------------------------------ *
- * SnapshotTime — the clock time of the reading, not its age.
- *
- * fmtAgo calls Date.now(), which Next refuses to evaluate while prerendering;
- * that threw "unstable value Date.now() while prerendering" and the route
- * never hydrated, so the tab strip rendered and clicking it did nothing.
- * A fixed local time needs no clock at all, is identical on server and
- * client, and is more useful here: the report is a snapshot, and you want to
- * know when it was taken.
- * ------------------------------------------------------------------ */
-
-function SnapshotTime({ iso }: { iso: string }) {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return <>snapshot</>;
-  const hh = d.getHours().toString().padStart(2, "0");
-  const mm = d.getMinutes().toString().padStart(2, "0");
-  return (
-    <>
-      {hh}:{mm}
-    </>
-  );
-}
+const TABS = [
+  { id: "verdict", label: "Verdict" },
+  { id: "holders", label: "Holders" },
+  { id: "wallets", label: "Wallets", hint: "bundle, snipers, insiders, fresh" },
+  { id: "callers", label: "Callers" },
+  { id: "narrative", label: "Narrative" },
+  { id: "exit", label: "Exit" },
+  { id: "checks", label: "All checks" },
+  { id: "sources", label: "Sources" },
+];
 
 /* ------------------------------------------------------------------ *
- * Identity strip — the facts, always visible, never the judgement.
+ * Identity strip
  * ------------------------------------------------------------------ */
 
-export function IdentityBar({ data }: { data: AnalysisResult }) {
+export function IdentityBar({ data, demo }: { data: AnalysisResult; demo: DemoToken | null }) {
   const m = data.market;
-  const change = fmtChange(m.priceChange24h, m.ageHours);
+  const ch = fmtChange(m.priceChange24h, m.ageHours);
+  const risk = data.verdict.band === "avoid" ? "critical" : data.verdict.band === "risky" ? "high" : data.verdict.band === "watch" ? "moderate" : "low";
+
+  const cells = [
+    {
+      label: "price",
+      value: fmtPrice(m.priceUsd),
+      sub: ch.text === "—" ? undefined : `${ch.text} ${ch.label}`,
+      tone: m.priceChange24h === null ? undefined : m.priceChange24h > 0 ? "good" : "bad",
+    },
+    { label: m.capKind === "fdv" ? "fdv" : "mcap", value: fmtUsd(m.marketCap ?? m.fdv) },
+    { label: "liquidity", value: fmtUsd(m.liquidityUsd) },
+    {
+      label: "vol 24h",
+      value: fmtUsd(m.volume24h),
+      sub:
+        m.volume24h !== null && m.liquidityUsd
+          ? `${(m.volume24h / m.liquidityUsd).toFixed(1)}× liq`
+          : undefined,
+    },
+    { label: "age", value: fmtAge(m.ageHours) },
+    {
+      label: "top 10",
+      value: data.holders.meaningful ? fmtPct(data.holders.effectiveTop10Pct) : "—",
+      tone: data.holders.meaningful && (data.holders.effectiveTop10Pct ?? 0) >= 30 ? "bad" : undefined,
+    },
+    {
+      label: "holders",
+      value: data.holders.totalHolders !== null ? data.holders.totalHolders.toLocaleString("en-US") : "—",
+    },
+  ] as { label: string; value: string; sub?: string; tone?: "good" | "bad" }[];
 
   return (
-    <div className="card mb-3">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3.5 py-2.5">
+    <div className="panel">
+      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 px-3 py-2">
         {data.token.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={data.token.imageUrl}
             alt=""
-            className="h-9 w-9 shrink-0 rounded-full border border-ink-750 object-cover"
+            className="h-7 w-7 shrink-0 border border-line object-cover"
           />
         ) : (
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-ink-750 bg-ink-850 font-mono text-[10px] text-mute-600">
+          <div className="grid h-7 w-7 shrink-0 place-items-center border border-line bg-surf2 font-mono text-[9px] text-fg4">
             {(data.token.symbol ?? "?").slice(0, 2).toUpperCase()}
           </div>
         )}
 
-        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
-          <h1 className="truncate t-display text-lit-50">{data.token.name ?? "Unknown token"}</h1>
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+          <h1 className="truncate t-display text-fg">{data.token.name ?? "Unknown token"}</h1>
           {data.token.symbol && (
-            <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-mute-500">
+            <span className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-fg3">
               {data.token.symbol}
             </span>
           )}
-          <ChainChip chain={data.token.chain} />
+          <Tag tone="neutral">{CHAIN_BY_ID[data.token.chain].label}</Tag>
+          <span className="flex items-center gap-1.5">
+            <RiskDot risk={risk} />
+            <span className={`t-mono text-[10.5px] ${BAND[data.verdict.band].cls}`}>
+              {BAND[data.verdict.band].word}
+            </span>
+          </span>
+          {demo && <Demo />}
         </div>
 
-        <div className="flex items-center gap-2.5 sm:ml-auto">
-          <CopyButton
-            text={data.token.address}
-            display={`${data.token.address.slice(0, 4)}…${data.token.address.slice(-4)}`}
-            label="Contract address copied"
-            title="Copy contract address"
-            className="font-mono text-[10.5px] text-mute-500 transition-colors hover:text-lit-200"
-          />
+        <div className="flex items-center gap-2 sm:ml-auto">
+          <CopyAddr addr={data.token.address} />
           <a
             href={data.token.explorerUrl}
             target="_blank"
             rel="noreferrer"
-            className="font-mono text-[10.5px] text-mute-500 transition-colors hover:text-lit-200"
+            className="t-xs text-fg4 transition-colors hover:text-fg2"
           >
             explorer ↗
           </a>
-          <span className="inline-flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.08em] text-mute-600">
-            <span aria-hidden className="live-dot h-1 w-1 rounded-full bg-brand-500" />
-            <SnapshotTime iso={data.generatedAt} />
-          </span>
         </div>
       </div>
 
-      {/* market facts, as a dense strip rather than six cards */}
-      <div className="grid grid-cols-2 border-t border-ink-800 sm:grid-cols-3 lg:grid-cols-6">
-        <Fact
-          label="Price"
-          value={fmtPrice(m.priceUsd)}
-          sub={change.text === "—" ? undefined : `${change.text} ${change.label}`}
-          tone={
-            m.priceChange24h === null
-              ? undefined
-              : m.priceChange24h > 0
-                ? "up"
-                : m.priceChange24h < 0
-                  ? "down"
-                  : undefined
-          }
-        />
-        <Fact label={m.capKind === "fdv" ? "FDV" : "Market cap"} value={fmtUsd(m.marketCap ?? m.fdv)} />
-        <Fact label="Liquidity" value={fmtUsd(m.liquidityUsd)} />
-        <Fact label="Volume 24h" value={fmtUsd(m.volume24h)} sub={ratio(m.volume24h, m.liquidityUsd)} />
-        <Fact label="Age" value={fmtAge(m.ageHours)} />
-        <Fact
-          label="Top 10"
-          value={data.holders.meaningful ? fmtPct(data.holders.effectiveTop10Pct) : "—"}
-          tone={
-            data.holders.meaningful && (data.holders.effectiveTop10Pct ?? 0) >= 30 ? "bad" : undefined
-          }
-        />
-      </div>
-    </div>
-  );
-}
-
-/**
- * Thousands separator, pinned to en-US. `toLocaleString()` with no argument
- * reads the OS locale, so on a Vietnamese machine 1176 rendered as "1.176" —
- * one-point-one-seven-six to anyone reading an English interface.
- */
-export function count(n: number): string {
-  return n.toLocaleString("en-US");
-}
-
-function ratio(a: number | null, b: number | null): string | undefined {
-  if (a === null || b === null || b <= 0) return undefined;
-  return `${(a / b).toFixed(1)}× liquidity`;
-}
-
-function Fact({
-  label,
-  value,
-  sub,
-  tone,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  tone?: "up" | "down" | "bad";
-}) {
-  const cls =
-    tone === "up"
-      ? "text-ok-400"
-      : tone === "down"
-        ? "text-bad-400"
-        : tone === "bad"
-          ? "text-bad-400"
-          : "text-lit-100";
-  return (
-    <div className="border-ink-800 px-3.5 py-2.5 [&:not(:first-child)]:border-l">
-      <div className="t-label">{label}</div>
-      <div className={`mt-1 font-mono text-[15px] tabular-nums ${cls}`}>{value}</div>
-      {sub && <div className="mt-0.5 font-mono text-[9.5px] text-mute-600">{sub}</div>}
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ *
- * Score rail — the one number, plus why. Sticky on desktop.
- * ------------------------------------------------------------------ */
-
-export function ScoreRail({ data }: { data: AnalysisResult }) {
-  const v = data.verdict;
-  const band = BAND[v.band];
-
-  const worst = sortBySeverity(data.checks)
-    .filter((c) => c.state === "fail" || c.state === "warn")
-    .slice(0, 3);
-
-  return (
-    <div
-      className="rail score-wash h-full border border-ink-800 p-4 lg:sticky lg:top-[64px]"
-      style={{ "--wash": band.wash } as React.CSSProperties}
-    >
-      <div className="flex items-center justify-between">
-        <span className="t-label">Risk score</span>
-        <span className={`h-[6px] w-[6px] ${band.bg}`} aria-hidden />
-      </div>
-
-      <div className="mt-2.5 flex items-end gap-2">
-        <span className={`t-verdict ${band.color}`}>{v.score}</span>
-        <span className="pb-1.5 font-mono text-[11px] text-mute-600">/100</span>
-      </div>
-
-      <div
-        className={`mt-1.5 text-[19px] font-semibold leading-tight tracking-[-0.02em] ${band.color}`}
-        style={{ fontFamily: "var(--font-display)" }}
-      >
-        {band.label}
-      </div>
-
-      <p className="mt-2.5 t-small leading-relaxed text-mute-300">{v.tldr}</p>
-
-      {/* counts, as a compact ledger */}
-      <div className="mt-3.5 grid grid-cols-4 border-y border-ink-800">
-        {(
-          [
-            [v.fails, "fail", "text-bad-400"],
-            [v.warns, "watch", "text-warn-400"],
-            [v.unknowns, "unk", "text-mute-500"],
-            [v.passes, "pass", "text-ok-400"],
-          ] as const
-        ).map(([n, word, cls]) => (
+      <div className="grid grid-cols-2 border-t border-line sm:grid-cols-4 lg:grid-cols-7">
+        {cells.map((c, i) => (
           <div
-            key={word}
-            className="px-1 py-2 text-center [&:not(:first-child)]:border-l [&:not(:first-child)]:border-ink-800"
+            key={c.label}
+            className={`px-2.5 py-1.5 ${i > 0 ? "border-line sm:border-l" : ""} ${i >= 4 ? "border-t border-line sm:border-t-0" : ""}`}
           >
-            <div className={`font-mono text-[16px] tabular-nums ${n > 0 ? cls : "text-mute-600"}`}>
-              {n}
-            </div>
-            <div className="mt-0.5 font-mono text-[8.5px] uppercase tracking-[0.1em] text-mute-600">
-              {word}
-            </div>
+            <Stat
+              label={c.label}
+              value={c.value}
+              sub={c.sub}
+              size="sm"
+              tone={
+                c.tone === "bad" ? "bad" : c.tone === "good" ? "good" : "default"
+              }
+            />
           </div>
         ))}
       </div>
-
-      {worst.length > 0 && (
-        <div className="mt-3.5">
-          <div className="t-label">Worst readings</div>
-          <ul className="mt-2 space-y-2">
-            {worst.map((c) => (
-              <li key={c.id}>
-                <div className="flex items-baseline gap-1.5">
-                  <span
-                    aria-hidden
-                    className={`grid h-[15px] w-[15px] shrink-0 place-items-center border font-mono text-[9px] leading-none ${CHECK_TONE[c.state]}`}
-                  >
-                    {CHECK_GLYPH[c.state]}
-                  </span>
-                  <span className="min-w-0 t-meta font-medium text-lit-200">{c.label}</span>
-                </div>
-                <div className="mt-0.5 pl-[21px] font-mono text-[10px] text-mute-500">{c.reading}</div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
     </div>
   );
 }
 
+function CopyAddr({ addr }: { addr: string }) {
+  const [done, setDone] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(addr);
+          setDone(true);
+          setTimeout(() => setDone(false), 1400);
+        } catch {
+          /* clipboard blocked — the address is still selectable */
+        }
+      }}
+      title={addr}
+      className="font-mono text-[10.5px] text-fg4 transition-colors hover:text-acid"
+    >
+      {done ? "copied ✓" : `${addr.slice(0, 4)}…${addr.slice(-4)}`}
+    </button>
+  );
+}
+
 /* ------------------------------------------------------------------ *
- * Tabs
- * ------------------------------------------------------------------ */
-
-const TABS = [
-  { id: "verdict", label: "Verdict" },
-  { id: "wallets", label: "Wallets" },
-  { id: "holders", label: "Holders" },
-  { id: "callers", label: "Callers" },
-  { id: "narrative", label: "Narrative" },
-  { id: "liquidity", label: "Liquidity" },
-  { id: "checks", label: "All checks" },
-] as const;
-
-type TabId = (typeof TABS)[number]["id"];
-
-/* ------------------------------------------------------------------ *
- * Report body
+ * Report shell
  * ------------------------------------------------------------------ */
 
 export function ReportConsole({ data }: { data: AnalysisResult }) {
-  const [tab, setTab] = useState<TabId>("verdict");
+  const [tab, setTab] = useState("verdict");
+  const demo = tokenByMint(data.token.address);
 
   return (
-    <div>
-      <IdentityBar data={data} />
+    <div className="space-y-2.5">
+      <IdentityBar data={data} demo={demo} />
 
-      <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[268px_minmax(0,1fr)]">
-        <ScoreRail data={data} />
-
-        <div className="min-w-0">
-          {/* tab strip */}
-          <div className="card mb-3">
-            <div role="tablist" aria-label="Report sections" className="no-bar flex gap-5 overflow-x-auto px-3.5">
-              {TABS.map((t) => (
-                <button
-                  key={t.id}
-                  role="tab"
-                  type="button"
-                  aria-selected={tab === t.id}
-                  aria-controls={`panel-${t.id}`}
-                  id={`tab-${t.id}`}
-                  className="tab"
-                  onClick={() => setTab(t.id)}
-                >
-                  {t.label}
-                  {t.id === "wallets" && !data.forensics?.enabled && (
-                    <span aria-hidden className="text-[9px] text-mute-600">
-                      ·
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="rise">
-            {tab === "verdict" && <VerdictPanel data={data} onJump={setTab} />}
-            {tab === "wallets" && (
-              <Panel title="Wallet forensics" note="who bought the launch, and what they have done since">
-                <ForensicsSection data={data.forensics} chain={data.token.chain} />
-              </Panel>
-            )}
-            {tab === "holders" && (
-              <Panel
-                title="Holder distribution"
-                note="pools, burns and curves removed"
-                right={
-                  data.holders.totalHolders !== null
-                    ? `${count(data.holders.totalHolders)} holders`
-                    : undefined
-                }
-              >
-                <HolderTab data={data} />
-              </Panel>
-            )}
-            {tab === "callers" && (
-              <Panel title="Who called it" note="and what the account did with its own position">
-                <CallersSection data={data.callers} />
-              </Panel>
-            )}
-            {tab === "narrative" && (
-              <div className="space-y-3">
-                <Panel title="Narrative" note="how many times this idea has already been tried">
-                  <NarrativeIntelSection data={data.narrativeIntel} />
-                </Panel>
-                <Panel title="Project" note="what the token claims, kept separate from what was measured">
-                  <ProjectPanel data={data} />
-                </Panel>
-              </div>
-            )}
-            {tab === "liquidity" && (
-              <Panel title="Liquidity and flow" note="what you get out, and what the tape looks like">
-                <LiquidityPanel data={data} />
-              </Panel>
-            )}
-            {tab === "checks" && (
-              <Panel
-                title="Every check"
-                note="worst first — open a row for the number behind it"
-                right={`${data.checks.length}`}
-              >
-                <CheckList checks={data.checks} />
-              </Panel>
-            )}
+      <div className="panel">
+        <TabBar tabs={TABS} active={tab} onChange={setTab} />
+        <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="fade-up">
+          <div className="space-y-2.5 p-2.5">
+            {tab === "verdict" && <VerdictTab data={data} demo={demo} />}
+            {tab === "holders" && <HoldersTab data={data} />}
+            {tab === "wallets" && <WalletsTab demo={demo} />}
+            {tab === "callers" && <CallersTab data={data} demo={demo} />}
+            {tab === "narrative" && <NarrativeTab data={data} demo={demo} />}
+            {tab === "exit" && <ExitTab data={data} />}
+            {tab === "checks" && <ChecksTab data={data} />}
+            {tab === "sources" && <SourcesTab data={data} />}
           </div>
         </div>
       </div>
@@ -437,580 +220,873 @@ export function ReportConsole({ data }: { data: AnalysisResult }) {
   );
 }
 
-/* ------------------------------------------------------------------ *
- * Panel — one card. Every tab renders panels, so the page keeps a single
- * surface language across seven different views.
- * ------------------------------------------------------------------ */
+/* ==================================================================== *
+ * VERDICT
+ * ==================================================================== */
 
-function Panel({
-  title,
-  note,
-  right,
-  children,
-}: {
-  title: string;
-  note?: string;
-  right?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="card">
-      <header className="card-head">
-        <h2 className="t-section text-lit-100">{title}</h2>
-        {right && (
-          <span className="ml-auto font-mono text-[10px] tabular-nums text-mute-600">{right}</span>
-        )}
-      </header>
-      {note && <p className="border-b border-ink-850 px-3.5 py-2 t-meta text-mute-600">{note}</p>}
-      <div className="p-3.5">{children}</div>
-    </section>
-  );
-}
-
-/* ------------------------------------------------------------------ *
- * Verdict tab — the reading order, as a grid of facts
- * ------------------------------------------------------------------ */
-
-function VerdictPanel({ data, onJump }: { data: AnalysisResult; onJump: (t: TabId) => void }) {
-  // Only cells the pipeline actually answered. Four of six reading "not
-  // measured" in the prime position made a working product look empty — the
-  // unknown modules are still named, but in one line underneath, not as
-  // quarter-screen tiles.
-  const measured = [
-    {
-      label: "Top 10",
-      value: data.holders.meaningful ? fmtPct(data.holders.effectiveTop10Pct) : null,
-      sub: "share of supply",
-      jump: "holders" as TabId,
-      tone:
-        data.holders.meaningful && (data.holders.effectiveTop10Pct ?? 0) >= 30
-          ? ("bad" as const)
-          : undefined,
-    },
-    {
-      label: "Exit depth",
-      value: data.exit.maxSellUsd.slip5 !== null ? fmtUsd(data.exit.maxSellUsd.slip5) : null,
-      sub: "sellable before 5% slip",
-      jump: "liquidity" as TabId,
-      tone: undefined,
-    },
-    {
-      label: "Creator holds",
-      value: data.deployer.address ? fmtPct(data.deployer.balancePct) : null,
-      sub:
-        data.deployer.ruggedCount > 0
-          ? `${data.deployer.ruggedCount} prior rug${data.deployer.ruggedCount === 1 ? "" : "s"}`
-          : "no rug history",
-      jump: "holders" as TabId,
-      tone:
-        data.deployer.ruggedCount > 0
-          ? ("bad" as const)
-          : (data.deployer.balancePct ?? 0) >= 10
-            ? ("bad" as const)
-            : undefined,
-    },
-    {
-      label: data.holders.totalHolders !== null ? "Holders" : "Pools",
-      value:
-        data.holders.totalHolders !== null
-          ? count(data.holders.totalHolders)
-          : `${data.market.pools.length}`,
-      sub: data.holders.totalHolders !== null ? "wallets holding" : "trading pairs",
-      jump: "holders" as TabId,
-      tone: undefined,
-    },
-    {
-      label: "Volume 24h",
-      value: fmtUsd(data.market.volume24h),
-      sub:
-        data.market.liquidityUsd && data.market.volume24h
-          ? `${(data.market.volume24h / data.market.liquidityUsd).toFixed(1)}× liquidity`
-          : "no comparison",
-      jump: "liquidity" as TabId,
-      tone: undefined,
-    },
-    {
-      label: "Fill",
-      value: data.flow.dataAvailable && data.flow.imbalance !== null ? fmtPct(data.flow.imbalance * 100) : null,
-      sub: "buy minus sell pressure",
-      jump: "liquidity" as TabId,
-      tone:
-        data.flow.imbalance !== null && data.flow.imbalance < -0.2
-          ? ("bad" as const)
-          : undefined,
-    },
-  ].filter((c) => c.value !== null);
-
-  // Named, counted, and honest: these were not run, so they get a line, not a tile.
-  const unmeasured = [
-    !data.forensics?.enabled && "bundle",
-    !data.forensics?.enabled && "sniper",
-    !data.forensics?.enabled && "insider",
-    !data.forensics?.enabled && "fresh wallets",
-    !data.callers?.available && "callers",
-    !data.narrativeIntel?.available && "narrative history",
-  ].filter(Boolean) as string[];
+function VerdictTab({ data, demo }: { data: AnalysisResult; demo: DemoToken | null }) {
+  const v = data.verdict;
+  const band = BAND[v.band];
+  const ordered = [...data.checks].sort((a, b) => {
+    const rank: Record<CheckState, number> = { fail: 0, warn: 1, unknown: 2, pass: 3 };
+    return rank[a.state] - rank[b.state];
+  });
+  const finds = ordered.filter((c) => c.state !== "pass").slice(0, 4);
+  const largest = data.holders.rows.reduce((m, r) => Math.max(m, r.pct ?? 0), 0);
 
   return (
-    <div className="space-y-3">
-      <Panel title="Key readings" note="what the pipeline answered, with the number behind each">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {measured.map((cell) => (
-            <button
-              key={cell.label}
-              type="button"
-              onClick={() => onJump(cell.jump)}
-              className="row-acid border border-ink-800 bg-ink-925 p-3 text-left transition-colors hover:border-ink-700 hover:bg-ink-850"
-            >
-              <div className="t-label">{cell.label}</div>
+    <>
+      {/* the score, then the reasons, side by side */}
+      <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-[240px_minmax(0,1fr)]">
+        <section
+          className="score-wash border border-line bg-surf p-3"
+          style={{ "--wash": band.wash } as React.CSSProperties}
+        >
+          <div className="flex items-center justify-between">
+            <span className="t-eyebrow">risk score</span>
+            <span aria-hidden className={`h-[5px] w-[5px] ${band.dot}`} />
+          </div>
+          <div className="mt-2 flex items-end gap-1.5">
+            <span className={`t-num-xl ${band.cls}`}>{v.score}</span>
+            <span className="pb-1 t-mono text-[11px] text-fg4">/100</span>
+          </div>
+          <div className={`mt-1 text-[17px] font-semibold tracking-[-0.02em] ${band.cls}`} style={{ fontFamily: "var(--font-display)" }}>
+            {band.word}
+          </div>
+
+          <div className="mt-2.5 grid grid-cols-4 border-y border-line">
+            {(
+              [
+                [v.fails, "fail", "text-bad"],
+                [v.warns, "watch", "text-warn"],
+                [v.unknowns, "unk", "text-fg3"],
+                [v.passes, "pass", "text-good"],
+              ] as const
+            ).map(([n, label, cls]) => (
               <div
-                className={`mt-1 font-mono text-[22px] tabular-nums leading-none ${
-                  cell.value === null ? "text-mute-600" : cell.tone === "bad" ? "text-bad-400" : "text-lit-100"
-                }`}
+                key={label}
+                className="py-1.5 text-center [&:not(:first-child)]:border-l [&:not(:first-child)]:border-line"
               >
-                {cell.value === null ? "—" : cell.value}
+                <div className={`t-mono text-[14px] tabular-nums ${n > 0 ? cls : "text-fg4"}`}>{n}</div>
+                <div className="t-eyebrow">{label}</div>
               </div>
-              <div className="mt-1 font-mono text-[9.5px] text-mute-600">{cell.sub}</div>
-            </button>
-          ))}
-        </div>
-
-        {unmeasured.length > 0 && (
-          <div className="mt-2.5 flex flex-wrap items-baseline gap-x-2 gap-y-1 border-t border-ink-850 pt-2.5">
-            <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-mute-600">
-              not run
-            </span>
-            <span className="t-meta text-mute-500">{unmeasured.join(" · ")}</span>
-            <span className="t-meta text-mute-600">
-              — never run is not the same as came back clean
-            </span>
+            ))}
           </div>
-        )}
-      </Panel>
 
-      <Panel title="Why this score" note="the score is not an average: one disqualifying finding sets a floor the rest cannot lift">
-        <ScoreBreakdown data={data} />
-      </Panel>
+          <p className="mt-2 t-xs leading-relaxed text-fg3">{v.tldr}</p>
+          <p className="mt-1.5 t-xs leading-relaxed text-fg4">
+            The band comes from how many checks failed, not from the number. One disqualifying
+            finding sets a floor the rest cannot average away
+          </p>
+        </section>
 
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <Panel title="Largest wallet" note="share of supply, pools removed">
-          <ConcentrationBar
-            top10={data.holders.meaningful ? data.holders.effectiveTop10Pct : null}
-            largest={
-              data.holders.meaningful
-                ? data.holders.rows.reduce((m, r) => Math.max(m, r.pct ?? 0), 0)
-                : null
-            }
-            linkedPct={data.clusters.linkedSupplyPct}
-          />
-        </Panel>
-        <Panel title="Creator" note="what the deployer has done with its own supply">
-          <CreatorPanel data={data} />
-        </Panel>
-      </div>
-
-      <Panel title="Sources" note="a source that failed leaves its check unknown — never a pass">
-        <ProvenancePanel data={data} />
-      </Panel>
-    </div>
-  );
-}
-
-function ScoreBreakdown({ data }: { data: AnalysisResult }) {
-  const ordered = sortBySeverity(data.checks);
-  const failing = ordered.filter((c) => c.state === "fail");
-  const rest = ordered.filter((c) => c.state !== "fail");
-
-  return (
-    <div className="grid grid-cols-1 gap-x-8 gap-y-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-      <div>
-      {failing.length === 0 && (
-        <p className="t-small leading-relaxed text-mute-400">
-          No check failed outright. {data.verdict.warns} to watch, {data.verdict.unknowns} the
-          pipeline could not read
-        </p>
-      )}
-      {failing.length > 0 && failing.length <= 3 && (
-        <p className="mb-2 t-small leading-relaxed text-mute-400">
-          Failures are above; everything else is below. A check that passed is not a promise —
-          it is one question the pipeline could answer
-        </p>
-      )}
-      {failing.length > 0 && (
-        <ul className="space-y-2">
-          {failing.slice(3).map((c) => (
-            <li key={c.id} className="flex items-start gap-2">
-              <span
-                aria-hidden
-                className={`mt-[3px] grid h-[16px] w-[16px] shrink-0 place-items-center border font-mono text-[9px] ${CHECK_TONE[c.state]}`}
-              >
-                ✕
-              </span>
-              <div className="min-w-0">
-                <span className="t-body-strong text-lit-100">{c.label}</span>
-                <p className="mt-0.5 font-mono text-[11px] text-bad-400">{c.reading}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-      </div>
-
-      {rest.length > 0 && (
-        <div className="border-t border-ink-850 pt-2.5 lg:border-t-0 lg:border-l lg:border-ink-850 lg:pl-8 lg:pt-0">
-          <div className="t-label">Other checks</div>
-          <ul className="mt-2 divide-y divide-ink-850">
-            {rest.map((c) => (
-              <li key={c.id} className="flex items-start gap-2 py-2">
+        <div className="space-y-2.5">
+          <Panel
+            title="What fired"
+            note={finds.length === 0 ? "nothing worse than a pass" : "worst first, with the number behind it"}
+            flush
+          >
+            {finds.length === 0 && (
+              <p className="px-3 py-3 t-xs leading-relaxed text-fg3">
+                Every check the pipeline could run came back inside its band. That is not a verdict
+                that a token is safe — only that nothing it could measure was out of range
+              </p>
+            )}
+            {finds.map((c) => (
+              <div key={c.id} className="flex items-start gap-2 border-b border-line px-3 py-2 last:border-b-0">
                 <span
                   aria-hidden
-                  className={`mt-[2px] grid h-[14px] w-[14px] shrink-0 place-items-center border font-mono text-[8px] leading-none ${
-                    c.state === "pass"
-                      ? "text-ok-500 border-ok-600/40"
-                      : c.state === "warn"
-                        ? "text-warn-500 border-warn-600/40"
-                        : "text-mute-500 border-ink-600"
-                  }`}
+                  className={`mt-[1px] grid h-[15px] w-[15px] shrink-0 place-items-center border font-mono text-[8.5px] leading-none ${TONE[c.state]}`}
                 >
-                  {CHECK_GLYPH[c.state]}
+                  {GLYPH[c.state]}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <div className="t-meta leading-snug text-mute-200">{c.label}</div>
-                  <div
-                    className={`mt-0.5 font-mono text-[10px] tabular-nums ${
-                      c.state === "pass"
-                        ? "text-ok-500"
-                        : c.state === "warn"
-                          ? "text-warn-500"
-                          : "text-mute-500"
-                    }`}
-                  >
-                    {c.reading}
+                  <div className="flex flex-wrap items-baseline gap-x-2">
+                    <span className="t-xs font-semibold text-fg">{c.label}</span>
+                    <span className="t-mono text-[10.5px] text-fg2">{c.reading}</span>
+                  </div>
+                  <div className="mt-0.5 flex flex-wrap items-center gap-x-2">
+                    <span className="font-mono text-[8.5px] uppercase tracking-[0.06em] text-fg4">
+                      {c.source}
+                    </span>
+                    <span className="t-xs text-fg4">· {c.quality}</span>
                   </div>
                 </div>
-              </li>
+              </div>
             ))}
-          </ul>
+          </Panel>
+
+          {demo && (
+            <Panel title="The layer this tool exists for" note="what the contract checks cannot see" flush>
+              <div className="grid grid-cols-2 divide-x divide-line sm:grid-cols-4">
+                {[
+                  { label: "bundle", value: demo.bundleCount, sub: `${demo.bundlePct.toFixed(1)}% supply`, tone: demo.bundlePct > 10 ? "bad" : "default" },
+                  { label: "snipers", value: demo.sniperCount, sub: `${demo.sniperPct.toFixed(1)}% supply`, tone: demo.sniperPct > 8 ? "hot" : "default" },
+                  { label: "insiders", value: `${demo.insiderPct.toFixed(1)}%`, sub: "supply handed out", tone: demo.insiderPct > 5 ? "hot" : "default" },
+                  { label: "exit window", value: `${demo.exitWindowSec}s`, sub: "sell to −50%", tone: demo.exitWindowSec < 30 ? "bad" : "default" },
+                ].map((c) => (
+                  <div key={c.label} className="px-2.5 py-2">
+                    <Stat
+                      label={c.label}
+                      value={c.value}
+                      sub={c.sub}
+                      size="sm"
+                      tone={c.tone === "bad" ? "bad" : c.tone === "hot" ? "hot" : "default"}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="border-t border-line px-2.5 py-1.5">
+                <Demo />
+                <span className="ml-1.5 t-xs text-fg4">
+                  These four modules are not wired to the pipeline yet
+                </span>
+              </div>
+            </Panel>
+          )}
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
+        <Panel title="Supply concentration" note="pools, burns and curves removed">
+          <DistributionBar
+            largest={data.holders.meaningful ? largest : null}
+            top10={data.holders.meaningful ? data.holders.effectiveTop10Pct : null}
+            linked={data.clusters.linkedSupplyPct}
+          />
+        </Panel>
+
+        <Panel title="Deployer" note="what the creator did with its own supply">
+          <DeployerBlock data={data} />
+        </Panel>
+      </div>
+    </>
+  );
+}
+
+function DeployerBlock({ data }: { data: AnalysisResult }) {
+  const d = data.deployer;
+  if (!d.address) {
+    return <p className="t-xs leading-relaxed text-fg4">The deployer could not be identified</p>;
+  }
+  return (
+    <div>
+      <div className="flex flex-wrap items-baseline gap-1.5">
+        <a
+          href={`${data.token.explorerUrl.split("/tx/")[0]}/address/${d.address}`}
+          target="_blank"
+          rel="noreferrer"
+          className="font-mono text-[11px] text-fg2 underline decoration-line2 underline-offset-2 hover:text-acid"
+        >
+          {d.address.slice(0, 6)}…{d.address.slice(-4)}
+        </a>
+        {d.ruggedCount > 0 && (
+          <Tag tone="bad">
+            {d.ruggedCount} prior rug{d.ruggedCount === 1 ? "" : "s"}
+          </Tag>
+        )}
+      </div>
+
+      <div className="mt-2 grid grid-cols-2 gap-x-3">
+        <Split label="holds">{d.balancePct === null ? "—" : `${d.balancePct.toFixed(2)}%`}</Split>
+        <Split label="prior launches">{d.priorTokens.length}</Split>
+      </div>
+
+      {d.priorTokens.length === 0 && d.dataAvailable && (
+        <p className="mt-1.5 t-xs leading-relaxed text-fg4">
+          A fresh wallet: no rug history, and no track record either
+        </p>
+      )}
+
+      {d.ruggedCount > 0 && (
+        <p className="mt-1.5 t-xs leading-relaxed text-warn">
+          This deployer has launched tokens that later collapsed. That is a fact about the wallet,
+          not a prediction about this one
+        </p>
       )}
     </div>
   );
 }
 
-/* ------------------------------------------------------------------ *
- * Holders — map plus table inside one panel
- * ------------------------------------------------------------------ */
+/* ==================================================================== *
+ * HOLDERS
+ * ==================================================================== */
 
-function HolderTab({ data }: { data: AnalysisResult }) {
+function HoldersTab({ data }: { data: AnalysisResult }) {
   const h = data.holders;
   const chain = CHAIN_BY_ID[data.token.chain];
   const [picked, setPicked] = useState<string | null>(null);
-  const selected = picked ? (h.rows.find((r) => r.address === picked) ?? null) : null;
+  const sel = picked ? (h.rows.find((r) => r.address === picked) ?? null) : null;
 
-  return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,290px)_minmax(0,1fr)]">
-      <div className="min-w-0">
-        <div className="flex items-baseline justify-between pb-1.5">
-          <span className="t-label">share of supply</span>
-          <span className="font-mono text-[8.5px] uppercase tracking-[0.1em] text-mute-600">
-            to scale
-          </span>
-        </div>
-        <div className="border border-ink-800 bg-ink-925">
-          <HolderMap rows={h.rows} selected={picked} onSelect={setPicked} />
-          {selected && (
-            <HolderDetail holder={selected} explorer={chain.explorer} onClose={() => setPicked(null)} />
-          )}
-        </div>
-        <p className="mt-2 t-meta leading-relaxed text-mute-600">
-          Top {h.rows.length}, area proportional to share. Click a bubble to inspect it
-        </p>
-      </div>
-
-      <div className="min-w-0">
-        <div className="border border-ink-800 bg-ink-925">
-          <div className="grid grid-cols-[20px_minmax(0,1fr)_auto_auto] items-baseline gap-x-3 border-b border-ink-800 px-3 py-1.5">
-            <span className="t-label">#</span>
-            <span className="t-label">wallet</span>
-            <span className="t-label text-right">share</span>
-            <span className="t-label text-right">balance</span>
-          </div>
-          <HolderRows rows={h.rows} explorer={chain.explorer} selected={picked} onSelect={setPicked} />
-        </div>
-        <p className="mt-2 t-meta leading-relaxed text-mute-600">
-          An unlabelled wallet is unclassified — not suspicious
-        </p>
-      </div>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ *
- * Liquidity
- * ------------------------------------------------------------------ */
-
-function LiquidityPanel({ data }: { data: AnalysisResult }) {
-  const e = data.exit;
-  const f = data.flow;
-
-  return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-      <div className="min-w-0">
-        <div className="flex items-baseline justify-between pb-2">
-          <h3 className="t-title text-lit-100">Exit depth</h3>
-          <Meter label="of market cap" value={e.liquidityCoverage} />
-        </div>
-        <div className="border-t border-ink-800 pt-3">
-          {e.available ? (
-            <ExitCurve
-              maxSell5pct={e.maxSellUsd.slip5}
-              maxSell1pct={e.maxSellUsd.slip1}
-              liquidityUsd={data.market.liquidityUsd}
-            />
-          ) : (
-            <p className="t-small text-mute-500">{e.note ?? "No pool data"}</p>
-          )}
-        </div>
-      </div>
-      <div className="min-w-0">
-        <div className="flex items-baseline justify-between pb-2">
-          <h3 className="t-title text-lit-100">Trade flow</h3>
-          <span className="font-mono text-[9.5px] uppercase tracking-[0.08em] text-mute-600">
-            {f.windowTrades} trades
-          </span>
-        </div>
-        <div className="border-t border-ink-800 pt-3">
-          {f.dataAvailable ? (
-            <FlowBar
-              buyVol={f.buyVolumeUsd}
-              sellVol={f.sellVolumeUsd}
-              imbalance={f.imbalance}
-              buys={f.buys}
-              sells={f.sells}
-            />
-          ) : (
-            <p className="t-small text-mute-500">{f.note ?? "No trade data"}</p>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ *
- * Project — claims only, never mixed with measurements
- * ------------------------------------------------------------------ */
-
-function ProjectPanel({ data }: { data: AnalysisResult }) {
-  const p = data.project;
-  const n = data.narrative;
-  const any = p.website || p.twitter || p.telegram || p.description || n.summary;
-
-  if (!any) {
+  if (h.rows.length === 0) {
     return (
-      <p className="t-small leading-relaxed text-mute-500">
-        No project information was found. Nothing is invented to fill the gap
-      </p>
+      <Panel title="Holder distribution" note={h.note ?? "no holder list returned"}>
+        <p className="t-xs leading-relaxed text-fg4">
+          The holder list could not be read. An empty list is not evidence that supply is spread
+          out — it is evidence that this was not measured
+        </p>
+      </Panel>
     );
   }
 
   return (
-    <div className="space-y-3">
-      {n.summary && (
-        <div>
-          <div className="t-label">Narrative</div>
-          <p className="mt-1 t-body leading-relaxed text-mute-300">{n.summary}</p>
-          {n.keywords.length > 0 && (
-            <div className="mt-1.5 flex flex-wrap gap-1">
-              {n.keywords.slice(0, 8).map((k) => (
-                <span
-                  key={k}
-                  className="border border-ink-750 px-1.5 py-[1px] font-mono text-[9px] uppercase tracking-[0.06em] text-mute-500"
-                >
-                  {k}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+    <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-[minmax(0,300px)_minmax(0,1fr)]">
+      <div className="space-y-2.5">
+        <Panel title="Concentration" note="area proportional to share">
+          <div className="border border-line bg-surf2">
+            <HolderMap rows={h.rows} selected={picked} onSelect={setPicked} />
+            {sel && (
+              <HolderDetail holder={sel} explorer={chain.explorer} onClose={() => setPicked(null)} />
+            )}
+          </div>
+          <div className="mt-2">
+            <DistributionBar
+              largest={h.rows.reduce((m, r) => Math.max(m, r.pct ?? 0), 0)}
+              top10={h.effectiveTop10Pct}
+              linked={data.clusters.linkedSupplyPct}
+            />
+          </div>
+        </Panel>
 
-      {p.description && (
-        <div>
-          <div className="t-label">Description</div>
-          <p className="mt-1 t-small leading-relaxed text-mute-400">{p.description}</p>
-        </div>
-      )}
-
-      <div className="flex flex-wrap gap-1.5 border-t border-ink-850 pt-2.5">
-        {[
-          ["Website", p.website],
-          ["X", p.twitter],
-          ["Telegram", p.telegram],
-        ].map(([label, url]) =>
-          url ? (
-            <a
-              key={label}
-              href={url}
-              target="_blank"
-              rel="noreferrer"
-              className="border border-ink-750 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.06em] text-mute-300 transition-colors hover:border-brand-700 hover:text-brand-400"
-            >
-              {label} ↗
-            </a>
-          ) : null,
-        )}
+        <Panel title="What this does not say" note="read before acting on concentration">
+          <p className="t-xs leading-relaxed text-fg3">
+            A high top-10 share on a young token is often the bonding curve and the pool, which are
+            removed above — but not always. A low share does not mean the supply is not one entity:
+            that requires funding traces, which live under Wallets
+          </p>
+          <p className="mt-1.5 t-xs leading-relaxed text-fg4">{h.method}</p>
+        </Panel>
       </div>
+
+      <Panel
+        title="Top holders"
+        flush
+        right={h.totalHolders !== null ? `${h.totalHolders.toLocaleString("en-US")} total` : undefined}
+      >
+        <div className="grid grid-cols-[18px_minmax(0,1fr)_60px_58px] items-baseline gap-x-2.5 border-b border-line px-3 py-1">
+          <span className="t-eyebrow">#</span>
+          <span className="t-eyebrow">wallet</span>
+          <span className="t-eyebrow text-right">share</span>
+          <span className="t-eyebrow text-right">balance</span>
+        </div>
+        <HolderRows rows={h.rows} explorer={chain.explorer} selected={picked} onSelect={setPicked} />
+        <p className="border-t border-line px-3 py-1.5 t-xs text-fg4">
+          An unlabelled wallet is unclassified — not suspicious
+        </p>
+      </Panel>
     </div>
   );
 }
 
-/* ------------------------------------------------------------------ *
- * All checks — the ledger
- * ------------------------------------------------------------------ */
+/* ==================================================================== *
+ * WALLETS — bundle, snipers, insiders, fresh
+ * ==================================================================== */
 
-function CheckList({ checks }: { checks: Check[] }) {
-  const [open, setOpen] = useState<string | null>(null);
-  const ordered = sortBySeverity(checks);
+function WalletsTab({ demo }: { demo: DemoToken | null }) {
+  if (!demo) {
+    return (
+      <Panel title="Wallet forensics" note="who bought the launch, and what they did since">
+        <p className="t-xs leading-relaxed text-fg4">
+          The launch block was not read for this token, so bundle, sniper, insider and fresh-wallet
+          detection did not run. A module that was never run is not a module that came back clean
+        </p>
+        <ul className="mt-2 space-y-1">
+          {[
+            "Bundle detection — who bought inside the launch block, and what that group has done since",
+            "Snipers — wallets that took the open, and whether they still hold",
+            "Insider supply — supply transferred rather than bought",
+            "Fresh wallets — buyers created in the week before launch",
+            "Exit window — seconds from first sell to a 50% drawdown",
+          ].map((t) => (
+            <li key={t} className="flex items-start gap-1.5">
+              <span aria-hidden className="mt-[6px] h-[3px] w-[3px] shrink-0 bg-fg4" />
+              <span className="t-xs leading-snug text-fg3">{t}</span>
+            </li>
+          ))}
+        </ul>
+      </Panel>
+    );
+  }
+
+  const bundle = demo.wallets.filter((w) => w.tags?.includes("bundler"));
+  const snipers = demo.wallets.filter((w) => w.tags?.includes("sniper bot"));
+  const insiders = demo.wallets.filter((w) => w.tags?.includes("insider"));
+  const fresh = demo.wallets.filter(
+    (w) => w.tags?.includes("single-use") || (w.born ?? "").startsWith("2026-11-19") || (w.born ?? "").startsWith("2026-11-23"),
+  );
+
+  // Every figure below is summed from the lists rendered next to it, so the
+  // headline and the detail cannot disagree.
+  const sumPct = (ws: typeof demo.wallets) => ws.reduce((n, w) => n + (w.pct ?? 0), 0);
+  const bundlePct = sumPct(bundle);
+  const sniperPct = sumPct(snipers);
+  const insiderPct = sumPct(insiders);
+  const freshPct = sumPct(fresh);
 
   return (
-    <ul>
+    <>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Demo />
+        <span className="t-xs text-fg4">
+          the four wallet modules below are illustrative — the pipeline does not populate them yet
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        {[
+          { label: "bundle", n: `${bundle.length}`, pct: bundlePct, tone: "bad" as const },
+          { label: "snipers", n: `${snipers.length}`, pct: sniperPct, tone: "hot" as const },
+          { label: "insiders", n: `${insiders.length}`, pct: insiderPct, tone: "hot" as const },
+          { label: "fresh", n: `${fresh.length}`, pct: freshPct, tone: "warn" as const },
+        ].map((k) => (
+          <div key={k.label} className="panel p-2.5">
+            <Stat
+              label={k.label}
+              value={k.n}
+              size="md"
+              tone={k.tone === "bad" ? "bad" : k.tone === "hot" ? "hot" : "warn"}
+            />
+            <div className="mt-1.5">
+              <Gauge pct={k.pct} tone={k.tone} height={3} />
+            </div>
+            <div className="mt-1 t-xs text-fg4">{k.pct.toFixed(1)}% of supply</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-2">
+        <Panel title="Launch bundle" note={`${bundle.length} wallets, ${bundlePct.toFixed(1)}% supply`} flush>
+          <WalletList wallets={bundle} />
+          <div className="border-t border-line px-3 py-2">
+            <div className="grid grid-cols-3 gap-2">
+              <Stat label="sell sync" value={`${(demo.sellSynchrony * 100).toFixed(0)}%`} size="sm" tone="bad" sub="sold in one slot" />
+              <Stat label="exit window" value={`${demo.exitWindowSec}s`} size="sm" tone="bad" sub="first sell to −50%" />
+              <Stat label="funder" value="shared" size="sm" tone="hot" sub="one wallet funded all" />
+            </div>
+          </div>
+        </Panel>
+
+        <div className="space-y-2.5">
+          <Panel title="Snipers" note={`${snipers.length} wallets, ${sniperPct.toFixed(1)}% supply`} flush>
+            <WalletList wallets={snipers} />
+          </Panel>
+          <Panel title="Insider supply" note={`${insiders.length} wallets, ${insiderPct.toFixed(1)}% supply — received, not bought`} flush>
+            <WalletList wallets={insiders} />
+          </Panel>
+        </div>
+      </div>
+
+      <Panel title="Fresh wallets" note="created in the week before launch" flush>
+        <WalletList wallets={fresh} />
+      </Panel>
+
+      <Locked
+        title="Traced funding origins"
+        points={[
+          "Which CEX hot wallet funded each bundle member, and when",
+          "Wallets the same funder has backed on other launches",
+          "Full multi-hop trail from the funding source to the buy",
+          "Which of these wallets appear together on prior tokens",
+          "How much of each prior launch they exited, and at what point",
+          "Whether the deployer wallet has ever received from the same source",
+        ]}
+      />
+    </>
+  );
+}
+
+function WalletList({ wallets }: { wallets: DemoToken["wallets"] }) {
+  if (wallets.length === 0) {
+    return <p className="px-3 py-2.5 t-xs text-fg4">None identified in this token</p>;
+  }
+  return (
+    <div>
+      {wallets.map((w) => {
+        const sold = w.sold ?? 0;
+        const tone =
+          w.status === "sold" ? "text-fg3" : w.status === "transferred" ? "text-hot" : "text-warn";
+        return (
+          <div key={w.addr} className="border-b border-line px-3 py-1.5 last:border-b-0">
+            <div className="flex flex-wrap items-baseline gap-x-1.5">
+              <span className="font-mono text-[10.5px] text-fg2">
+                {w.addr.slice(0, 6)}…{w.addr.slice(-4)}
+              </span>
+              <span className={`font-mono text-[8.5px] uppercase tracking-[0.05em] ${tone}`}>
+                {w.status ?? "holding"}
+              </span>
+              {(w.priorRugs ?? 0) > 0 && (
+                <Tag tone="bad">
+                  {w.priorRugs} prior rug{w.priorRugs === 1 ? "" : "s"}
+                </Tag>
+              )}
+              {w.tags
+                ?.filter((t) => t !== "bundler" && t !== "sniper bot" && t !== "insider")
+                .slice(0, 1)
+                .map((t) => (
+                  <span key={t} className="font-mono text-[8.5px] uppercase tracking-[0.05em] text-fg4">
+                    {t}
+                  </span>
+                ))}
+              <span className="ml-auto t-mono text-[10.5px] text-fg3">
+                {w.pct !== undefined ? `${w.pct.toFixed(2)}%` : "—"}
+              </span>
+            </div>
+            <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2">
+              {w.bought !== undefined && w.bought > 0 && (
+                <span className="t-xs text-fg4">bought {w.bought.toFixed(2)}%</span>
+              )}
+              {sold > 0 && <span className="t-xs text-hot">sold {sold}%</span>}
+              {w.avgEntry !== undefined && (
+                <span className="t-xs text-fg4">entry {fmtPrice(w.avgEntry)}</span>
+              )}
+              {(w.priorLaunches ?? 0) > 0 && (
+                <span className="t-xs text-fg4">{w.priorLaunches} prior launches</span>
+              )}
+              {w.funder && (
+                <span className="t-xs text-fg4">
+                  funded by{" "}
+                  <span className="font-mono text-fg3">
+                    {w.funder.slice(0, 4)}…{w.funder.slice(-4)}
+                  </span>
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ==================================================================== *
+ * CALLERS
+ * ==================================================================== */
+
+function CallersTab({ data, demo }: { data: AnalysisResult; demo: DemoToken | null }) {
+  const calls = callersForMint(data.token.address);
+  const [open, setOpen] = useState<string | null>(calls[0]?.handle ?? null);
+
+  const beforeBars = [
+    { label: "T−30", pct: 6 },
+    { label: "T−20", pct: 9 },
+    { label: "T−10", pct: 14 },
+    { label: "T−5", pct: 18 },
+    { label: "T+0", pct: 11 },
+    { label: "T+5", pct: 26 },
+    { label: "T+10", pct: 34 },
+    { label: "T+20", pct: 22 },
+    { label: "T+30", pct: 9 },
+    { label: "T+60", pct: 4 },
+  ];
+
+  if (calls.length === 0) {
+    return (
+      <Panel title="Who called it" note="accounts that posted this contract">
+        <p className="t-xs leading-relaxed text-fg4">
+          No caller was found for this contract in the tracked set. That is not evidence nobody
+          called it — it is evidence that this was not matched
+        </p>
+      </Panel>
+    );
+  }
+
+  return (
+    <>
+      <Panel
+        title="Called this contract"
+        note="every account that posted it, and what each did with their own position"
+        flush
+      >
+        {calls.map((c) => {
+          const isOpen = open === c.handle;
+          return (
+            <div key={c.handle} className="border-b border-line last:border-b-0">
+              <button
+                type="button"
+                onClick={() => setOpen(isOpen ? null : c.handle)}
+                aria-expanded={isOpen}
+                className="drow flex w-full items-center gap-2 px-3 py-2 text-left"
+                data-active={isOpen}
+              >
+                <div className="grid h-6 w-6 shrink-0 place-items-center border border-line bg-surf2 font-mono text-[10px] text-fg2">
+                  {c.handle.slice(0, 1).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-baseline gap-x-1.5">
+                    <span className="t-xs font-semibold text-fg">@{c.handle}</span>
+                    {c.outcome === "lost" && <Tag tone="bad">call went to zero</Tag>}
+                  </div>
+                  <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2">
+                    <span className="t-mono text-[10px] text-fg4">
+                      {new Date(c.at).toISOString().slice(0, 16).replace("T", " ")} UTC
+                    </span>
+                    <span className="t-xs text-fg4">mcap at call {fmtUsd(c.mcAtCall)}</span>
+                  </div>
+                </div>
+                <span className="shrink-0 t-mono text-[10px] text-fg4">{isOpen ? "−" : "+"}</span>
+              </button>
+              {isOpen && (
+                <div className="fade-up border-t border-line bg-surf2/50 px-3 py-2.5">
+                  <div className="grid grid-cols-2 gap-x-3 sm:grid-cols-4">
+                    <Stat label="peak after" value={fmtUsd(c.peakMc)} size="sm" tone={c.peakMc > c.mcAtCall * 2 ? "good" : "default"} />
+                    <Stat
+                      label="multiple"
+                      value={c.peakMc > 0 ? `${(c.peakMc / c.mcAtCall).toFixed(1)}×` : "—"}
+                      size="sm"
+                    />
+                    <Stat label="hours to peak" value={c.hoursToPeak !== null ? `${c.hoursToPeak}h` : "never"} size="sm" />
+                    <Stat label="outcome" value={c.outcome} size="sm" tone={c.outcome === "won" ? "good" : c.outcome === "lost" ? "bad" : "default"} />
+                  </div>
+                  <a
+                    href={c.postUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-2 inline-block t-xs text-acid hover:underline"
+                  >
+                    original post ↗
+                  </a>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </Panel>
+
+      <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-2">
+        <Panel title="Follower entry timing" note="when wallets that bought after the post actually bought">
+          <FollowerEntryChart buckets={beforeBars} postIndex={4} />
+          <p className="mt-2 t-xs leading-relaxed text-fg4">
+            Bars left of the divider are wallets that bought before the public post. On this token
+            that is 47% of the addresses that later sold into the inflow
+          </p>
+        </Panel>
+
+        <Panel title="The sequence" note="minute by minute, relative to the post">
+          <Timeline events={DEMO_TIMELINE} />
+        </Panel>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Demo />
+        <span className="t-xs text-fg4">
+          caller matching and follower tracking are not wired to the pipeline yet
+        </span>
+      </div>
+
+      <Locked
+        title="Caller intelligence"
+        points={[
+          "Full call history with win rate, median multiple and dead-call share",
+          "Wallet behind each account, and whether it bought before or after posting",
+          "Share of their own position sold after followers arrived",
+          "Exit price against the price at the moment they posted",
+          "Smart followers — wallets that repeatedly buy after this account posts",
+          "Repeat-follower overlap with other callers",
+          "Coordination signals: shared funding, synchronised entry, cross-caller networks",
+          "Scripted timeline of who bought, when, and who sold into whom",
+        ]}
+      />
+
+      {demo && (
+        <Panel title="Cabal assessment" note="detected coordination signals, not an accusation">
+          <div className="flex items-baseline gap-2">
+            <span className="t-mono text-[22px] text-bad">{demo.bundlePct > 15 ? "Elevated" : "Low"}</span>
+            <span className="t-xs text-fg4">
+              {demo.bundlePct > 15
+                ? "3 independent signals, on 2 of 4 tracked callers"
+                : "no more than one signal fired"}
+            </span>
+          </div>
+          <div className="mt-2 space-y-1">
+            {[
+              ["Pre-call accumulation", demo.bundlePct > 15, "related wallets bought before the first public post"],
+              ["Shared funding", demo.bundlePct > 10, "bundle members funded from one wallet"],
+              ["Synchronised entry", demo.sellSynchrony > 0.6, "multiple wallets bought or sold inside one slot"],
+              ["Repeat participation", false, "same wallets appear across this caller's prior calls"],
+            ].map(([label, fired, why]) => (
+              <div key={label as string} className="flex items-start gap-2 border-b border-line py-1 last:border-b-0">
+                <span
+                  aria-hidden
+                  className={`mt-[4px] h-[5px] w-[5px] shrink-0 ${fired ? "bg-bad" : "bg-line2"}`}
+                />
+                <div className="min-w-0">
+                  <span className={`t-xs ${fired ? "text-fg" : "text-fg3"}`}>{label as string}</span>
+                  <span className="ml-1.5 t-xs text-fg4">{why as string}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 t-xs leading-relaxed text-fg4">
+            Shared buying alone is not proof of coordination — a launch crowd and a coordinated
+            group look identical on a chart. The assessment reports signals that fired, and how
+            many, never an accusation
+          </p>
+        </Panel>
+      )}
+    </>
+  );
+}
+
+/* ==================================================================== *
+ * NARRATIVE
+ * ==================================================================== */
+
+function NarrativeTab({ data, demo }: { data: AnalysisResult; demo: DemoToken | null }) {
+  const n = data.narrative;
+  const p = data.project;
+
+  return (
+    <>
+      <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
+        <Panel title="What it claims" note="written by the project, not measured">
+          {n.summary ? (
+            <p className="t-xs leading-relaxed text-fg2">{n.summary}</p>
+          ) : (
+            <p className="t-xs text-fg4">No description was found</p>
+          )}
+          {n.keywords.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {n.keywords.slice(0, 8).map((k) => (
+                <Tag key={k} tone="neutral">
+                  {k}
+                </Tag>
+              ))}
+            </div>
+          )}
+          {p.description && <p className="mt-2 t-xs leading-relaxed text-fg3">{p.description}</p>}
+
+          <div className="mt-2 flex flex-wrap gap-1.5 border-t border-line pt-2">
+            {[
+              ["website", p.website],
+              ["x", p.twitter],
+              ["telegram", p.telegram],
+            ].map(([label, url]) =>
+              url ? (
+                <a
+                  key={label}
+                  href={url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="border border-line px-1.5 py-[1px] font-mono text-[9px] uppercase tracking-[0.05em] text-fg3 transition-colors hover:border-line2 hover:text-acid"
+                >
+                  {label} ↗
+                </a>
+              ) : null,
+            )}
+          </div>
+        </Panel>
+
+        {demo && (
+          <Panel title="Narrative position" note="where this idea sits in its own cycle">
+            <div className="grid grid-cols-2 gap-x-3">
+              <Split label="narrative">{demo.narrative}</Split>
+              <Split label="copies in 7d" tone={demo.copyIndex > 3 ? "bad" : "default"}>
+                {demo.copyIndex === 1 ? "original" : `#${demo.copyIndex}`}
+              </Split>
+              <Split label="organic" tone={demo.organicScore < 40 ? "warn" : "good"}>
+                {demo.organicScore}/100
+              </Split>
+              <Split label="usual lifespan">{demo.narrativeLifespanHours}h</Split>
+            </div>
+
+            <div className="mt-2">
+              <div className="flex items-baseline justify-between">
+                <span className="t-xs text-fg4">organic attention</span>
+                <span className="t-mono text-[10.5px] text-fg3">{demo.organicScore}/100</span>
+              </div>
+              <div className="mt-1">
+                <Gauge pct={demo.organicScore} tone={demo.organicScore < 40 ? "warn" : "good"} height={4} />
+              </div>
+              <p className="mt-1 t-xs leading-relaxed text-fg4">
+                Share of mentions that carry no contract address — people talking about the idea
+                rather than the chart. Low means the story only exists while money is being spent
+              </p>
+            </div>
+          </Panel>
+        )}
+      </div>
+
+      {demo && demo.copyIndex > 3 && (
+        <Panel title="This idea has already run" note={`copy #${demo.copyIndex} in seven days`} flush>
+          {[
+            { symbol: "RATIO", peak: 4200000, toPeak: 6, toZero: 34 },
+            { symbol: "MICE", peak: 890000, toPeak: 3, toZero: 12 },
+            { symbol: "SQUEAK", peak: 210000, toPeak: 2, toZero: 8 },
+          ].map((i) => (
+            <div key={i.symbol} className="flex flex-wrap items-baseline gap-x-2 border-b border-line px-3 py-1.5 last:border-b-0">
+              <span className="t-xs font-semibold text-fg">{i.symbol}</span>
+              <span className="t-xs text-fg4">peak {fmtUsd(i.peak)}</span>
+              <span className="t-xs text-fg4">after {i.toPeak}h</span>
+              <span className="ml-auto t-mono text-[10.5px] text-bad">−90% in {i.toZero}h</span>
+            </div>
+          ))}
+          <div className="px-3 py-1.5">
+            <Demo />
+            <span className="ml-1.5 t-xs text-fg4">
+              lifespan shown is what these instances did, not a forecast
+            </span>
+          </div>
+        </Panel>
+      )}
+    </>
+  );
+}
+
+/* ==================================================================== *
+ * EXIT
+ * ==================================================================== */
+
+function ExitTab({ data }: { data: AnalysisResult }) {
+  const e = data.exit;
+  const f = data.flow;
+
+  return (
+    <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
+      <Panel title="What you can sell" note="estimated from pool reserves, not a quote">
+        <ExitCurve
+          maxSell5pct={e.maxSellUsd.slip5}
+          maxSell1pct={e.maxSellUsd.slip1}
+          liquidityUsd={data.market.liquidityUsd}
+        />
+        {e.liquidityCoverage !== null && (
+          <div className="mt-2 border-t border-line pt-2">
+            <Split label="liquidity vs mcap">{e.liquidityCoverage.toFixed(2)}%</Split>
+            <p className="mt-1 t-xs leading-relaxed text-fg4">
+              A thin pool relative to market cap means the chart you see is not the size you can
+              actually exit
+            </p>
+          </div>
+        )}
+      </Panel>
+
+      <Panel title="Trade flow" note={`last ${f.windowTrades} trades`}>
+        <FlowBar
+          buyVol={f.buyVolumeUsd}
+          sellVol={f.sellVolumeUsd}
+          imbalance={f.imbalance}
+          buys={f.buys}
+          sells={f.sells}
+        />
+        <div className="mt-2 border-t border-line pt-2">
+          <Split label="distinct traders">{f.distinctTraders ?? "—"}</Split>
+          <Split label="window">{f.windowTrades} trades</Split>
+        </div>
+        {!f.dataAvailable && <p className="mt-1.5 t-xs text-fg4">{f.note ?? "No trade data returned"}</p>}
+      </Panel>
+    </div>
+  );
+}
+
+/* ==================================================================== *
+ * CHECKS
+ * ==================================================================== */
+
+function ChecksTab({ data }: { data: AnalysisResult }) {
+  const [open, setOpen] = useState<string | null>(null);
+  const ordered = [...data.checks].sort((a, b) => {
+    const rank: Record<CheckState, number> = { fail: 0, warn: 1, unknown: 2, pass: 3 };
+    return rank[a.state] - rank[b.state];
+  });
+
+  return (
+    <Panel title="Every check" note="worst first — open a row for the number behind it" flush>
       {ordered.map((c) => {
         const isOpen = open === c.id;
         return (
-          <li key={c.id} className="border-b border-ink-850 last:border-b-0">
+          <div key={c.id} className="border-b border-line last:border-b-0">
             <button
               type="button"
               onClick={() => setOpen(isOpen ? null : c.id)}
               aria-expanded={isOpen}
-              className="row-acid grid w-full grid-cols-[22px_minmax(0,1fr)_auto] items-start gap-x-2.5 py-2.5 pl-2 text-left transition-colors hover:bg-ink-850"
+              className="drow flex w-full items-start gap-2 px-3 py-2 text-left"
             >
               <span
                 aria-hidden
-                className={`mt-[1px] grid h-[17px] w-[17px] place-items-center border font-mono text-[9px] leading-none ${CHECK_TONE[c.state]}`}
+                className={`mt-[1px] grid h-[15px] w-[15px] shrink-0 place-items-center border font-mono text-[8.5px] leading-none ${TONE[c.state]}`}
               >
-                {CHECK_GLYPH[c.state]}
+                {GLYPH[c.state]}
               </span>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-baseline gap-x-2">
-                  <span className="t-body-strong text-lit-100">{c.label}</span>
+                  <span className="t-xs font-semibold text-fg">{c.label}</span>
                   <span
-                    className={`font-mono text-[10.5px] tabular-nums ${
+                    className={`t-mono text-[10.5px] ${
                       c.state === "fail"
-                        ? "text-bad-400"
+                        ? "text-bad"
                         : c.state === "warn"
-                          ? "text-warn-400"
+                          ? "text-warn"
                           : c.state === "pass"
-                            ? "text-ok-400"
-                            : "text-mute-500"
+                            ? "text-good"
+                            : "text-fg4"
                     }`}
                   >
                     {c.reading}
                   </span>
                 </div>
                 <div className="mt-0.5 flex flex-wrap items-center gap-x-2">
-                  <span className="font-mono text-[9px] uppercase tracking-[0.06em] text-mute-600">
+                  <span className="font-mono text-[8.5px] uppercase tracking-[0.06em] text-fg4">
                     {c.source}
                   </span>
-                  <QualityDot quality={c.quality} />
+                  <span className="t-xs text-fg4">· {c.quality}</span>
                 </div>
               </div>
-              <span
-                aria-hidden
-                className={`mt-0.5 font-mono text-[10px] text-mute-600 transition-transform ${
-                  isOpen ? "rotate-90" : ""
-                }`}
-              >
+              <span aria-hidden className={`shrink-0 t-mono text-[10px] text-fg4 transition-transform ${isOpen ? "rotate-90" : ""}`}>
                 ›
               </span>
             </button>
             {isOpen && (
-              <div className="rise border-t border-ink-850 bg-ink-925 px-3 py-2.5 pl-[38px]">
-                <p className="max-w-[74ch] t-small leading-relaxed text-mute-300">{c.detail}</p>
+              <div className="fade-up border-t border-line bg-surf2/60 px-3 py-2 pl-[38px]">
+                <p className="max-w-[76ch] t-xs leading-relaxed text-fg3">{c.detail}</p>
               </div>
             )}
-          </li>
+          </div>
         );
       })}
-    </ul>
+    </Panel>
   );
 }
 
-/* ------------------------------------------------------------------ *
- * Creator — small, panel-scale
- * ------------------------------------------------------------------ */
+/* ==================================================================== *
+ * SOURCES
+ * ==================================================================== */
 
-function CreatorPanel({ data }: { data: AnalysisResult }) {
-  const d = data.deployer;
-  if (!d.address) {
-    return <p className="t-small leading-relaxed text-mute-500">The deployer could not be identified</p>;
-  }
-
+function SourcesTab({ data }: { data: AnalysisResult }) {
+  const failed = data.provenance.filter((s) => !s.ok);
   return (
-    <div>
-      <div className="flex flex-wrap items-baseline gap-x-2">
-        <CopyButton
-          text={d.address}
-          display={`${d.address.slice(0, 6)}…${d.address.slice(-4)}`}
-          label="Deployer address copied"
-          title="Copy deployer address"
-          className="font-mono text-[11px] text-mute-300 underline decoration-ink-700 underline-offset-2 hover:text-lit-100"
-        />
-        {d.ruggedCount > 0 && (
-          <span className="border border-bad-600/50 px-1.5 py-[1px] font-mono text-[9px] uppercase tracking-[0.06em] text-bad-400">
-            {d.ruggedCount} prior rug{d.ruggedCount === 1 ? "" : "s"}
-          </span>
-        )}
-      </div>
-
-      <div className="mt-2 grid grid-cols-2 gap-x-3">
-        <div>
-          <div className="t-label">Holds</div>
-          <div className="font-mono text-[14px] tabular-nums text-lit-100">{fmtPct(d.balancePct)}</div>
-        </div>
-        <div>
-          <div className="t-label">Prior launches</div>
-          <div className="font-mono text-[14px] tabular-nums text-lit-100">{d.priorTokens.length}</div>
-        </div>
-      </div>
-
-      {d.priorTokens.length === 0 && d.dataAvailable && (
-        <p className="mt-2 t-meta leading-relaxed text-mute-600">
-          A fresh wallet: no rug history, and no track record either
-        </p>
-      )}
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ *
- * Provenance
- * ------------------------------------------------------------------ */
-
-function ProvenancePanel({ data }: { data: AnalysisResult }) {
-  return (
-    <div>
-      <ul className="space-y-1">
+    <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
+      <Panel title="Where this came from" note="every source, and how long it took" flush>
         {data.provenance.map((s) => (
-          <li key={s.source} className="flex items-baseline gap-2">
-            <span
-              aria-hidden
-              className={`h-1 w-1 shrink-0 rounded-full ${s.ok ? "bg-ok-500" : "bg-bad-500"}`}
-            />
-            <span className="font-mono text-[10.5px] text-mute-300">{s.source}</span>
-            <span className="ml-auto font-mono text-[9.5px] tabular-nums text-mute-600">
-              {s.ok ? `${Math.round(s.ms)}ms` : "failed"}
-            </span>
-          </li>
+          <div key={s.source} className="flex items-baseline gap-2 border-b border-line px-3 py-1.5 last:border-b-0">
+            <span aria-hidden className={`h-[5px] w-[5px] shrink-0 ${s.ok ? "bg-good" : "bg-bad"}`} />
+            <span className="min-w-0 flex-1 truncate font-mono text-[10.5px] text-fg2">{s.source}</span>
+            <span className="t-mono text-[9.5px] text-fg4">{s.ok ? `${Math.round(s.ms)}ms` : "failed"}</span>
+          </div>
         ))}
-      </ul>
-      {data.provenance.some((s) => !s.ok) && (
-        <p className="mt-2 border-t border-ink-850 pt-2 t-meta leading-relaxed text-warn-400">
-          A source failed. Its checks are unknown, not passed
+      </Panel>
+
+      <Panel title="What that means" note="read before trusting a clean result">
+        <p className="t-xs leading-relaxed text-fg3">
+          {failed.length === 0
+            ? "Every source answered. That means the checks could run — not that the token is safe."
+            : `${failed.length} source${failed.length === 1 ? "" : "s"} did not answer. Every check that depended on them is marked unknown, never passed.`}
         </p>
-      )}
+        <ul className="mt-2 space-y-1">
+          {[
+            "observed — read directly from a source that reports it",
+            "derived — computed by this tool; the formula is in the row",
+            "inferred — produced by a model from text, never mixed with the two above",
+          ].map((t) => (
+            <li key={t} className="flex items-start gap-1.5">
+              <span aria-hidden className="mt-[6px] h-[3px] w-[3px] shrink-0 bg-fg4" />
+              <span className="t-xs leading-snug text-fg3">{t}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-2 border-t border-line pt-2 t-xs leading-relaxed text-fg4">
+          Snapshot taken {new Date(data.generatedAt).toISOString().slice(0, 16).replace("T", " ")} UTC
+          {data.cached ? " · served from cache" : ""}
+        </p>
+      </Panel>
     </div>
   );
 }
-
-export { RiskArc, fmtAge };
