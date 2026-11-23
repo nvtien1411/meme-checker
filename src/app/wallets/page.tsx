@@ -1,7 +1,7 @@
 import { PageHead } from "@/components/Shell";
-import { Demo, Gauge, Panel, Split, Tag } from "@/components/ui";
-import { Sparkline } from "@/components/viz";
-import { DEMO_TOKENS, DEMO_WALLETS, WALLET_ROLE } from "@/lib/demo";
+import { Demo, Panel, ProReveal, Tag } from "@/components/ui";
+import { WalletDirectory } from "@/components/Intelligence3";
+import { DEMO_TOKENS, WALLET_ROLE } from "@/lib/demo";
 
 /* ==================================================================== *
  * WALLETS — the directory, and the memory behind it
@@ -65,9 +65,9 @@ export default function WalletsPage() {
           <div className="grid grid-cols-[minmax(0,1fr)_64px_44px_44px] items-baseline gap-x-2.5 border-b border-line bg-surf2/40 px-3 py-1.5 sm:grid-cols-[minmax(0,1fr)_80px_52px_52px_60px]">
             <span className="t-eyebrow">wallet</span>
             <span className="hidden t-eyebrow sm:block">role</span>
-            <span className="t-eyebrow text-right">seen</span>
-            <span className="t-eyebrow text-right">rugs</span>
-            <span className="t-eyebrow text-right">held</span>
+            <span className="t-eyebrow text-right">in scans</span>
+            <span className="t-eyebrow text-right">prior rugs</span>
+            <span className="t-eyebrow text-right">holds</span>
           </div>
 
           {rows.slice(0, 14).map((w) => {
@@ -102,76 +102,21 @@ export default function WalletsPage() {
           })}
         </Panel>
 
-        <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
-          <Panel title="Repeat-offender wallets" note="seen on more than two tokens that later collapsed">
-            {[
-              { addr: DEMO_WALLETS.bundle1, rugs: 4, launches: 7, pct: 18.7 },
-              { addr: DEMO_WALLETS.bundle2, rugs: 4, launches: 7, pct: 2.4 },
-              { addr: DEMO_WALLETS.bundle3, rugs: 3, launches: 6, pct: 1.3 },
-              { addr: DEMO_WALLETS.sniper1, rugs: 12, launches: 19, pct: 0.9 },
-              { addr: DEMO_WALLETS.sniper2, rugs: 11, launches: 16, pct: 0.7 },
-            ].map((w) => (
-              <div key={w.addr} className="border-b border-line py-1.5 last:border-b-0">
-                <div className="flex items-baseline gap-2">
-                  <span className="font-mono text-[10.5px] text-fg2">
-                    {w.addr.slice(0, 6)}…{w.addr.slice(-4)}
-                  </span>
-                  <span className="ml-auto t-mono text-[10px] text-bad">{w.rugs} rugs</span>
-                </div>
-                <div className="mt-1">
-                  <Gauge pct={(w.rugs / w.launches) * 100} tone="bad" height={3} />
-                </div>
-                <div className="mt-0.5 t-xs text-fg4">
-                  {w.rugs} of {w.launches} prior launches collapsed
-                </div>
-              </div>
-            ))}
-          </Panel>
-
-          <Panel title="Smart money on the book" note="wallets with a profitable history">
-            {[
-              { addr: DEMO_WALLETS.smart1, launches: 41, rugs: 2, pct: 1.1, trend: [1, 2, 2, 3, 4, 5, 5, 6] },
-              { addr: DEMO_WALLETS.smart2, launches: 63, rugs: 4, pct: 0.8, trend: [4, 3, 5, 4, 6, 5, 7, 6] },
-            ].map((w) => (
-              <div key={w.addr} className="border-b border-line py-1.5 last:border-b-0">
-                <div className="flex items-baseline gap-2">
-                  <span className="font-mono text-[10.5px] text-fg2">
-                    {w.addr.slice(0, 6)}…{w.addr.slice(-4)}
-                  </span>
-                  <Tag tone="good">smart money</Tag>
-                  <span className="ml-auto t-mono text-[10px] text-fg3">{w.pct}%</span>
-                </div>
-                <div className="mt-1">
-                  <Sparkline values={w.trend} tone="good" />
-                </div>
-                <div className="t-xs text-fg4">
-                  {w.launches} launches, {w.rugs} of them collapsed
-                </div>
-              </div>
-            ))}
-          </Panel>
-        </div>
-
-        <Panel title="Funding origins" note="where the opening balance came from">
-          <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
-            <Split label="shared funder wallet">
-              {DEMO_WALLETS.funder.slice(0, 6)}…{DEMO_WALLETS.funder.slice(-4)}
-            </Split>
-            <Split label="wallets it backed here" tone="bad">
-              3
-            </Split>
-            <Split label="funded within">11 min of each other</Split>
-            <Split label="first seen">2026-11-06</Split>
-            <Split label="deployer received from same source" tone="bad">
-              yes
-            </Split>
-            <Split label="prior tokens with this funder">6</Split>
-          </div>
-          <p className="mt-2 t-xs leading-relaxed text-fg4">
-            Three wallets funded within eleven minutes from one source, all buying the launch block,
-            is one participant — not three. Unfunded wallets stay unclassified
-          </p>
-        </Panel>
+        <ProReveal
+          title="What each address is, and which one leaves first"
+          shown={0}
+          rows={[]}
+          more={[
+            "A behaviour label per wallet, derived from its launch history, with confidence",
+            "Median holding time before its first sell, per address",
+            "Whether it buys inside the creation block or after the crowd",
+            "Which wallet led the exit most often — the one that sets the price others exit into",
+            "Every launch an address appears on, with the outcome of each",
+          ]}
+          note="A wallet with five launches and four collapses is a different object from one with a single appearance. The table above counts them the same"
+        >
+          <WalletDirectory />
+        </ProReveal>
       </div>
     </div>
   );

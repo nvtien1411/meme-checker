@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageHead } from "@/components/Shell";
-import { Demo, Gauge, Panel, RiskDot, Split, Tag } from "@/components/ui";
+import { Demo, Gauge, Panel, ProReveal, RiskDot, Split, Tag } from "@/components/ui";
+import { TokenOverlapPanel } from "@/components/Intelligence2";
 import { DEMO_TOKENS } from "@/lib/demo";
 import { fmtUsd } from "@/lib/http";
 
@@ -48,6 +49,21 @@ export default function ComparePage() {
       />
 
       <div className="space-y-2.5 p-3 sm:p-4">
+        <ProReveal
+          title="Whether the same wallets are buying all three"
+          shown={0}
+          rows={[]}
+          more={[
+            "Shared holders between every pair of compared tokens",
+            "What those shared wallets did on prior launches — the pooled rug rate",
+            "Whether the shared wallets entered at launch or after the crowd",
+            "Which of the compared tokens the group has already exited",
+          ]}
+          note="Comparing tokens on price is what every screener does. Comparing who holds both is the question that changes the decision"
+        >
+          <TokenOverlapPanel />
+        </ProReveal>
+
         <Panel title="Why a table and not a radar" note="the honest reason">
           <p className="t-xs leading-relaxed text-fg3">
             A radar chart normalises unrelated quantities onto one shape, which makes two different

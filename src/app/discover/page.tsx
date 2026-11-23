@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageHead } from "@/components/Shell";
-import { Demo, Panel, RiskDot, Tag } from "@/components/ui";
+import { Demo, Panel, ProReveal, RiskDot, Tag } from "@/components/ui";
+import { DiscoverIntel } from "@/components/Intelligence3";
 import { Gauge } from "@/components/ui";
 import { DEMO_RUGS, DEMO_TOKENS } from "@/lib/demo";
 import { fmtAge, fmtUsd } from "@/lib/http";
@@ -120,6 +121,22 @@ function DiscoverInner() {
         </Panel>
 
         <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
+          <ProReveal
+            title="Filter by who is holding, not only by what is moving"
+            shown={0}
+            rows={[]}
+            more={[
+              "Every listed token scored by the record of the wallets inside it",
+              "Which tokens share a holder group with another token on this list",
+              "Median holding time of each token's bundle, where a bundle exists",
+              "Tokens whose supply is already being distributed rather than accumulated",
+              "The deployer behind each row, with their launch record",
+            ]}
+            note="Free ranks by price and volume, like every screener. This ranks by who is inside, which is the only thing a screener cannot tell you"
+          >
+            <DiscoverIntel />
+          </ProReveal>
+
           <Panel title="Narrative heat" note="where attention is concentrating right now">
             {[
               { name: "Political animal", mindshare: 22.4, trend: "rising", tokens: 2 },

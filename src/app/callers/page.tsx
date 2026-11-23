@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageHead } from "@/components/Shell";
-import { Demo, Panel, Tag } from "@/components/ui";
+import { Demo, Panel, ProReveal, Tag } from "@/components/ui";
+import { CallerTable } from "@/components/Intelligence2";
 import { DEMO_CALLERS, DEMO_CALLS } from "@/lib/demo";
 
 /* ==================================================================== *
@@ -31,6 +32,23 @@ export default function CallersPage() {
       />
 
       <div className="space-y-2.5 p-3 sm:p-4">
+
+        <ProReveal
+          title="What each caller actually did with their own money"
+          shown={0}
+          rows={[]}
+          more={[
+            "Exit price against the price at the moment they posted, per caller",
+            "Win rate with dead calls counted — the ones that never touched 2x",
+            "Whether they bought before posting, and how many seconds before",
+            "Share of their own position sold after followers had arrived",
+            "Which callers posted the same contract inside the same fifteen minutes",
+            "Smart follower count: wallets that repeatedly buy after this account posts",
+          ]}
+          note="Free shows who called what and when. This is the column that decides whether following them costs money"
+        >
+          <CallerTable />
+        </ProReveal>
 
         <Panel title="Read this column first" note="exit price against the price at the moment they posted">
           <p className="t-xs leading-relaxed text-fg3">

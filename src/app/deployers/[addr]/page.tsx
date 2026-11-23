@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHead } from "@/components/Shell";
-import { Demo, Gated, Gauge, Panel, RiskDot, Split, Stat, Tag } from "@/components/ui";
+import { Demo, Gauge, Panel, ProReveal, RiskDot, Split, Stat, Tag } from "@/components/ui";
+import { DeployerRecordPanel } from "@/components/Intelligence2";
 import { DEMO_RUGS, DEMO_TOKENS, DEMO_WALLETS, shortAddr } from "@/lib/demo";
 import { fmtUsd } from "@/lib/http";
 
@@ -81,6 +82,8 @@ export default async function DeployerPage({ params }: { params: Promise<{ addr:
       />
 
       <div className="space-y-2.5 p-3 sm:p-4">
+        <DeployerRecordPanel addr={decoded} />
+
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
           {[
             { label: "launches", value: `${launches.length}`, sub: "on this chain" },
@@ -201,17 +204,20 @@ export default async function DeployerPage({ params }: { params: Promise<{ addr:
           </Panel>
         </div>
 
-        <Gated
-          title="Full deployer investigation"
-          points={[
-            "Every token this wallet has deployed, including ones outside this dataset",
-            "Which of them used the same launch configuration and the same funding source",
+        <ProReveal
+          title="The record, and the tree behind it"
+          shown={0}
+          rows={[]}
+          more={[
+            "Every token this wallet deployed, including ones outside this dataset",
+            "Which of them used the same launch configuration and funding source",
             "Supply recipients before each public launch",
             "Whether any recipient is itself a deployer of other tokens",
             "The funding tree from exchange hot wallet to deployer, hop by hop",
             "The same operator on other chains under a different address",
             "Alerts when this deployer launches again",
           ]}
+          note="The free view counts the launches. This is what each one did and where the money came from"
         >
           <Panel title="Funding tree" note="from source to deployer, with each hop timed">
             <ol className="space-y-1">
@@ -239,7 +245,7 @@ export default async function DeployerPage({ params }: { params: Promise<{ addr:
               split itself is the finding
             </p>
           </Panel>
-        </Gated>
+        </ProReveal>
       </div>
     </div>
   );

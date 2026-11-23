@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageHead } from "@/components/Shell";
-import { Demo, Panel, RiskDot, Tag } from "@/components/ui";
+import { Demo, Panel, ProReveal, RiskDot, Tag } from "@/components/ui";
+import { ScanMemory } from "@/components/Intelligence3";
 import { DEMO_TOKENS } from "@/lib/demo";
 
 /* ==================================================================== *
@@ -38,6 +39,22 @@ export default function HistoryPage() {
       />
 
       <div className="space-y-2.5 p-3 sm:p-4">
+        <ProReveal
+          title="What every scan you have run has in common"
+          shown={0}
+          rows={[]}
+          more={[
+            "Every address that appeared in more than one of your scans",
+            "Which of those wallets are still holding, and which have left",
+            "The deployers you have crossed more than once, with their record",
+            "Whether the score on a past scan was right — the delta, kept forever",
+            "Tokens you scanned that later collapsed, and the signal that was present then",
+          ]}
+          note="Free keeps the last few scans. This is the memory that turns a scan history into a picture of who keeps turning up in what you look at"
+        >
+          <ScanMemory />
+        </ProReveal>
+
         <Panel title="Why this page exists" note="the product grading itself">
           <p className="t-xs leading-relaxed text-fg3">
             A scan is a claim about the future. Recording the claim and showing what happened is the

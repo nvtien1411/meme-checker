@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageHead } from "@/components/Shell";
-import { Demo, Gauge, Gated, Panel, Split, Stat, Tag } from "@/components/ui";
+import { Demo, Gauge, Panel, ProReveal, Split, Stat, Tag } from "@/components/ui";
+import { RugCaseFile } from "@/components/Intelligence4";
 import { DEMO_RUGS } from "@/lib/demo";
 import { fmtUsd } from "@/lib/http";
 
@@ -137,17 +138,21 @@ export default function RugsPage() {
           </article>
         ))}
 
-        <Gated
-          title="Full forensic case file"
-          points={[
+        <ProReveal
+          title="The case file for the worst one"
+          shown={0}
+          rows={[]}
+          more={[
             "Every wallet that bought the launch, with its entry and exit",
-            "The exact block the collapse began, and who sold first",
-            "Whether the same funder backed the wallets on multiple entries here",
-            "Deployer's complete launch record, including tokens not in this database",
-            "Pre-collapse alerts that fired, and how long before the collapse they fired",
-            "Cross-reference: which wallets in this case also appear in other confirmed rugs",
+            "Which wallet sold first, and how long the rest waited",
+            "Whether the same funder backed wallets across multiple entries here",
+            "That deployer's complete record, including tokens outside this database",
+            "Which wallets in this case also appear in the other confirmed rugs above",
           ]}
-        />
+          note="Free lists what broke. This is who did it, in the order they did it"
+        >
+          <RugCaseFile />
+        </ProReveal>
       </div>
     </div>
   );

@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { PageHead } from "@/components/Shell";
-import { Demo, Gauge, Panel, Split, Tag } from "@/components/ui";
+import { Demo, Gauge, Panel, ProReveal, Split, Tag } from "@/components/ui";
+import { NarrativeTable } from "@/components/Intelligence2";
 import { DEMO_NARRATIVES, DEMO_TOKENS } from "@/lib/demo";
+import { narrativeAnalysis } from "@/lib/intel2";
 import { fmtUsd } from "@/lib/http";
 
 /* ==================================================================== *
@@ -29,6 +31,22 @@ export default function NarrativesPage() {
       />
 
       <div className="space-y-2.5 p-3 sm:p-4">
+
+        <ProReveal
+          title="How many times this idea has already run"
+          shown={0}
+          rows={[]}
+          more={[
+            "Copy count against attention, per narrative — the saturation read",
+            "Which narratives are early, crowded, recycled or dying, with the reason",
+            "Median lifespan of prior tokens on the same idea before a 90% fall",
+            "How many prior attempts already collapsed, and the biggest peak any reached",
+            "Which wallets entered each narrative first, and whether they are the same wallets",
+          ]}
+          note="Free gives the category and the pitch. This is whether the idea has already been played and by whom"
+        >
+          <NarrativeTable />
+        </ProReveal>
 
         <Panel title="How to read a narrative" note="three numbers decide it">
           <div className="grid grid-cols-1 gap-x-5 sm:grid-cols-3">
@@ -59,7 +77,20 @@ export default function NarrativesPage() {
               <span className="t-mono text-[10px] text-fg4">{n.tokens} tokens</span>
               <div className="ml-auto flex items-center gap-3">
                 <span className="t-mono text-[10.5px] text-fg3">{n.mindshare7d}% mindshare</span>
-                <span className="t-mono text-[10.5px] text-fg4">usual life {n.survivalHours}h</span>
+                <span className="t-mono text-[10.5px] text-fg4">
+                  usual life{" "}
+                  {(() => {
+                    const closed = n.instances
+                      .map((i) => i.hoursToMinus90)
+                      .filter((h): h is number => h !== null)
+                      .sort((a, b) => a - b);
+                    if (closed.length === 0) return "unmeasured";
+                    const mid = Math.floor(closed.length / 2);
+                    const med =
+                      closed.length % 2 ? closed[mid] : (closed[mid - 1] + closed[mid]) / 2;
+                    return `${med}h`;
+                  })()}
+                </span>
               </div>
             </div>
 
@@ -80,16 +111,23 @@ export default function NarrativesPage() {
                 <div className="mt-3">
                   <span className="t-eyebrow">survival, prior tokens</span>
                   <div className="mt-1.5 space-y-0.5">
-                    {n.instances.map((i) => (
+                    {n.instances
+                      .filter((i) => i.hoursToMinus90 !== null)
+                      .map((i) => (
                       <div key={i.symbol} className="flex items-baseline gap-2 border-b border-line py-1 last:border-b-0">
                         <span className="t-xs font-semibold text-fg2">{i.symbol}</span>
                         <span className="t-xs text-fg4">peak {fmtUsd(i.peakMc)}</span>
                         <span className="t-xs text-fg4">after {i.hoursToPeak}h</span>
                         <span className="ml-auto t-mono text-[10px] text-bad">
-                          {i.hoursToMinus90 !== null ? `−90% in ${i.hoursToMinus90}h` : "running"}
+                          −90% in {i.hoursToMinus90}h
                         </span>
                       </div>
                     ))}
+                    {n.instances.every((i) => i.hoursToMinus90 === null) && (
+                      <p className="t-xs text-fg4">
+                        No prior token on this narrative has completed a cycle yet
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -118,6 +156,7 @@ export default function NarrativesPage() {
 
                 <div className="mt-3 border-t border-line pt-2">
                   <Split label="copy index of the newest">{n.tokens === 1 ? "original" : `#${n.tokens}`}</Split>
+                  <Split label="state">{narrativeAnalysis(n).fit} — {narrativeAnalysis(n).reason}</Split>
                   <Split
                     label="verdict on originality"
                     tone={n.tokens > 5 ? "bad" : n.tokens > 2 ? "warn" : "good"}

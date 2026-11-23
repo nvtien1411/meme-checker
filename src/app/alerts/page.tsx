@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageHead } from "@/components/Shell";
-import { Demo, Gauge, Gated, Panel, Split, Tag } from "@/components/ui";
+import { Demo, Gauge, Panel, ProReveal, Split, Tag } from "@/components/ui";
+import { AlertRuleExamples } from "@/components/Intelligence4";
 import { DEMO_TOKENS } from "@/lib/demo";
 
 /* ==================================================================== *
@@ -284,17 +285,22 @@ export default function AlertsPage() {
           </Panel>
         </div>
 
-        <Gated
-          title="Alert rules with conditions"
-          points={[
+        <ProReveal
+          title="Rules, not a single threshold"
+          shown={0}
+          rows={[]}
+          more={[
             "Compound rules: fire only when a bundle wallet sells and the price is above its entry",
-            "Per-entity rules: a different threshold for each wallet you track",
-            "Cluster rules: alert when any two wallets in a group act within the same minute",
-            "Deployer rules: alert the moment a tracked deployer's new token gets its first bundle buy",
-            "Caller rules: alert when a tracked caller posts and a known cluster buys in the first five minutes",
-            "Webhook and bot delivery into a Telegram group",
+            "Per-entity thresholds: a different number for each wallet you track",
+            "Cluster rules: alert when any two wallets in a group act inside the same minute",
+            "Deployer rules: alert the moment a tracked deployer's new token takes its first bundle buy",
+            "Caller rules: alert when a tracked caller posts and a known cluster buys within five minutes",
+            "Delivery into a Telegram group, not a personal inbox",
           ]}
-        />
+          note="Free alerts on price. Price is what everyone already watches — these fire on the behaviour that moves it"
+        >
+          <AlertRuleExamples />
+        </ProReveal>
       </div>
     </div>
   );

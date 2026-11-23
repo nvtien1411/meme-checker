@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageHead } from "@/components/Shell";
-import { Demo, Panel, RiskDot, Stat, Tag } from "@/components/ui";
+import { Demo, Panel, ProReveal, RiskDot, Stat, Tag } from "@/components/ui";
+import { WatchedWalletIntel } from "@/components/Intelligence3";
 import { DEMO_TOKENS, DEMO_WALLETS } from "@/lib/demo";
 import { fmtUsd } from "@/lib/http";
 
@@ -41,6 +42,22 @@ export default function WatchlistPage() {
       />
 
       <div className="space-y-2.5 p-3 sm:p-4">
+        <ProReveal
+          title="What your watched wallets did since you added them"
+          shown={0}
+          rows={[]}
+          more={[
+            "Behaviour of each watched address across every launch it appears on",
+            "Whether it has sold since you started watching, and at what point of the peak",
+            "Addresses that keep appearing alongside your watched wallets",
+            "Which of your watched callers are selling above their own call price",
+            "Alerts on wallet behaviour rather than price movement",
+          ]}
+          note="A watchlist that only reports price is a chart. Watching what an address does is the version that gives you a warning before the chart moves"
+        >
+          <WatchedWalletIntel />
+        </ProReveal>
+
         <Panel title="The point of this page" note="a list is not a workspace; the change is">
           <p className="t-xs leading-relaxed text-fg3">
             A token you checked three days ago at $51k is now $43k. A token whose risk you recorded
