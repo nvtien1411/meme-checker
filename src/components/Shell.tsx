@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { Suspense, useState, type ReactNode } from "react";
 
 /* ==================================================================== *
  * SHELL — TOP NAVIGATION
@@ -50,10 +50,62 @@ function Mark() {
 }
 
 export function Shell({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
+  return <ShellFrame>{children}</ShellFrame>;
+}
+
+function NavSkeleton() {
+  return (
+    <ul aria-hidden className="flex items-center gap-0.5">
+      {NAV.map((n) => (
+        <li
+          key={n.href}
+          className="flex h-14 items-center px-3 text-[12.5px] font-medium text-mute-600"
+        >
+          {n.label}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** The only component that reads the route. Suspending it alone keeps the page
+ *  content out of the boundary. */
+function NavIsland({ render }: { render: (pathname: string) => ReactNode }) {
+  const pathname = usePathname() ?? "";
+  return <>{render(pathname)}</>;
+}
+
+/** The bar with no active item. Renders identically on the server, so it is a
+ *  true fallback rather than a placeholder. */
+export function ShellBar() {
+  return (
+    <div className="flex min-h-dvh flex-col">
+      <header className="sticky top-0 z-40 border-b border-ink-800 bg-ink-950/90 backdrop-blur-md">
+        <div className="flex h-14 items-center gap-1 px-4 sm:px-6 lg:px-8">
+          <Link href="/" aria-label="Meme Checker home" className="flex shrink-0 items-center gap-2.5 pr-4">
+            <Mark />
+            <span className="hidden flex-col leading-none sm:flex">
+              <span
+                className="text-[12.5px] font-semibold tracking-[-0.02em] text-lit-100"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                Meme Checker
+              </span>
+              <span className="mt-[3px] font-mono text-[8.5px] uppercase tracking-[0.16em] text-mute-500">
+                on-chain intel
+              </span>
+            </span>
+          </Link>
+        </div>
+      </header>
+    </div>
+  );
+}
+
+function ShellFrame({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
 
-  const isActive = (href: string) => {
+  const isActiveIn = (pathname: string) => (href: string) => {
     if (href === "/check")
       return pathname === "/" || pathname.startsWith("/check") || pathname.startsWith("/token");
     return pathname === href || pathname.startsWith(`${href}/`);
@@ -90,9 +142,12 @@ export function Shell({ children }: { children: ReactNode }) {
 
           {/* destinations */}
           <nav aria-label="Primary" className="hidden md:block">
-            <ul className="flex items-center gap-0.5">
+            <Suspense fallback={<NavSkeleton />}>
+              <NavIsland
+                render={(pathname) => (
+                  <ul className="flex items-center gap-0.5">
               {NAV.map((n) => {
-                const active = isActive(n.href);
+                const active = isActiveIn(pathname)(n.href);
                 return (
                   <li key={n.href}>
                     <Link
@@ -113,7 +168,10 @@ export function Shell({ children }: { children: ReactNode }) {
                   </li>
                 );
               })}
-            </ul>
+                  </ul>
+                )}
+              />
+            </Suspense>
           </nav>
 
           {/* surfaces */}
@@ -137,10 +195,7 @@ export function Shell({ children }: { children: ReactNode }) {
 
             <Link
               href="/login"
-              aria-current={isActive("/login") ? "page" : undefined}
-              className={`flex items-center gap-2 px-3 py-2 text-[12px] transition-colors ${
-                isActive("/login") ? "text-lit-50" : "text-mute-500 hover:text-lit-100"
-              }`}
+              className="flex items-center gap-2 px-3 py-2 text-[12px] text-mute-500 transition-colors hover:text-lit-100"
             >
               Account
               <span className="border border-ink-600 px-1 py-[1px] font-mono text-[8.5px] uppercase tracking-[0.1em] text-mute-500">
@@ -179,7 +234,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <div id="mobile-nav" className="rise border-t border-ink-800 bg-ink-925 px-4 pb-3 md:hidden">
             <ul className="divide-y divide-ink-800">
               {NAV.map((n) => {
-                const active = isActive(n.href);
+                const active = false;
                 return (
                   <li key={n.href}>
                     <Link

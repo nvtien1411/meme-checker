@@ -1,25 +1,15 @@
-import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { analyzeToken, AnalysisError } from "@/lib/analyze";
 import { CHAINS, isValidForChain, type ChainId } from "@/lib/chains";
-import {
-  CheckLedger,
-  ContextSection,
-  CreatorSlab,
-  HolderSection,
-  ProvenanceSlab,
-  RoadmapSlab,
-  SignalsSection,
-  VerdictMasthead,
-} from "@/components/report";
-import { CallersSection, ForensicsSection, NarrativeIntelSection } from "@/components/forensics";
-import { Section, Slab } from "@/components/ui";
-import { ReportSkeleton } from "./skeleton";
+import { ReportConsole } from "@/components/report";
 
 const VALID = CHAINS.map((c) => c.id);
 
+// `params` is runtime data, and next.config has cacheComponents on, so the route
+// must declare itself blocking rather than prerendered. Without this the build
+// fails with "uncached or runtime data during prerendering".
 export const instant = false;
 
 export async function generateMetadata({
@@ -72,97 +62,9 @@ async function Report({ chain, address }: { chain: ChainId; address: string }) {
     );
   }
 
-  const forensicsReady = data.forensics?.enabled ?? false;
-  // Numbering follows what the page can actually answer. While the wallet layer
-  // is unbuilt, giving it section 01 put five "not measured" lines where the
-  // first piece of evidence should be — the report read as broken at the top.
-  // It still appears, and says it was not run; it just stops claiming the lead.
-  const n = (i: number) => (forensicsReady ? i : i - 1).toString().padStart(2, "0");
-
   return (
-    <div>
-      <VerdictMasthead data={data} />
-
-      <div className="grid grid-cols-1 items-start gap-x-10 gap-y-0 px-4 pt-2 sm:px-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:px-8">
-        {/* main document column */}
-        <div className="min-w-0 pb-14">
-          {forensicsReady && (
-            <Section
-              id="wallets"
-              index={n(1)}
-              title="Wallet forensics"
-              note="who bought the launch, and what they have done since"
-              first
-            >
-              <ForensicsSection data={data.forensics} chain={data.token.chain} />
-            </Section>
-          )}
-
-          <Section
-            id="holders"
-            index={n(2)}
-            title="Holder distribution"
-            note="pools, burns and curves removed"
-            first={!forensicsReady}
-          >
-            <HolderSection data={data} />
-          </Section>
-
-          <Section
-            id="callers"
-            index={n(3)}
-            title="Who called it"
-            note="what the account did with its own position"
-          >
-            <CallersSection data={data.callers} />
-          </Section>
-
-          <Section id="narrative" index={n(4)} title="Narrative" note="the one section that is not measured">
-            <NarrativeIntelSection data={data.narrativeIntel} />
-            <div className="mt-5">
-              <ContextSection data={data} />
-            </div>
-          </Section>
-
-          <Section id="signals" index={n(5)} title="Liquidity and flow">
-            <SignalsSection data={data} />
-          </Section>
-
-          <Section
-            id="checks"
-            index={n(6)}
-            title="Every check"
-            note="worst first — open a row for the number behind it"
-            right={`${data.checks.length}`}
-          >
-            <CheckLedger checks={data.checks} />
-          </Section>
-
-          {!forensicsReady && (
-            <Section
-              id="wallets"
-              index="—"
-              title="Wallet forensics"
-              note="listed last because this build does not run it"
-            >
-              <ForensicsSection data={data.forensics} chain={data.token.chain} />
-            </Section>
-          )}
-        </div>
-
-        {/* dossier column */}
-        <aside className="min-w-0 space-y-3 pb-14 lg:sticky lg:top-[72px]">
-          <Slab id="creator">
-            <CreatorSlab data={data} />
-          </Slab>
-          <Slab>
-            <ProvenanceSlab data={data} />
-          </Slab>
-          <Slab>
-            <RoadmapSlab />
-          </Slab>
-        </aside>
-      </div>
+    <div className="px-3 pb-16 pt-3 sm:px-5 lg:px-6">
+      <ReportConsole data={data} />
     </div>
   );
 }
@@ -176,9 +78,5 @@ export default async function TokenPage({
   if (!VALID.includes(chainRaw as ChainId)) notFound();
   const chain = chainRaw as ChainId;
 
-  return (
-    <Suspense fallback={<ReportSkeleton />}>
-      <Report chain={chain} address={address} />
-    </Suspense>
-  );
+  return <Report chain={chain} address={address} />;
 }
