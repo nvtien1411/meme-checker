@@ -53,8 +53,10 @@ export default function CallersPage() {
         <Panel title="Read this column first" note="exit price against the price at the moment they posted">
           <p className="t-xs leading-relaxed text-fg3">
             A caller who sells at a higher price than their post is selling into their own audience.
-            Above 1.0× means the average exit landed above the price followers paid. It is a fact
-            about the wallet, not a judgement about the account
+            Above 1.0× means the average exit landed above the price followers paid. The number is a
+            fact about the wallet. The verdict in the Pro table is our reading of it — exit price
+            above the call, plus more than 45% of the position sold after followers arrived, plus a
+            thin track record. A reader can disagree with the label while accepting the number
           </p>
         </Panel>
 
@@ -112,7 +114,7 @@ export default function CallersPage() {
         </Panel>
 
         <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
-          <Panel title="What each column means" note="no column here is a follower count">
+          <Panel title="What each column means" note="four columns, and none of them is a follower count">
             <div className="space-y-1.5">
               {[
                 ["win", "share of calls that ever touched 2×. Calling a token that did a 2× and a token that died look identical on a timeline unless you count"],
@@ -128,8 +130,11 @@ export default function CallersPage() {
             </div>
           </Panel>
 
-          <Panel title="Recent calls" note="the last ten across every tracked account" flush>
-            {DEMO_CALLS.slice(0, 8).map((c) => (
+          <Panel title="Recent calls" note={`the ${Math.min(8, DEMO_CALLS.length)} most recent across every tracked account`} flush>
+            {[...DEMO_CALLS]
+              .sort((a, b) => b.at.localeCompare(a.at))
+              .slice(0, 8)
+              .map((c) => (
               <div
                 key={`${c.handle}-${c.mint}-${c.at}`}
                 className="flex items-baseline gap-2 border-b border-line px-3 py-1.5 last:border-b-0"
@@ -147,7 +152,7 @@ export default function CallersPage() {
                   {c.hoursToPeak !== null ? `${(c.peakMc / c.mcAtCall).toFixed(1)}×` : "—"}
                 </span>
               </div>
-            ))}
+              ))}
           </Panel>
         </div>
       </div>
