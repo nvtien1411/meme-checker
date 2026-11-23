@@ -296,7 +296,174 @@ Mỗi field: `value` · `source` · `asOf` · `null` nếu không có
 
 ---
 
-## 9. Thứ tự thi công (frontend)
+## 9. BỔ SUNG — KOL / Caller (nâng cấp §4)
+
+§4 đã có 8 chỉ số: `pre_post_run_up`, `lead_seconds`, `post_call_sold_pct`, `exit_vs_call_price`, `first_call_hit_rate`, `repost_ratio`, `dead_call_share`, `smart_followers`, cờ cabal một-thằng
+
+Đây là phần **chưa có**
+
+### 9.1 Link post gốc
+
+**Free:** mỗi KOL call hiện kèm link post bấm được + follower count. Chấm hết
+**VIP:** toàn bộ phần dưới
+**Tại sao:** free cho link để tự đọc, không cho biết thằng đó có uy tín không. Khoảng trống đó là chỗ bán
+
+### 9.2 `time_to_dump` — bao lâu từ call đến lúc bắt đầu xả
+
+**Đo:** timestamp post → timestamp lần bán đầu tiên của chính ví KOL
+**VIP hiện:** `call 14:02:00 · bán lần đầu 14:07:12 · 5 phút 12 giây`
+**Pain point:** retail bị dump trong 5–10 phút. Biết thằng này trung vị 5 phút thì không ai ngồi chờ
+
+### 9.3 `avg_multiple` — bán ở bao nhiêu lần giá entry
+
+Khác `exit_vs_call_price` (so giá lúc post). Cái này so với giá **KOL mua vào**
+**VIP hiện:** `vào $0.00004 · bán $0.00013 · 3.2x`
+**Pain point:** hắn lãi 3.2x, bạn vào lúc post thì bạn là người trả cái 3.2x đó
+
+### 9.4 `cabal_score` — điểm phối hợp nhóm
+
+**Đây là thứ mới thật sự.** Cờ ở §4 bắt hành vi **một thằng**. Cái này bắt **một nhóm**
+
+**Đo:**
+- Số KOL mid-tier (10k–60k follower) cùng call token này
+- Trong khung thời gian bao lâu
+- Thứ tự leo thang: KOL nhỏ call trước, KOL lớn call sau không
+- Họ đã từng cùng call token khác chưa, bao nhiêu lần
+
+**Công thức:** `cabal_score` 0–100 = f(số KOL, độ hẹp khung giờ, số lần đã đi cùng nhau trước đó)
+
+**VIP hiện:** `7 KOL mid-tier cùng call trong 22 phút · 5 trong 7 đã cùng call 3 token khác`
+**Pain point:** một KOL lẻ thì dễ đoán. Bảy thằng call cùng lúc trông y như organic hype — và đó chính là thứ giết retail
+
+### 9.5 Frontrun Timeline — 3 mốc
+
+**Hiện một dòng thời gian, không phải bảng:**
+```
+mua   14:00:12   ← sớm hơn post 1 phút 48 giây
+post  14:02:00
+bán   14:07:12   ← đã bán 62% vị thế
+```
+**Pain point:** toàn bộ câu chuyện nằm trong 3 con số. Không cần đọc thêm gì
+
+### 9.6 `exit_liquidity_index` — call thật hay call để xả
+
+**3 mức, tính từ lịch sử chứ không phải cảm tính:**
+
+| Mức | Điều kiện |
+|---|---|
+| Thấp | mua sau post, không bán trong 24h, hoặc bán dưới 10% |
+| Trung | mua trước post dưới 60 giây, bán dưới 30% |
+| Cao | mua trước post trên 5 phút, bán trên 50% trong 1 giờ sau post |
+
+**VIP hiện:** badge `Exit-liquidity risk: CAO` + một câu lý do
+**Pain point:** đây là thứ duy nhất degen cần biết trước khi ape
+
+---
+
+## 10. BỔ SUNG — Smart Money (nâng cấp §2.6)
+
+§2.6 đã có Smart Money Tracker, Smart Money Signals, Copy Trading Detection, Whale Alert. Thiếu hai thứ
+
+### 10.1 Net Smart Flow — đang vào hay đang ra
+
+**VIP hiện:** `12 ví smart đang giữ · 4 mới vào 24h · 7 đã thoát 24h · net −3`
+**Pain point:** "có smart money hold" là câu vô nghĩa nếu 7 thằng vừa thoát. Chỉ net mới trả lời được
+
+### 10.2 Smart Money Entry Price
+
+**VIP hiện:** giá entry trung vị của nhóm smart so với giá hiện tại, kèm mức lãi
+**Pain point:** smart money đang lãi 400% thì họ có lý do xả bất cứ lúc nào. Không nơi nào hiển thị cái này
+
+---
+
+## 11. BỔ SUNG — Narrative (nâng cấp §5)
+
+§5 đã có `narrative_cluster`, `meta_fit`, `prior_instances`, `copy_index`, `first_mover`, `survival_median`. Thiếu ba thứ
+
+### 11.1 Prior Instance Outcome — lần trước kết thúc thế nào
+
+**VIP hiện mỗi instance cũ:** tên · peak mcap · thời gian từ launch đến peak · thời gian từ peak đến −90%
+**Pain point:** "narrative này đã từng làm" không nói được gì. "lần trước peak $4.2M sau 6 giờ, sập 90% sau 2 ngày" mới nói được
+
+### 11.2 `organic_score` — không có chart thì có ai nói không
+
+**Đo:** tỉ lệ mention **không** kèm contract và không kèm link mua. Người ta bàn về cái meme hay chỉ bàn về cái chart
+**VIP hiện:** `Organic 34/100 · 8 trong 10 post chỉ có contract, không có nội dung`
+**Pain point:** narrative sống bằng nội dung thì sống lâu. Narrative sống bằng contract thì chết khi hết tiền call
+
+### 11.3 `longevity_estimate` — sống được bao lâu
+
+**Đo từ:** organic_score + survival_median của cluster + copy_index
+**VIP hiện:** `ước 2–5 ngày` kèm ghi rõ đây là ước lượng từ dữ liệu quá khứ, không phải dự đoán
+**Pain point:** degen cần biết đây là trade 6 giờ hay 6 ngày. Chơi hai cái đó khác nhau hoàn toàn
+
+---
+
+## 12. BỔ SUNG — Chất lượng social và volume (mới hoàn toàn)
+
+§2.8 chỉ có Social Sentiment Timeline đếm mention. Không đo chất lượng
+
+### 12.1 `bot_engagement_pct`
+
+**Đo:** reply từ tài khoản tạo dưới 30 ngày, không avatar, không post gốc, hoặc nội dung trùng nhau
+**VIP hiện:** `68% reply là bot`
+**Pain point:** account 50k follower với 68% bot thì thực chất 16k. Không ai hiện con số này
+
+### 12.2 Renamed Account Flag
+
+**Đo:** account X đổi tên hoặc handle trong 30 ngày, đặc biệt đổi sang tên token
+**VIP hiện:** `3 tài khoản call token này đã đổi handle trong 7 ngày`
+**Pain point:** đây là dấu hiệu account cũ mua lại để call. Cực phổ biến, không ai bắt
+
+### 12.3 `organic_volume_pct`
+
+**Đo:** phân bố kích thước lệnh. Lệnh $50–200 lặp đều = bot wash. Phân bố rộng = người thật
+**VIP hiện:** `Volume 24h $420K · organic ước 31%`
+**Pain point:** $420K trông ấn tượng cho đến khi biết 69% là bot tự quay
+
+### 12.4 Holder Growth vs Price — 2x2
+
+§2.2 đã có Holder Decay nhưng chỉ nhìn một chiều. Nâng thành bốn ô
+
+| Holder | Giá | Nghĩa |
+|---|---|---|
+| Tăng | Tăng | Thật, đang lan |
+| Tăng | Giảm | **Chia supply ra ví nhỏ để xả** — nguy hiểm nhất |
+| Giảm | Tăng | Holder nhỏ chốt lời, cá voi gom |
+| Giảm | Giảm | Đang chết |
+
+**VIP hiện:** ô nào đang xảy ra + số liệu 24h
+**Pain point:** "holder tăng" là chỉ số ai cũng khoe. Nó chỉ tốt khi giá cũng tăng. Ngược lại là dấu hiệu xả có tổ chức
+
+---
+
+## 13. Data contract bổ sung
+
+Nối tiếp danh sách §8
+
+**Free**
+20. Link post gốc của từng KOL call
+21. Follower count KOL
+
+**Pro**
+22. `time_to_dump` — post → bán lần đầu
+23. `avg_multiple` — giá bán chia giá KOL mua vào
+24. `cabal_score` + danh sách KOL cùng call + lịch sử cùng call
+25. Frontrun timeline: `buy_ts`, `post_ts`, `first_sell_ts`
+26. `exit_liquidity_index` + lý do
+27. `smart_net_flow` (in/out/hold 24h)
+28. `smart_entry_price_median`
+29. Prior instance: peak mcap · time-to-peak · time-to-minus-90
+30. `organic_score`
+31. `longevity_estimate` + basis
+32. `bot_engagement_pct`
+33. `renamed_account_count`
+34. `organic_volume_pct`
+35. Holder growth vs price 24h (bốn ô)
+
+---
+
+## 14. Thứ tự thi công (frontend)
 
 **Đợt 1** — Đổi IA report sang tab. 8 check contract cũ gộp thành module Contract Safety ở cuối. Không cần data mới — làm được ngay
 
@@ -304,8 +471,14 @@ Mỗi field: `value` · `source` · `asOf` · `null` nếu không có
 
 **Đợt 3** — Khuôn Pro: mỗi module khoá hiện card + mô tả đúng cái nó sẽ hiện
 
-**Đợt 4** — KOL panel 8 chỉ số + narrative panel
+**Đợt 4** — KOL panel: 8 chỉ số §4 + link post + Frontrun Timeline (§9.5) + `exit_liquidity_index` (§9.6). Đây là cụm bán được tiền nhất, làm trước `cabal_score`
 
-**Đợt 5** — Wallet lookup, Deployer lookup, Rug feed, Called-it
+**Đợt 4b** — `cabal_score` (§9.4) + `time_to_dump`/`avg_multiple` (§9.2, §9.3). Cần index lịch sử call, làm sau khi panel KOL đã chạy
 
-**Đợt 6** — Bot Telegram (chỉ cần 6 field free là chạy, làm song song được từ đợt 2)
+**Đợt 4c** — Chất lượng §12: `bot_engagement_pct`, `organic_volume_pct`, Holder Growth vs Price 2x2. Đều tính từ dữ liệu đã có, không cần nguồn mới
+
+**Đợt 5** — Narrative nâng cao (§11): Prior Instance Outcome, `organic_score`, `longevity_estimate`
+
+**Đợt 6** — Wallet lookup, Deployer lookup, Rug feed, Called-it
+
+**Đợt 7** — Bot Telegram (chỉ cần 7 field free là chạy, làm song song được từ đợt 2)
