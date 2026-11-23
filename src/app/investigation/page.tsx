@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { PageHead } from "@/components/Shell";
-import { Demo, Locked, Panel, Tag } from "@/components/ui";
+import { Demo, Gated, Panel, Tag } from "@/components/ui";
 import { DEMO_TOKENS } from "@/lib/demo";
 
 /* ==================================================================== *
@@ -201,7 +201,7 @@ export default function InvestigationPage() {
           </Panel>
         </div>
 
-        <Locked
+        <Gated
           title="The full investigation canvas"
           points={[
             "Expand any node into its own graph without losing the first one",

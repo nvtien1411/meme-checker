@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { PageHead } from "@/components/Shell";
-import { Demo, Gauge, Locked, Panel, Split, Stat, Tag } from "@/components/ui";
+import { Demo, Gauge, Gated, Panel, Split, Stat, Tag } from "@/components/ui";
 import { DEMO_RUGS } from "@/lib/demo";
 import { fmtUsd } from "@/lib/http";
 
@@ -137,7 +137,7 @@ export default function RugsPage() {
           </article>
         ))}
 
-        <Locked
+        <Gated
           title="Full forensic case file"
           points={[
             "Every wallet that bought the launch, with its entry and exit",

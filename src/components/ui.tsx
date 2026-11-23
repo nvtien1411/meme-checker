@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import type { ReactNode } from "react";
+import { useViewer } from "@/lib/viewer";
 
 /* ==================================================================== *
  * PRIMITIVES v5
@@ -277,51 +279,116 @@ export function Split({
 }
 
 /* ------------------------------------------------------------------ *
- * Locked — a VIP boundary that names what it would show. Never a blur, never
- * a padlock over nothing: the reader has to know what they are being sold.
+ * Gated — a real VIP boundary.
+ *
+ * Renders its children when the viewer has the paid layer, and a named
+ * preview when they do not. The preview always states what is behind it, so
+ * the boundary is evaluable: flip the switch in the rail and the same page
+ * fills in. A padlock over a blur teaches nobody anything.
  * ------------------------------------------------------------------ */
 
-export function Locked({
+export function Gated({
   title,
   points,
-  cta = "Unlock with VIP",
+  children,
   compact = false,
+  cta,
 }: {
   title: string;
+  /** What the reader gets. Written as outcomes, never as feature nouns. */
   points: string[];
-  cta?: string;
+  /** The paid content. Omitted only where the module has no data source yet. */
+  children?: ReactNode;
   compact?: boolean;
+  cta?: string;
 }) {
+  const { pro, setPro } = useViewer();
+
+  if (pro && children) return <>{children}</>;
+
   return (
-    <div className={`border border-line bg-surf2/60 ${compact ? "p-2.5" : "p-4"}`}>
-      <div className="flex items-center gap-2">
+    <div className={`border border-line bg-surf2/60 ${compact ? "p-2.5" : "p-3.5"}`}>
+      <div className="flex flex-wrap items-center gap-2">
         <svg viewBox="0 0 12 12" className="h-3 w-3 shrink-0 text-acid" aria-hidden fill="none">
           <rect x="2.5" y="5.5" width="7" height="5" stroke="currentColor" strokeWidth="1.1" />
           <path d="M4 5.5V3.9a2 2 0 0 1 4 0V5.5" stroke="currentColor" strokeWidth="1.1" />
         </svg>
         <span className="t-strong text-fg">{title}</span>
-        <Tag tone="acid" className="ml-auto">
-          VIP
-        </Tag>
+        <Tag tone="acid">VIP</Tag>
+        <Button
+          onClick={() => setPro(true)}
+          variant="ghost"
+          className="ml-auto"
+          aria-label="Preview the paid layer"
+        >
+          {cta ?? "Preview"}
+        </Button>
       </div>
 
-      <ul className={`mt-2 space-y-1 ${compact ? "" : "sm:columns-2 sm:gap-4"}`}>
+      <ul className={`mt-2 space-y-1 ${compact ? "" : "sm:columns-2 sm:gap-5"}`}>
         {points.map((p) => (
           <li key={p} className="flex items-start gap-1.5 break-inside-avoid">
-            <span aria-hidden className="mt-[5px] h-[3px] w-[3px] shrink-0 bg-fg4" />
+            <span aria-hidden className="mt-[6px] h-[3px] w-[3px] shrink-0 bg-acid/70" />
             <span className="t-xs leading-snug text-fg3">{p}</span>
           </li>
         ))}
       </ul>
 
-      <button
-        type="button"
-        className="mt-2.5 inline-flex h-7 items-center gap-1.5 border border-acid/40 bg-acid/10 px-2.5 font-mono text-[10.5px] uppercase tracking-[0.06em] text-acid transition-colors hover:bg-acid/20"
-      >
-        {cta}
-        <span aria-hidden>→</span>
-      </button>
+      <p className="mt-2 border-t border-line pt-1.5 t-xs text-fg4">
+        Nothing here is invented — previewing shows the layout the engine fills when the data
+        lands, and every figure is labelled while it is sample data
+      </p>
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Button — three variants, one height. A terminal needs one button, not six.
+ * ------------------------------------------------------------------ */
+
+export function Button({
+  children,
+  onClick,
+  variant = "solid",
+  size = "sm",
+  disabled,
+  href,
+  className = "",
+  ...rest
+}: {
+  children: ReactNode;
+  onClick?: () => void;
+  variant?: "solid" | "ghost" | "quiet" | "bad";
+  size?: "sm" | "md";
+  disabled?: boolean;
+  href?: string;
+  className?: string;
+  "aria-label"?: string;
+}) {
+  const base =
+    "inline-flex items-center justify-center gap-1.5 font-mono uppercase tracking-[0.06em] transition-colors disabled:opacity-40 disabled:pointer-events-none";
+  const h = size === "md" ? "h-8 px-3 text-[10.5px]" : "h-6 px-2 text-[9.5px]";
+  const skin =
+    variant === "solid"
+      ? "bg-acid text-bg font-semibold hover:bg-acid2"
+      : variant === "bad"
+        ? "border border-bad/40 text-bad hover:bg-bad/10"
+        : variant === "ghost"
+          ? "border border-acid/40 text-acid hover:bg-acid/10"
+          : "border border-line text-fg3 hover:border-line2 hover:text-fg";
+
+  if (href) {
+    return (
+      <Link href={href} className={`${base} ${h} ${skin} ${className}`} {...rest}>
+        {children}
+      </Link>
+    );
+  }
+
+  return (
+    <button type="button" onClick={onClick} disabled={disabled} className={`${base} ${h} ${skin} ${className}`} {...rest}>
+      {children}
+    </button>
   );
 }
 

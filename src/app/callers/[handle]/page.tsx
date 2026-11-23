@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHead } from "@/components/Shell";
-import { Demo, Gauge, Locked, Panel, Split, Stat, Tag } from "@/components/ui";
+import { Demo, Gauge, Gated, Panel, Split, Stat, Tag } from "@/components/ui";
 import { FollowerEntryChart, Timeline } from "@/components/viz";
 import { DEMO_TIMELINE, callerByHandle, callsByHandle } from "@/lib/demo";
 import { fmtUsd } from "@/lib/http";
@@ -198,7 +198,7 @@ export default async function CallerPage({ params }: { params: Promise<{ handle:
           ))}
         </Panel>
 
-        <Locked
+        <Gated
           title="What VIP adds to this profile"
           points={[
             "The wallet behind the account, and its position before each call",

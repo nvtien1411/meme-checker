@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { PageHead } from "@/components/Shell";
-import { Demo, Gauge, Locked, Panel, RiskDot, Split, Stat, Tag } from "@/components/ui";
+import { Demo, Gauge, Gated, Panel, RiskDot, Split, Stat, Tag } from "@/components/ui";
 import { DEMO_RUGS, DEMO_TOKENS, DEMO_WALLETS } from "@/lib/demo";
 import { fmtUsd } from "@/lib/http";
 
@@ -58,9 +58,12 @@ export default function DeployersPage() {
 
           <div className="px-3 py-2">
             <div className="flex flex-wrap items-baseline gap-1.5">
-              <span className="font-mono text-[11px] text-fg2">
+              <Link
+                href={`/deployers/${DEMO_WALLETS.dev}`}
+                className="font-mono text-[11px] text-fg2 underline decoration-line2 underline-offset-2 hover:text-acid"
+              >
                 {DEMO_WALLETS.dev.slice(0, 10)}…{DEMO_WALLETS.dev.slice(-6)}
-              </span>
+              </Link>
               <Tag tone="bad">repeat offender</Tag>
               <Tag tone="neutral">first seen 2026-10-30</Tag>
             </div>
@@ -163,7 +166,7 @@ export default function DeployersPage() {
           </Panel>
         </div>
 
-        <Locked
+        <Gated
           title="Deployer investigation"
           points={[
             "Every token this wallet has ever deployed, including ones not in this database",

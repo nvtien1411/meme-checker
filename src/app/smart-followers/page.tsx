@@ -1,5 +1,5 @@
 import { PageHead } from "@/components/Shell";
-import { Demo, Gauge, Locked, Panel, Split, Stat, Tag } from "@/components/ui";
+import { Demo, Gauge, Gated, Panel, Split, Stat, Tag } from "@/components/ui";
 import { FollowerEntryChart, Timeline } from "@/components/viz";
 import { DEMO_TIMELINE, DEMO_WALLETS } from "@/lib/demo";
 
@@ -233,7 +233,7 @@ export default function SmartFollowersPage() {
           </Panel>
         </div>
 
-        <Locked
+        <Gated
           title="The full Smart Follower graph"
           points={[
             "Per-caller follower list with entry time, entry price and current position",

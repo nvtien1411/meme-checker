@@ -179,9 +179,9 @@ export const DEMO_TOKENS: DemoToken[] = [
     exitWindowSec: 42,
     sellSynchrony: 0.71,
     wallets: [
-      { addr: W.bundle1, funder: W.funder, born: "2026-11-06", priorLaunches: 7, priorRugs: 4, tags: ["bundler", "fast exit"], pct: 18.7, bought: 18.9, sold: 0, held: 0, firstSell: 0, avgEntry: 0.0000121, status: "holding" },
-      { addr: W.bundle2, funder: W.funder, born: "2026-11-06", priorLaunches: 7, priorRugs: 4, tags: ["bundler"], pct: 2.4, bought: 2.5, sold: 4, held: 0, firstSell: 880, status: "holding" },
-      { addr: W.bundle3, funder: W.funder, born: "2026-11-07", priorLaunches: 6, priorRugs: 3, tags: ["bundler"], pct: 1.3, bought: 1.4, sold: 21, held: 0, firstSell: 1920, status: "holding" },
+      { addr: W.bundle1, funder: W.funder, born: "2026-11-06", priorLaunches: 7, priorRugs: 4, tags: ["bundler", "never sold"], pct: 18.7, bought: 18.9, sold: 0, avgEntry: 0.0000121, status: "holding" },
+      { addr: W.bundle2, funder: W.funder, born: "2026-11-06", priorLaunches: 7, priorRugs: 4, tags: ["bundler"], pct: 2.4, bought: 2.5, sold: 4, firstSell: 880, held: 0.2, status: "holding" },
+      { addr: W.bundle3, funder: W.funder, born: "2026-11-07", priorLaunches: 6, priorRugs: 3, tags: ["bundler"], pct: 1.1, bought: 1.4, sold: 21, firstSell: 1920, held: 0.5, status: "holding" },
       { addr: W.sniper1, born: "2026-11-08", priorLaunches: 19, priorRugs: 12, tags: ["sniper bot"], pct: 0.9, bought: 1.2, sold: 25, held: 0, firstSell: 340, status: "holding" },
       { addr: W.sniper2, born: "2026-11-08", priorLaunches: 16, priorRugs: 11, tags: ["sniper bot"], pct: 0.7, bought: 1.0, sold: 30, held: 0, firstSell: 620, status: "sold" },
       { addr: W.insider1, funder: W.dev, born: "2026-10-30", tags: ["insider", "funded by deployer"], pct: 3.4, bought: 0, sold: 0, status: "holding" },
@@ -288,7 +288,7 @@ export const DEMO_TOKENS: DemoToken[] = [
     wallets: [
       { addr: W.smart1, born: "2024-03-11", priorLaunches: 41, tags: ["smart money", "accumulating"], pct: 2.2, bought: 2.0, status: "holding" },
       { addr: W.smart2, born: "2023-09-02", priorLaunches: 63, tags: ["smart money"], pct: 1.4, bought: 1.2, status: "holding" },
-      { addr: W.bundle1, funder: W.funder, priorLaunches: 7, priorRugs: 4, tags: ["bundler"], pct: 4.1, bought: 4.2, sold: 38, status: "holding" },
+      { addr: W.bundle1, funder: W.funder, priorLaunches: 7, priorRugs: 4, tags: ["bundler"], pct: 2.6, bought: 4.2, sold: 38, firstSell: 5400, held: 1.5, status: "holding" },
       { addr: "6QJWMeTu1gBHr8nS2VfHkLp9XaZcWm4RsNbYdE7tPqKv", pct: 3.0, status: "holding" },
     ],
   },

@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import type { AnalysisResult, CheckState } from "@/lib/types";
 import { CHAIN_BY_ID } from "@/lib/chains";
 import { fmtAge, fmtChange, fmtPct, fmtPrice, fmtUsd } from "@/lib/http";
-import { Demo, Gauge, Locked, Panel, RiskDot, Split, Stat, Tag } from "./ui";
+import { Demo, Gauge, Gated, Panel, RiskDot, Split, Stat, Tag } from "./ui";
+import { BundleDeep, BundleFree } from "./BundleIntel";
 import {
   DistributionBar,
   ExitCurve,
@@ -372,14 +374,12 @@ function DeployerBlock({ data }: { data: AnalysisResult }) {
   return (
     <div>
       <div className="flex flex-wrap items-baseline gap-1.5">
-        <a
-          href={`${data.token.explorerUrl.split("/tx/")[0]}/address/${d.address}`}
-          target="_blank"
-          rel="noreferrer"
+        <Link
+          href={`/deployers/${d.address}`}
           className="font-mono text-[11px] text-fg2 underline decoration-line2 underline-offset-2 hover:text-acid"
         >
           {d.address.slice(0, 6)}…{d.address.slice(-4)}
-        </a>
+        </Link>
         {d.ruggedCount > 0 && (
           <Tag tone="bad">
             {d.ruggedCount} prior rug{d.ruggedCount === 1 ? "" : "s"}
@@ -508,90 +508,81 @@ function WalletsTab({ demo }: { demo: DemoToken | null }) {
     );
   }
 
-  const bundle = demo.wallets.filter((w) => w.tags?.includes("bundler"));
   const snipers = demo.wallets.filter((w) => w.tags?.includes("sniper bot"));
   const insiders = demo.wallets.filter((w) => w.tags?.includes("insider"));
   const fresh = demo.wallets.filter(
-    (w) => w.tags?.includes("single-use") || (w.born ?? "").startsWith("2026-11-19") || (w.born ?? "").startsWith("2026-11-23"),
+    (w) =>
+      w.tags?.includes("single-use") ||
+      (w.born ?? "").startsWith("2026-11-19") ||
+      (w.born ?? "").startsWith("2026-11-23"),
   );
 
-  // Every figure below is summed from the lists rendered next to it, so the
-  // headline and the detail cannot disagree.
   const sumPct = (ws: typeof demo.wallets) => ws.reduce((n, w) => n + (w.pct ?? 0), 0);
-  const bundlePct = sumPct(bundle);
-  const sniperPct = sumPct(snipers);
-  const insiderPct = sumPct(insiders);
-  const freshPct = sumPct(fresh);
 
   return (
-    <>
+    <div className="space-y-2.5">
       <div className="flex flex-wrap items-center gap-1.5">
         <Demo />
         <span className="t-xs text-fg4">
-          the four wallet modules below are illustrative — the pipeline does not populate them yet
+          wallet modules are not wired to the pipeline yet — the layout and the gating are real
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-        {[
-          { label: "bundle", n: `${bundle.length}`, pct: bundlePct, tone: "bad" as const },
-          { label: "snipers", n: `${snipers.length}`, pct: sniperPct, tone: "hot" as const },
-          { label: "insiders", n: `${insiders.length}`, pct: insiderPct, tone: "hot" as const },
-          { label: "fresh", n: `${fresh.length}`, pct: freshPct, tone: "warn" as const },
-        ].map((k) => (
-          <div key={k.label} className="panel p-2.5">
-            <Stat
-              label={k.label}
-              value={k.n}
-              size="md"
-              tone={k.tone === "bad" ? "bad" : k.tone === "hot" ? "hot" : "warn"}
-            />
-            <div className="mt-1.5">
-              <Gauge pct={k.pct} tone={k.tone} height={3} />
-            </div>
-            <div className="mt-1 t-xs text-fg4">{k.pct.toFixed(1)}% of supply</div>
-          </div>
-        ))}
-      </div>
+      <BundleFree demo={demo} />
+      <BundleDeep demo={demo} />
 
-      <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-2">
-        <Panel title="Launch bundle" note={`${bundle.length} wallets, ${bundlePct.toFixed(1)}% supply`} flush>
-          <WalletList wallets={bundle} />
-          <div className="border-t border-line px-3 py-2">
-            <div className="grid grid-cols-3 gap-2">
-              <Stat label="sell sync" value={`${(demo.sellSynchrony * 100).toFixed(0)}%`} size="sm" tone="bad" sub="sold in one slot" />
-              <Stat label="exit window" value={`${demo.exitWindowSec}s`} size="sm" tone="bad" sub="first sell to −50%" />
-              <Stat label="funder" value="shared" size="sm" tone="hot" sub="one wallet funded all" />
-            </div>
+      <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
+        <Panel
+          title="Snipers"
+          note={`${snipers.length} wallets, ${sumPct(snipers).toFixed(1)}% supply`}
+          flush
+        >
+          <WalletList wallets={snipers} />
+          <div className="border-t border-line px-3 py-1.5">
+            <p className="t-xs leading-relaxed text-fg4">
+              Wallets that bought within seconds of the open. On their own they are not evidence of
+              anything — a bot and a fast human look identical
+            </p>
           </div>
         </Panel>
 
-        <div className="space-y-2.5">
-          <Panel title="Snipers" note={`${snipers.length} wallets, ${sniperPct.toFixed(1)}% supply`} flush>
-            <WalletList wallets={snipers} />
-          </Panel>
-          <Panel title="Insider supply" note={`${insiders.length} wallets, ${insiderPct.toFixed(1)}% supply — received, not bought`} flush>
-            <WalletList wallets={insiders} />
-          </Panel>
-        </div>
+        <Panel
+          title="Insider supply"
+          note={`${insiders.length} wallets, ${sumPct(insiders).toFixed(1)}% — received, not bought`}
+          flush
+        >
+          <WalletList wallets={insiders} />
+          <div className="border-t border-line px-3 py-1.5">
+            <p className="t-xs leading-relaxed text-fg4">
+              Supply transferred from the deployer rather than bought on the open market. No purchase
+              means no cost basis, which means no price at which they are forced to hold
+            </p>
+          </div>
+        </Panel>
       </div>
 
       <Panel title="Fresh wallets" note="created in the week before launch" flush>
         <WalletList wallets={fresh} />
+        <div className="border-t border-line px-3 py-1.5">
+          <p className="t-xs leading-relaxed text-fg4">
+            A wallet with no history that buys a launch is either a new user or a wallet made to hide
+            one. Which of the two depends on where its first funds came from
+          </p>
+        </div>
       </Panel>
 
-      <Locked
+      <Gated
         title="Traced funding origins"
         points={[
-          "Which CEX hot wallet funded each bundle member, and when",
-          "Wallets the same funder has backed on other launches",
-          "Full multi-hop trail from the funding source to the buy",
-          "Which of these wallets appear together on prior tokens",
-          "How much of each prior launch they exited, and at what point",
+          "Which exchange hot wallet funded each bundle member, and when",
+          "Every other token that same funder has seeded",
+          "The full multi-hop trail from source to buy, with each hop's timestamp",
+          "Which of these wallets appear together across prior launches",
+          "How much of each prior launch they exited, and at what point in the curve",
           "Whether the deployer wallet has ever received from the same source",
         ]}
       />
-    </>
+    </div>
   );
 }
 
@@ -608,9 +599,12 @@ function WalletList({ wallets }: { wallets: DemoToken["wallets"] }) {
         return (
           <div key={w.addr} className="border-b border-line px-3 py-1.5 last:border-b-0">
             <div className="flex flex-wrap items-baseline gap-x-1.5">
-              <span className="font-mono text-[10.5px] text-fg2">
+              <Link
+                href={`/wallets/${w.addr}`}
+                className="font-mono text-[10.5px] text-fg2 hover:text-acid"
+              >
                 {w.addr.slice(0, 6)}…{w.addr.slice(-4)}
-              </span>
+              </Link>
               <span className={`font-mono text-[8.5px] uppercase tracking-[0.05em] ${tone}`}>
                 {w.status ?? "holding"}
               </span>
@@ -773,7 +767,7 @@ function CallersTab({ data, demo }: { data: AnalysisResult; demo: DemoToken | nu
         </span>
       </div>
 
-      <Locked
+      <Gated
         title="Caller intelligence"
         points={[
           "Full call history with win rate, median multiple and dead-call share",

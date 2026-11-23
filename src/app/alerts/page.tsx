@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { PageHead } from "@/components/Shell";
-import { Demo, Gauge, Locked, Panel, Split, Tag } from "@/components/ui";
+import { Demo, Gauge, Gated, Panel, Split, Tag } from "@/components/ui";
 import { DEMO_TOKENS } from "@/lib/demo";
 
 /* ==================================================================== *
@@ -284,7 +284,7 @@ export default function AlertsPage() {
           </Panel>
         </div>
 
-        <Locked
+        <Gated
           title="Alert rules with conditions"
           points={[
             "Compound rules: fire only when a bundle wallet sells and the price is above its entry",

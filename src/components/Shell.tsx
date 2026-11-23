@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
+import { useViewer } from "@/lib/viewer";
 
 /* ==================================================================== *
  * SHELL — left rail + top context bar
@@ -141,8 +142,42 @@ function RailBody({ pathname, collapsed }: { pathname: string; collapsed: boolea
 }
 
 function RailFoot({ collapsed }: { collapsed: boolean }) {
+  const { pro, toggle, ready } = useViewer();
+
   return (
     <div className="shrink-0 border-t border-line p-1.5">
+      <button
+        type="button"
+        onClick={toggle}
+        aria-pressed={pro}
+        title={pro ? "Paid layer preview is on — click to return to the free view" : "Preview the paid layer"}
+        className={`mb-1 flex w-full items-center gap-2 border px-2 py-1.5 text-left transition-colors ${
+          pro ? "border-acid/40 bg-acid/10" : "border-line hover:border-line2"
+        } ${collapsed ? "justify-center px-0" : ""}`}
+      >
+        <span
+          aria-hidden
+          className={`h-[5px] w-[5px] shrink-0 ${pro ? "bg-acid" : "bg-fg4"}`}
+        />
+        {!collapsed && (
+          <>
+            <span className={`flex-1 font-mono text-[9.5px] uppercase tracking-[0.06em] ${pro ? "text-acid" : "text-fg3"}`}>
+              {ready && pro ? "vip preview on" : "free view"}
+            </span>
+            <span
+              aria-hidden
+              className={`relative h-3 w-6 shrink-0 border ${pro ? "border-acid/50" : "border-line2"}`}
+            >
+              <span
+                className={`absolute top-1/2 h-[6px] w-[6px] -translate-y-1/2 transition-[left] ${
+                  pro ? "left-[13px] bg-acid" : "left-[2px] bg-fg4"
+                }`}
+              />
+            </span>
+          </>
+        )}
+      </button>
+
       <Link
         href="/pricing"
         className={`navi ${collapsed ? "justify-center px-0" : ""}`}
@@ -170,30 +205,18 @@ function RailFoot({ collapsed }: { collapsed: boolean }) {
 
 /* The only component that reads the route. Suspending it alone keeps page
    content out of the boundary — next.config has cacheComponents on. */
-function RailIsland({ collapsed }: { collapsed: boolean }) {
+function RailBodyIsland({ collapsed }: { collapsed: boolean }) {
   const pathname = usePathname() ?? "";
-  return (
-    <aside
-      className="rail hidden shrink-0 flex-col lg:flex"
-      style={{ width: collapsed ? "var(--rail-collapsed)" : "var(--rail)" }}
-    >
-      <RailBody pathname={pathname} collapsed={collapsed} />
-      <RailFoot collapsed={collapsed} />
-    </aside>
-  );
+  return <RailBody pathname={pathname} collapsed={collapsed} />;
 }
 
-function RailSkeleton({ collapsed }: { collapsed: boolean }) {
+function RailBodySkeleton({ collapsed }: { collapsed: boolean }) {
   return (
-    <aside
-      className="rail hidden shrink-0 flex-col lg:flex"
-      style={{ width: collapsed ? "var(--rail-collapsed)" : "var(--rail)" }}
-      aria-hidden
-    >
-      <div className="h-12 border-b border-line" />
+    <div className="min-w-0 flex-1" aria-hidden>
+      <div className="h-12 border-b border-line" style={{ opacity: 0.4 }} />
       <div className="min-h-0 flex-1" />
-      <div className="h-12 border-t border-line" />
-    </aside>
+      {collapsed ? null : null}
+    </div>
   );
 }
 
@@ -237,9 +260,18 @@ export function Shell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-dvh">
-      <Suspense fallback={<RailSkeleton collapsed={collapsed} />}>
-        <RailIsland collapsed={collapsed} />
-      </Suspense>
+      <aside
+        className="rail hidden shrink-0 flex-col lg:flex"
+        style={{ width: collapsed ? "var(--rail-collapsed)" : "var(--rail)" }}
+      >
+        <Suspense fallback={<RailBodySkeleton collapsed={collapsed} />}>
+          <RailBodyIsland collapsed={collapsed} />
+        </Suspense>
+        {/* Outside the boundary on purpose: this subscribes to the viewer
+            store, and a store subscriber inside a suspended subtree never
+            receives updates after hydration. */}
+        <RailFoot collapsed={collapsed} />
+      </aside>
 
       {/* collapse control sits on the rail edge, not in a toolbar */}
       <button

@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { Shell } from "@/components/Shell";
 import { ToastProvider } from "@/components/feedback";
+import { ViewerProvider } from "@/lib/viewer";
 
 const ui = Inter({
   variable: "--font-ui",
@@ -46,13 +47,15 @@ export default function RootLayout({
     >
       <body className="min-h-dvh bg-bg font-sans text-[13px] antialiased">
         <ToastProvider>
-          <a
-            href="#main"
-            className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:bg-brand-500 focus:px-3 focus:py-1.5 focus:text-[12px] focus:font-semibold focus:text-ink-950"
-          >
-            Skip to content
-          </a>
-          <Shell>{children}</Shell>
+          <ViewerProvider>
+            <a
+              href="#main"
+              className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:bg-acid focus:px-3 focus:py-1.5 focus:text-[12px] font-semibold text-bg"
+            >
+              Skip to content
+            </a>
+            <Shell>{children}</Shell>
+          </ViewerProvider>
         </ToastProvider>
       </body>
     </html>
