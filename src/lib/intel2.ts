@@ -8,6 +8,7 @@
  * ==================================================================== */
 
 import { DEMO_CALLERS, DEMO_CALLS, DEMO_NARRATIVES, DEMO_RUGS, DEMO_TOKENS, type DemoCaller } from "./demo";
+import type { BehaviourVerdict, WalletProfile } from "./intel";
 
 /* ------------------------------------------------------------------ *
  * Callers
@@ -352,4 +353,78 @@ function median(xs: number[]): number | null {
   const s = [...xs].sort((a, b) => a - b);
   const m = Math.floor(s.length / 2);
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+
+/* ------------------------------------------------------------------ *
+ * Narrative wallets — who is inside the tokens on a given narrative
+ *
+ * The per-card question. A narrative card tells you the idea has run four
+ * times; the question a reader has at that point is whether the same wallets
+ * ran it, because that is what separates a fresh attempt from a rerun by the
+ * same group.
+ * ------------------------------------------------------------------ */
+
+export interface NarrativeWalletRow {
+  addr: string;
+  behaviour: string;
+  launches: number;
+  rugCount: number;
+  medianHoldMin: number | null;
+  /** Tokens on this narrative the address appears in. */
+  tokensHere: string[];
+  firstOut: number;
+  confidence: number;
+}
+
+export interface NarrativeWalletRead {
+  narrative: string;
+  rows: NarrativeWalletRow[];
+  /** Addresses appearing in 2+ tokens of this narrative. */
+  repeat: number;
+  /** Median prior-collapse share across these wallets. */
+  medianRugRate: number | null;
+  /** How many of them bought the creation block on every token they are in. */
+  blockZeroCount: number;
+}
+
+export function narrativeWallets(
+  name: string,
+  classify: (p: WalletProfile) => BehaviourVerdict,
+  profileOf: (a: string) => WalletProfile | null,
+  firstOutOf: (a: string) => number,
+  tokens: { symbol: string; wallets: { addr: string; tags?: string[] }[] }[],
+): NarrativeWalletRead {
+  const tokensHere = tokens.map((t) => ({ symbol: t.symbol, addrs: t.wallets.map((w) => w.addr) }));
+  const addrs = [...new Set(tokensHere.flatMap((t) => t.addrs))];
+
+  const rows: NarrativeWalletRow[] = [];
+  for (const addr of addrs) {
+    const p = profileOf(addr);
+    if (!p) continue;
+    const b = classify(p);
+    rows.push({
+      addr,
+      behaviour: b.label,
+      launches: p.launchCount,
+      rugCount: p.rugCount,
+      medianHoldMin: p.medianHoldMin,
+      tokensHere: tokensHere.filter((t) => t.addrs.includes(addr)).map((t) => t.symbol),
+      firstOut: firstOutOf(addr),
+      confidence: b.confidence,
+    });
+  }
+
+  rows.sort((a, b) => b.tokensHere.length - a.tokensHere.length || b.launches - a.launches);
+
+  const rates = rows
+    .map((r) => (r.launches > 0 ? r.rugCount / r.launches : null))
+    .filter((r): r is number => r !== null);
+
+  return {
+    narrative: name,
+    rows,
+    repeat: rows.filter((r) => r.tokensHere.length > 1).length,
+    medianRugRate: median(rates),
+    blockZeroCount: rows.filter((r) => r.behaviour === "block-0 bundler").length,
+  };
 }

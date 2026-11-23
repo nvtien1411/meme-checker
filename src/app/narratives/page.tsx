@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageHead } from "@/components/Shell";
 import { Demo, Gauge, Panel, ProReveal, Split, Tag } from "@/components/ui";
+import { NarrativeWalletGate } from "@/components/NarrativeGate";
 import { NarrativeTable } from "@/components/Intelligence2";
 import { DEMO_NARRATIVES, DEMO_TOKENS } from "@/lib/demo";
 import { narrativeAnalysis } from "@/lib/intel2";
@@ -31,22 +32,6 @@ export default function NarrativesPage() {
       />
 
       <div className="space-y-2.5 p-3 sm:p-4">
-
-        <ProReveal
-          title="How many times this idea has already run"
-          shown={0}
-          rows={[]}
-          more={[
-            "Copy count against attention, per narrative — the saturation read",
-            "Which narratives are early, crowded, recycled or dying, with the reason",
-            "Median lifespan of prior tokens on the same idea before a 90% fall",
-            "How many prior attempts already collapsed, and the biggest peak any reached",
-            "Which wallets entered each narrative first, and whether they are the same wallets",
-          ]}
-          note="Free gives the category and the pitch. This is whether the idea has already been played and by whom"
-        >
-          <NarrativeTable />
-        </ProReveal>
 
         <Panel title="How to read a narrative" note="three numbers decide it">
           <div className="grid grid-cols-1 gap-x-5 sm:grid-cols-3">
@@ -156,18 +141,44 @@ export default function NarrativesPage() {
 
                 <div className="mt-3 border-t border-line pt-2">
                   <Split label="copy index of the newest">{n.tokens === 1 ? "original" : `#${n.tokens}`}</Split>
-                  <Split label="state">{narrativeAnalysis(n).fit} — {narrativeAnalysis(n).reason}</Split>
                   <Split
-                    label="verdict on originality"
-                    tone={n.tokens > 5 ? "bad" : n.tokens > 2 ? "warn" : "good"}
+                    label="state"
+                    tone={
+                      narrativeAnalysis(n).fit === "early"
+                        ? "good"
+                        : narrativeAnalysis(n).fit === "crowded"
+                          ? "bad"
+                          : narrativeAnalysis(n).fit === "dying"
+                            ? "warn"
+                            : "default"
+                    }
                   >
-                    {n.tokens > 5 ? "saturated — late copy" : n.tokens > 2 ? "crowded" : "early"}
+                    {narrativeAnalysis(n).fit}
                   </Split>
+                  <div className="pt-1.5 t-xs leading-relaxed text-fg4">
+                    {narrativeAnalysis(n).reason}
+                  </div>
                 </div>
               </div>
             </div>
+
+            <NarrativeWalletGate narrative={n.name} />
           </Panel>
         ))}
+
+        <ProReveal
+          title="Every narrative side by side"
+          shown={0}
+          rows={[]}
+          more={[
+            "Copy count against attention for all tracked narratives at once",
+            "Which are early, crowded, recycled or dying, with the reason",
+            "Median lifespan of prior attempts on each idea",
+          ]}
+          note="The per-card section above answers one narrative. This is the same read across all of them"
+        >
+          <NarrativeTable />
+        </ProReveal>
 
         <Panel title="What this does not tell you" note="read before acting on a narrative call">
           <p className="t-xs leading-relaxed text-fg3">
