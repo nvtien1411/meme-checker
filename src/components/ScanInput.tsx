@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { useViewer } from "@/lib/viewer";
+import { SCAN_LIMIT, bumpScansUsed, readScansUsed } from "@/lib/plan";
 import { CHAINS, guessAddressKind, isValidForChain, type ChainId } from "@/lib/chains";
 
 /** Best-effort chain from the address shape alone. Base58 → Solana, hex → an
@@ -40,6 +42,21 @@ export function ScanInput({ autoFocus = false }: { autoFocus?: boolean }) {
   const [chain, setChain] = useState<ChainId | "auto">("auto");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const { pro, toggle } = useViewer();
+  const [used, setUsed] = useState<number | null>(null);
+
+  // The rail shows the same counter. Both read one key and listen to one event,
+  // so a scan updates the card without either component owning the other.
+  useEffect(() => {
+    const read = () => setUsed(readScansUsed());
+    read();
+    window.addEventListener("mc:quota", read);
+    window.addEventListener("storage", read);
+    return () => {
+      window.removeEventListener("mc:quota", read);
+      window.removeEventListener("storage", read);
+    };
+  }, []);
 
   useEffect(() => {
     if (autoFocus) inputRef.current?.focus();
@@ -67,6 +84,7 @@ export function ScanInput({ autoFocus = false }: { autoFocus?: boolean }) {
     }
     setErr(null);
     setBusy(true);
+    bumpScansUsed();
     router.push(`/token/${effective}/${trimmed}`);
   }
 
@@ -82,8 +100,31 @@ export function ScanInput({ autoFocus = false }: { autoFocus?: boolean }) {
     }
   }
 
+  const overLimit = !pro && used !== null && used >= SCAN_LIMIT;
+
   return (
     <form onSubmit={submit} className="w-full">
+      {overLimit && (
+        <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1.5 border border-warn/30 bg-warn/[0.06] px-2.5 py-2">
+          <span className="min-w-0 flex-1 t-xs text-fg2">
+            You have used today&apos;s {SCAN_LIMIT} free scans. Pro removes the limit — and opens the
+            wallet layer the free tier cannot see
+          </span>
+          <button
+            type="button"
+            onClick={toggle}
+            className="shrink-0 border border-acid/40 px-2 py-[3px] font-mono text-[9px] uppercase tracking-[0.06em] text-acid transition-colors hover:bg-acid/10"
+          >
+            preview pro
+          </button>
+          <a
+            href="/pricing"
+            className="shrink-0 bg-acid px-2 py-[3px] font-mono text-[9px] font-semibold uppercase tracking-[0.06em] text-bg transition-colors hover:bg-acid2"
+          >
+            plans
+          </a>
+        </div>
+      )}
       <div
         className={`flex flex-col border bg-surf transition-colors sm:flex-row sm:items-stretch ${
           err ? "border-bad/50" : valid ? "border-line2" : "border-line"

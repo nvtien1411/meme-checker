@@ -343,6 +343,34 @@ export function Gated({
 }
 
 /* ------------------------------------------------------------------ *
+ * UpgradeStrip — a one-line contextual CTA.
+ *
+ * Sits above content the reader is already looking at, and names the specific
+ * thing they cannot see rather than saying "upgrade for more". Disappears
+ * entirely once the paid layer is on, because a sales bar on a page you have
+ * already paid for is noise.
+ * ------------------------------------------------------------------ */
+
+export function UpgradeStrip({ what }: { what: string }) {
+  const { pro, toggle } = useViewer();
+  if (pro) return null;
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 border border-acid/25 bg-acid/[0.05] px-2.5 py-2">
+      <svg viewBox="0 0 10 10" className="h-[9px] w-[9px] shrink-0 text-acid" aria-hidden fill="none">
+        <rect x="2" y="4.5" width="6" height="4.5" stroke="currentColor" strokeWidth="1" />
+        <path d="M3.2 4.5V3.2a1.8 1.8 0 0 1 3.6 0v1.3" stroke="currentColor" strokeWidth="1" />
+      </svg>
+      <span className="min-w-0 flex-1 t-xs text-fg2">{what}</span>
+      <Button onClick={toggle} variant="ghost">
+        preview
+      </Button>
+      <Button href="/pricing">see plans</Button>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
  * Button — three variants, one height. A terminal needs one button, not six.
  * ------------------------------------------------------------------ */
 

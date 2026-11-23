@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { PageHead } from "@/components/Shell";
-import { Demo, Gauge, Gated, Panel, RiskDot, Split, Stat, Tag } from "@/components/ui";
+import { Demo, Gauge, Gated, Panel, RiskDot, Split, Stat, Tag, UpgradeStrip } from "@/components/ui";
 import { DEMO_RUGS, DEMO_TOKENS, DEMO_WALLETS } from "@/lib/demo";
 import { fmtUsd } from "@/lib/http";
 
@@ -36,6 +36,8 @@ export default function DeployersPage() {
       />
 
       <div className="space-y-2.5 p-3 sm:p-4">
+        <UpgradeStrip what="Every prior launch, its funding source and the wallets behind all of them are Pro — free shows the count" />
+
         <Panel title="Deployer" note="one wallet, four launches, three dead" flush>
           <div className="grid grid-cols-2 divide-x divide-line border-b border-line sm:grid-cols-4">
             {[

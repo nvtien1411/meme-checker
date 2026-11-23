@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { AnalysisResult, CheckState } from "@/lib/types";
 import { CHAIN_BY_ID } from "@/lib/chains";
 import { fmtAge, fmtChange, fmtPct, fmtPrice, fmtUsd } from "@/lib/http";
-import { Demo, Gauge, Gated, Panel, RiskDot, Split, Stat, Tag } from "./ui";
+import { Demo, Gauge, Gated, Panel, RiskDot, Split, Stat, Tag, UpgradeStrip } from "./ui";
 import { BundleDeep, BundleFree } from "./BundleIntel";
 import {
   DistributionBar,
@@ -483,6 +483,8 @@ function HoldersTab({ data }: { data: AnalysisResult }) {
  * ==================================================================== */
 
 function WalletsTab({ demo }: { demo: DemoToken | null }) {
+  // the free tier answers the contract checks; everything past them is the
+  // wallet layer, so the strip goes at the top of this tab only
   if (!demo) {
     return (
       <Panel title="Wallet forensics" note="who bought the launch, and what they did since">
@@ -521,6 +523,8 @@ function WalletsTab({ demo }: { demo: DemoToken | null }) {
 
   return (
     <div className="space-y-2.5">
+      <UpgradeStrip what="Bundle wallets, their funders, their record elsewhere and their exit history are Pro" />
+
       <div className="flex flex-wrap items-center gap-1.5">
         <Demo />
         <span className="t-xs text-fg4">

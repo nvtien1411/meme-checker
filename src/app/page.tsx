@@ -124,7 +124,7 @@ export default function HomePage() {
               </Link>
             ))}
             {fresh.length === 0 && (
-              <p className="px-3 py-2 t-xs text-fg4">Nothing new outside the list on the left — every tracked token is already there</p>
+              <p className="px-3 py-2 t-xs leading-relaxed text-fg4">No token in the tracked set is outside the list on the left. On a live feed this table would carry launches from the last hour</p>
             )}
           </Panel>
         </div>

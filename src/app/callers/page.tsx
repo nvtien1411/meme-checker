@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { PageHead } from "@/components/Shell";
-import { Demo, Panel, Tag } from "@/components/ui";
+import { Demo, Panel, Tag, UpgradeStrip } from "@/components/ui";
 import { DEMO_CALLERS, DEMO_CALLS } from "@/lib/demo";
 
 /* ==================================================================== *
@@ -31,6 +31,8 @@ export default function CallersPage() {
       />
 
       <div className="space-y-2.5 p-3 sm:p-4">
+        <UpgradeStrip what="Win rate, median multiple and exit-against-call are Pro — free shows who called what, and when" />
+
         <Panel title="Read this column first" note="exit price against the price at the moment they posted">
           <p className="t-xs leading-relaxed text-fg3">
             A caller who sells at a higher price than their post is selling into their own audience.

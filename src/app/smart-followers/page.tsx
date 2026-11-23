@@ -1,5 +1,5 @@
 import { PageHead } from "@/components/Shell";
-import { Demo, Gauge, Gated, Panel, Split, Stat, Tag } from "@/components/ui";
+import { Demo, Gauge, Gated, Panel, Split, Stat, Tag, UpgradeStrip } from "@/components/ui";
 import { FollowerEntryChart, Timeline } from "@/components/viz";
 import { DEMO_TIMELINE, DEMO_WALLETS } from "@/lib/demo";
 
@@ -48,6 +48,8 @@ export default function SmartFollowersPage() {
       />
 
       <div className="space-y-2.5 p-3 sm:p-4">
+        <UpgradeStrip what="Who bought after each post, and whether they were the exit — the whole module is Pro" />
+
         {/* the question, stated once */}
         <Panel title="The question this answers" note="one sentence, and every panel below is evidence for it">
           <p className="t-body leading-relaxed text-fg2">
