@@ -3,7 +3,7 @@ import { ScanInput } from "@/components/ScanInput";
 import { PageHead } from "@/components/Shell";
 import { Demo, Panel, RiskDot, Tag } from "@/components/ui";
 import { DEMO_CALLERS, DEMO_RUGS, DEMO_TOKENS } from "@/lib/demo";
-import { fmtUsd } from "@/lib/http";
+import { fmtAge, fmtUsd } from "@/lib/http";
 
 /* ==================================================================== *
  * SCANNER — the operational homepage
@@ -89,7 +89,7 @@ export default function HomePage() {
                   <div className="flex min-w-0 items-baseline gap-1.5">
                     <span className="truncate t-strong text-fg">{t.symbol}</span>
                     <span className="shrink-0 t-xs text-fg4">{t.chain}</span>
-                    <span className="shrink-0 t-xs text-fg4">· {t.ageHours}h</span>
+                    <span className="shrink-0 t-xs text-fg4">· {fmtAge(t.ageHours)}</span>
                   </div>
                   <span className="text-right t-mono text-[11.5px] text-fg2">{fmtUsd(t.mcap)}</span>
                   <span
@@ -116,7 +116,7 @@ export default function HomePage() {
                 className="drow grid grid-cols-[minmax(0,1fr)_48px_52px] items-center gap-x-2.5 border-b border-line px-3 py-1.5 last:border-b-0"
               >
                 <span className="truncate t-strong text-fg">{t.symbol}</span>
-                <span className="text-right t-mono text-[10px] text-fg4">{t.ageHours}h</span>
+                <span className="text-right t-mono text-[10px] text-fg4">{fmtAge(t.ageHours)}</span>
                 <span className="flex items-center justify-end gap-1">
                   <span className="t-mono text-[10px] tabular-nums text-fg3">{t.score}</span>
                   <RiskDot risk={t.risk} />
@@ -124,7 +124,7 @@ export default function HomePage() {
               </Link>
             ))}
             {fresh.length === 0 && (
-              <p className="px-3 py-2 t-xs text-fg4">Every tracked token is already listed above</p>
+              <p className="px-3 py-2 t-xs text-fg4">Nothing new outside the list on the left — every tracked token is already there</p>
             )}
           </Panel>
         </div>

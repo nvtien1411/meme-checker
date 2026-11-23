@@ -83,7 +83,9 @@ export function fmtAge(hours: number | null | undefined): string {
   if (hours < 1) return `${Math.max(1, Math.round(hours * 60))}m`;
   if (hours < 48) return `${Math.round(hours)}h`;
   if (hours < 24 * 60) return `${Math.round(hours / 24)}d`;
-  return `${(hours / 24 / 30).toFixed(1)}mo`;
+  const months = hours / 24 / 30;
+  if (months < 18) return `${months.toFixed(1)}mo`;
+  return `${(months / 12).toFixed(1)}y`;
 }
 
 /**

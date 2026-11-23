@@ -3,7 +3,7 @@ import { PageHead } from "@/components/Shell";
 import { Demo, Panel, RiskDot, Tag } from "@/components/ui";
 import { Gauge } from "@/components/ui";
 import { DEMO_RUGS, DEMO_TOKENS } from "@/lib/demo";
-import { fmtUsd } from "@/lib/http";
+import { fmtAge, fmtUsd } from "@/lib/http";
 
 /* ==================================================================== *
  * DISCOVER — the token table
@@ -109,7 +109,7 @@ function DiscoverInner() {
                 >
                   {vp.toFixed(1)}×
                 </span>
-                <span className="text-right t-mono text-[10px] text-fg4">{t.ageHours}h</span>
+                <span className="text-right t-mono text-[10px] text-fg4">{fmtAge(t.ageHours)}</span>
                 <span className="flex items-center justify-end gap-1">
                   <span className="t-mono text-[10px] tabular-nums text-fg3">{t.score}</span>
                   <RiskDot risk={t.risk} />
