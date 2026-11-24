@@ -77,7 +77,9 @@ function curve(a: Pt, b: Pt, bowFrac: number, sign: number): string {
 }
 
 export function WalletNetworkView({ limit = 12 }: { limit?: number }) {
-  const [picked, setPicked] = useState<string | null>(null);
+  // One selection, read by the graph and by both panels. Nothing else decides
+  // what is highlighted: hover is below and is deliberately cosmetic.
+  const [selected, setSelected] = useState<string | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
   const net = useMemo(() => walletNetwork(), []);
 
@@ -128,20 +130,29 @@ export function WalletNetworkView({ limit = 12 }: { limit?: number }) {
 
   const svgRef = useRef<SVGSVGElement>(null);
 
-  const sel = picked ?? hovered;
-  const activeEdges = useMemo(
-    () => (sel ? new Set(geometry.filter((g) => g.a === sel || g.b === sel).map((g) => g.key)) : null),
-    [sel, geometry],
+  // Only an explicit click moves this. Deriving it from `selected ?? hovered`
+  // made the graph re-layout itself whenever the cursor crossed a node, which
+  // is not what a pointer moving across a chart is supposed to mean.
+  const relatedEdges = useMemo(
+    () =>
+      selected
+        ? new Set(geometry.filter((g) => g.a === selected || g.b === selected).map((g) => g.key))
+        : null,
+    [selected, geometry],
   );
-  const activeNodes = useMemo(() => {
-    if (!sel) return null;
-    const s = new Set<string>([sel]);
+
+  // The selected wallet plus every wallet it actually shares a launch with.
+  // Derived from the same geometry the edges come from, so a wallet can never
+  // be lit as connected without a line being drawn to it.
+  const relatedNodes = useMemo(() => {
+    if (!selected) return null;
+    const set = new Set<string>([selected]);
     for (const g of geometry) {
-      if (g.a === sel) s.add(g.b);
-      if (g.b === sel) s.add(g.a);
+      if (g.a === selected) set.add(g.b);
+      if (g.b === selected) set.add(g.a);
     }
-    return s;
-  }, [sel, geometry]);
+    return set;
+  }, [selected, geometry]);
 
   return (
     <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-[300px_minmax(0,1fr)]">
@@ -155,30 +166,33 @@ export function WalletNetworkView({ limit = 12 }: { limit?: number }) {
           className="mc-net block h-auto w-full"
           role="img"
           aria-label="Wallets that repeatedly appear on the same launches"
+          data-selected={selected ?? ""}
+          data-related={relatedNodes ? relatedNodes.size - 1 : 0}
         >
           {/* edges first, so nodes sit on top of their own lines */}
           {geometry.map((g) => {
-            const active = activeEdges?.has(g.key) ?? false;
-            const dim = activeEdges !== null && !active;
+            const related = relatedEdges?.has(g.key) ?? false;
+            const muted = relatedEdges !== null && !related;
             return (
               <g key={g.key}>
                 <path
                   d={g.path}
                   fill="none"
-                  stroke={active ? "var(--color-acid)" : "currentColor"}
-                  className={active ? "" : "text-fg4"}
-                  strokeWidth={Math.min(2.2, 0.5 + g.together * 0.35)}
-                  strokeOpacity={dim ? 0.07 : active ? 0.6 : 0.2}
+                  stroke={related ? "var(--color-acid)" : "currentColor"}
+                  className={related ? "" : "text-fg4"}
+                  strokeWidth={
+                    related ? Math.min(2.6, 0.9 + g.together * 0.4) : Math.min(2, 0.5 + g.together * 0.3)
+                  }
+                  // Unrelated edges stay drawn, just low enough that the
+                  // highlighted ones read first. Hiding them would lose the
+                  // shape of the network the user is navigating.
+                  strokeOpacity={muted ? 0.08 : related ? 0.8 : 0.16}
                   strokeLinecap="round"
                 />
-                {/* streams: only on the selected node's edges when something is
-                    selected, otherwise across the whole network at low opacity */}
-                {!dim && (
-                  <Flow
-                    g={g}
-                    active={active}
-                    seedIndex={g.key.charCodeAt(0) + g.together}
-                  />
+                {/* Particles run on the selected wallet's edges only, and across
+                    the whole graph when nothing is selected */}
+                {!muted && (
+                  <Flow g={g} active={related} seedIndex={g.key.charCodeAt(0) + g.together} />
                 )}
               </g>
             );
@@ -187,38 +201,71 @@ export function WalletNetworkView({ limit = 12 }: { limit?: number }) {
           {nodes.map((n) => {
             const p = pos.get(n.addr);
             if (!p) return null;
-            const isSel = picked === n.addr;
-            const isHover = hovered === n.addr;
+            const isSel = selected === n.addr;
+            const isRelated = relatedNodes?.has(n.addr) ?? false;
+            const isHover = hovered === n.addr && !isSel;
             const role = ROLE_TONE[n.behaviour.label];
-            const dim = activeNodes !== null && !activeNodes.has(n.addr);
+            const baseR = n.degree >= 8 ? 8 : n.degree >= 5 ? 6.5 : 5;
+            const r = isSel ? baseR + 1.5 : isHover ? baseR + 0.8 : baseR;
+            const muted = relatedNodes !== null && !isRelated;
             return (
               <g
                 key={n.addr}
-                onClick={() => setPicked(isSel ? null : n.addr)}
+                onClick={() => setSelected(isSel ? null : n.addr)}
                 onMouseEnter={() => setHovered(n.addr)}
                 onMouseLeave={() => setHovered((h) => (h === n.addr ? null : h))}
                 className="cursor-pointer"
+                role="button"
+                tabIndex={0}
+                aria-pressed={isSel}
+                aria-label={`${shortAddr(n.addr, 6, 4)}, ${n.behaviour.label}, ${n.degree} repeat partners`}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setSelected(isSel ? null : n.addr);
+                  }
+                }}
               >
                 {/* the arrival glow sits under the node and is driven by the
                     same CSS keyframe every node shares; the delay is per-node so
                     they do not all breathe in step */}
+                {/* selected: a filled halo and a hard border, so the choice
+                    survives the cursor leaving — and so it reads on a node whose
+                    role colour is already loud */}
+                {isSel && (
+                  <>
+                    <circle cx={p.x} cy={p.y} r={r + 9} fill="var(--color-acid)" fillOpacity={0.1} />
+                    <circle
+                      cx={p.x}
+                      cy={p.y}
+                      r={r + 5.5}
+                      fill="none"
+                      stroke="var(--color-acid)"
+                      strokeWidth={1.5}
+                      className="mc-net-sel"
+                    />
+                  </>
+                )}
+
                 <circle
                   cx={p.x}
                   cy={p.y}
-                  r={n.degree >= 8 ? 8 : n.degree >= 5 ? 6.5 : 5}
+                  r={r}
                   fill={isSel ? "var(--color-acid)" : role}
-                  fillOpacity={dim ? 0.25 : isSel ? 1 : isHover ? 1 : 0.85}
+                  fillOpacity={muted ? 0.22 : isSel ? 1 : isHover ? 1 : isRelated ? 0.95 : 0.8}
                   className="mc-net-node"
                   style={{ animationDelay: `${(n.degree % 7) * -0.42}s` }}
                 />
                 <circle
                   cx={p.x}
                   cy={p.y}
-                  r={(n.degree >= 8 ? 8 : n.degree >= 5 ? 6.5 : 5) + 3}
+                  r={r + 3}
                   fill="none"
-                  stroke={role}
+                  stroke={isSel ? "var(--color-acid)" : role}
                   strokeWidth={n.degree >= 8 ? 1.3 : 0.9}
-                  strokeOpacity={dim ? 0.04 : Math.min(0.7, 0.18 + n.degree / 18)}
+                  strokeOpacity={
+                    muted ? 0.04 : isSel ? 0.85 : Math.min(0.7, 0.18 + n.degree / 18)
+                  }
                   className="mc-net-ring"
                   style={{ animationDelay: `${(n.degree % 5) * -0.9}s` }}
                 />
@@ -249,14 +296,11 @@ export function WalletNetworkView({ limit = 12 }: { limit?: number }) {
       </div>
 
       <div className="space-y-2.5">
-        {sel ? (
+        {selected ? (
           <NetworkNodeDetail
-            node={net.nodes.find((n) => n.addr === sel) as NetworkNode}
-            edges={edges.filter((e) => e.a === sel || e.b === sel)}
-            onClose={() => {
-              setPicked(null);
-              setHovered(null);
-            }}
+            node={net.nodes.find((n) => n.addr === selected) as NetworkNode}
+            edges={edges.filter((e) => e.a === selected || e.b === selected)}
+            onClose={() => setSelected(null)}
           />
         ) : (
           <Panel title="Repeat participants" note="ranked by how many other addresses they keep appearing with" flush>
@@ -265,9 +309,10 @@ export function WalletNetworkView({ limit = 12 }: { limit?: number }) {
                 <button
                   key={n.addr}
                   type="button"
-                  onClick={() => setPicked(n.addr)}
+                  onClick={() => setSelected(selected === n.addr ? null : n.addr)}
                   onMouseEnter={() => setHovered(n.addr)}
                   onMouseLeave={() => setHovered((h) => (h === n.addr ? null : h))}
+                  aria-pressed={selected === n.addr}
                   className="drow flex w-full items-baseline gap-2 border-b border-line px-3 py-1.5 text-left last:border-b-0"
                 >
                   <span aria-hidden className="mt-[4px] h-[5px] w-[5px] shrink-0" style={{ background: ROLE_TONE[n.behaviour.label] }} />
@@ -336,8 +381,11 @@ function Flow({
     if (!el) return;
     const path: SVGPathElement = el;
 
+    // Read live, not once. A snapshot at mount means changing the OS setting
+    // while the page is open does nothing, and — worse — turning reduced motion
+    // ON leaves every particle mid-flight forever because the loop that would
+    // have faded them out is the loop being disabled.
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    if (motion.matches) return;
 
     const len = path.getTotalLength();
     if (len < 1) return;
@@ -360,7 +408,11 @@ function Flow({
 
     const io = new IntersectionObserver(([entry]) => {
       visible = entry.isIntersecting;
-      if (visible && !raf) raf = requestAnimationFrame(tick);
+      if (visible) start();
+      else if (raf) {
+        cancelAnimationFrame(raf);
+        raf = 0;
+      }
     });
     io.observe(path);
 
@@ -400,12 +452,39 @@ function Flow({
           dot.style.opacity = String((active ? 0.46 : 0.14) * f * f);
         }
       }
-      raf = visible ? requestAnimationFrame(tick) : 0;
+      raf = visible && !motion.matches ? requestAnimationFrame(tick) : 0;
     }
 
-    raf = requestAnimationFrame(tick);
+    function hideAll() {
+      for (const head of headRefs.current) if (head) head.style.opacity = "0";
+      for (const dots of trailRefs.current) {
+        if (!dots) continue;
+        for (const dot of dots) if (dot) dot.style.opacity = "0";
+      }
+    }
+
+    function start() {
+      if (raf || motion.matches || !visible) return;
+      raf = requestAnimationFrame(tick);
+    }
+
+    function stop() {
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+      hideAll();
+    }
+
+    const onMotionChange = () => {
+      if (motion.matches) stop();
+      else start();
+    };
+    motion.addEventListener("change", onMotionChange);
+
+    if (!motion.matches) start();
+
     return () => {
       if (raf) cancelAnimationFrame(raf);
+      motion.removeEventListener("change", onMotionChange);
       io.disconnect();
     };
   }, [pathEl, active, seedIndex]);

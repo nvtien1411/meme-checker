@@ -415,6 +415,40 @@ body {
   }
 }
 
+/* The selected node's border is deliberately NOT animated. Every other node
+ * breathes, so a border that also moved would read as "this one is doing the
+ * same thing louder". A state the user chose should look held, not busy — the
+ * only motion on it is a slow 2.6s opacity shift small enough to feel alive
+ * without competing with the particles arriving on its edges. */
+/* Keyboard focus is real and must be visible, but the browser's default
+ * outline on an SVG <g> renders as a white rectangle floating away from the
+ * circle it belongs to — it looks like a second selection box, which is
+ * exactly the confusion this graph cannot afford. Clicking must not draw
+ * anything (the acid halo already says "selected"); only keyboard focus does,
+ * and it draws a thin acid ring at offset 0 so it hugs the node. */
+.mc-net [role="button"]:focus {
+  outline: none;
+}
+
+.mc-net [role="button"]:focus-visible {
+  outline: 1.5px solid var(--color-acid);
+  outline-offset: 0;
+}
+
+.mc-net-sel {
+  animation: mc-net-sel 2.6s var(--e-in-out) infinite;
+}
+
+@keyframes mc-net-sel {
+  0%,
+  100% {
+    opacity: 0.75;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 .mc-net-ring {
   animation: mc-net-ring 3.8s var(--e-out) infinite;
   transform-box: fill-box;
@@ -756,7 +790,8 @@ body {
   .mc-breathe,
   .pulse-dot,
   .mc-net-node,
-  .mc-net-ring {
+  .mc-net-ring,
+  .mc-net-sel {
     animation: none !important;
   }
 
