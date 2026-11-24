@@ -7,6 +7,7 @@ import { PeekButton } from "@/components/report";
 import { DEMO_RUGS } from "@/lib/demo";
 import { fmtUsd } from "@/lib/http";
 import { deployerRecord } from "@/lib/intel2";
+import { NextSteps } from "@/components/NextSteps";
 
 /* ==================================================================== *
  * RUG DATABASE
@@ -181,6 +182,34 @@ export default function RugsPage() {
         >
           <RugCaseFile />
         </ProReveal>
+
+        <NextSteps
+          title="What to do with one of these"
+          steps={[
+            {
+              from: "A deployer appears on more than one entry",
+              to: "Its full launch record",
+              href: "/deployers",
+              tone: "bad",
+            },
+            {
+              from: "You want to know if wallets repeated across these",
+              to: "The relationship graph",
+              href: "/investigation",
+            },
+            {
+              from: "A caller promoted one of these before it fell",
+              to: "Whether that caller sold into their own audience",
+              href: "/callers",
+              tone: "warn",
+            },
+            {
+              from: "The idea is still running under a new ticker",
+              to: "The narrative and its copy count",
+              href: "/narratives",
+            },
+          ]}
+        />
       </div>
     </div>
   );

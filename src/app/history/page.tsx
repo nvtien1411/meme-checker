@@ -4,6 +4,7 @@ import { Demo, Panel, ProReveal, RiskDot, Tag } from "@/components/ui";
 import { ScanMemory } from "@/components/Intelligence3";
 import { WalletProRows } from "@/components/ProRows";
 import { DEMO_WALLETS, DEMO_TOKENS } from "@/lib/demo";
+import { NextSteps } from "@/components/NextSteps";
 
 /* ==================================================================== *
  * HISTORY
@@ -160,6 +161,35 @@ export default function HistoryPage() {
             ))}
           </Panel>
         </div>
+
+        <NextSteps
+          title="The point of keeping this"
+          steps={[
+            {
+              from: "A token you scanned later collapsed",
+              to: "What the signals said at the time",
+              href: "/rugs",
+              tone: "bad",
+            },
+            {
+              from: "The same wallet appeared in several scans",
+              to: "Its full record",
+              href: "/wallets",
+            },
+            {
+              from: "One caller keeps showing up",
+              to: "Whether following them pays",
+              href: "/callers",
+              tone: "warn",
+            },
+            {
+              from: "You want to be told next time",
+              to: "Set the rule that would have caught it",
+              href: "/alerts",
+              tone: "acid",
+            },
+          ]}
+        />
       </div>
     </div>
   );

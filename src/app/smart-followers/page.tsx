@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { PageHead } from "@/components/Shell";
 import { Demo, Panel, ProReveal, Stat, Tag } from "@/components/ui";
 import { WalletProRows } from "@/components/ProRows";
+import { NextSteps } from "@/components/NextSteps";
 import { DEMO_CALLS, DEMO_WALLETS, shortAddr } from "@/lib/demo";
 import { allCallerProfiles } from "@/lib/intel2";
 import { walletProfile } from "@/lib/intel";
@@ -291,6 +292,29 @@ export default function SmartFollowersPage() {
             wallets are not followers, they are the exit, and the account is the door
           </p>
         </Panel>
+
+        <NextSteps
+          title="From a caller's follower problem"
+          steps={[
+            {
+              from: "A caller sells above their own call",
+              to: "Every call they made, with exits",
+              href: "/callers/cryptocole",
+              tone: "bad",
+            },
+            {
+              from: "The same wallets keep arriving",
+              to: "The graph of who bought together",
+              href: "/investigation",
+            },
+            {
+              from: "A token is being called by several accounts",
+              to: "What the contract itself says",
+              href: "/check",
+              tone: "acid",
+            },
+          ]}
+        />
       </div>
     </div>
   );

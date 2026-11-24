@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Demo, Panel, RiskDot, Tag } from "@/components/ui";
 import { ScanInput } from "@/components/ScanInput";
+import { NextSteps } from "@/components/NextSteps";
 import { DEMO_RUGS, DEMO_TOKENS } from "@/lib/demo";
 import { fmtAge, fmtUsd } from "@/lib/http";
 
@@ -261,6 +262,38 @@ export function DiscoverClient() {
             </div>
           ))}
         </Panel>
+
+        <NextSteps
+          steps={[
+            {
+              from: "A token in this list looks worth a look",
+              to: "What is actually inside it?",
+              href: DEMO_TOKENS[0] ? `/token/${DEMO_TOKENS[0].chain}/${DEMO_TOKENS[0].mint}` : "/check",
+              tone: "acid",
+            },
+            {
+              from: "Something collapsed and you want the pattern",
+              to: "The deployer behind it",
+              href: "/deployers",
+              tone: "bad",
+            },
+            {
+              from: "A wallet keeps showing up across these",
+              to: "Who else bought with it?",
+              href: "/investigation",
+            },
+            {
+              from: "You want to know who called it first",
+              to: "Alpha Calls, ranked by exit behavior",
+              href: "/callers",
+            },
+            {
+              from: "The story behind the token",
+              to: "How many times this idea already ran",
+              href: "/narratives",
+            },
+          ]}
+        />
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ import { NarrativeProRows } from "@/components/ProRows";
 import { DEMO_NARRATIVES, DEMO_TOKENS } from "@/lib/demo";
 import { allNarratives, narrativeAnalysis } from "@/lib/intel2";
 import { fmtUsd } from "@/lib/http";
+import { NextSteps } from "@/components/NextSteps";
 
 /* ==================================================================== *
  * NARRATIVES
@@ -200,6 +201,34 @@ export default function NarrativesPage() {
             this scanner has seen
           </p>
         </Panel>
+
+        <NextSteps
+          title="If one of these is early"
+          steps={[
+            {
+              from: "A narrative is early and not crowded",
+              to: "Scan the token that is running it now",
+              href: "/check",
+              tone: "acid",
+            },
+            {
+              from: "The copies keep coming from one wallet",
+              to: "That deployer's record",
+              href: "/deployers",
+            },
+            {
+              from: "A caller is pushing this narrative",
+              to: "What they did with their own position",
+              href: "/callers",
+              tone: "warn",
+            },
+            {
+              from: "You want to see what is moving right now",
+              to: "Trending, filtered by chain",
+              href: "/discover",
+            },
+          ]}
+        />
       </div>
     </div>
   );

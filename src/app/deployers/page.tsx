@@ -6,6 +6,7 @@ import { fmtUsd } from "@/lib/http";
 import { deployerRecord } from "@/lib/intel2";
 import { DeployerProRows } from "@/components/ProRows";
 import { PeekButton } from "@/components/report";
+import { NextSteps } from "@/components/NextSteps";
 
 /* ==================================================================== *
  * DEPLOYERS
@@ -232,6 +233,35 @@ export default function DeployersPage() {
             "Every token this wallet deployed, including ones outside this database",
           ]}
           note="These are the real launch records for this deployer, worst first - the free view shows the two at the top"
+        />
+
+        <NextSteps
+          title="From a deployer record"
+          steps={[
+            {
+              from: "This wallet launched again recently",
+              to: "The newest token, checked",
+              href: "/check",
+              tone: "acid",
+            },
+            {
+              from: "Its launches share wallets",
+              to: "The graph of who bought together",
+              href: "/investigation",
+            },
+            {
+              from: "Someone called one of its tokens",
+              to: "Whether the caller exited first",
+              href: "/callers",
+              tone: "warn",
+            },
+            {
+              from: "You want the other collapses it caused",
+              to: "The rug archive",
+              href: "/rugs",
+              tone: "bad",
+            },
+          ]}
         />
       </div>
     </div>

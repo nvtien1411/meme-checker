@@ -20,7 +20,7 @@ export async function generateMetadata({
   const { chain, address } = await params;
   return {
     title: `${address.slice(0, 6)}…${address.slice(-4)} on ${chain}`,
-    description: "Risk report from Meme Checke",
+    description: "Risk report from Meme Checker",
   };
 }
 
@@ -42,7 +42,7 @@ async function Report({ chain, address }: { chain: ChainId; address: string }) {
         {hint && <p className="mt-1.5 t-small leading-relaxed text-mute-500">{hint}</p>}
         <p className="rule mt-6 pt-3 t-meta leading-relaxed text-mute-600">
           A failed lookup is not a verdict. Nothing here should be read as evidence that the
-          token is safe or unsafee
+          token is safe or unsafe
         </p>
         <div className="mt-5 flex gap-2">
           <Link

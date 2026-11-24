@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Panel, Tag } from "@/components/ui";
 import { WATCH_EVENT, readWatchlist, removeWatched, type WatchedItem } from "@/lib/watchlist";
+import { NextSteps } from "@/components/NextSteps";
 
 /* ==================================================================== *
  * WATCHLIST — the list you actually made
@@ -185,6 +186,29 @@ export function WatchlistClient() {
             <p className="t-xs text-fg4">Nothing saved as {filter}</p>
           </Panel>
         )}
+
+        <NextSteps
+          title="What a watchlist is for"
+          steps={[
+            {
+              from: "You saved a token to see what happens",
+              to: "Set the rule that tells you first",
+              href: "/alerts",
+              tone: "acid",
+            },
+            {
+              from: "A wallet you saved moved",
+              to: "Who it moved with",
+              href: "/investigation",
+            },
+            {
+              from: "You saved a deployer",
+              to: "Every token it has launched",
+              href: "/deployers",
+              tone: "bad",
+            },
+          ]}
+        />
       </div>
     </div>
   );

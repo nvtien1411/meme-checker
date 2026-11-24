@@ -3,6 +3,7 @@ import { Demo, Panel, ProReveal, Tag } from "@/components/ui";
 import { WalletDirectory } from "@/components/Intelligence3";
 import { WalletProRows } from "@/components/ProRows";
 import { DEMO_WALLETS, DEMO_TOKENS, WALLET_ROLE } from "@/lib/demo";
+import { NextSteps } from "@/components/NextSteps";
 
 /* ==================================================================== *
  * WALLETS — the directory, and the memory behind it
@@ -120,6 +121,34 @@ export default function WalletsPage() {
             "Every launch an address appears on, with the outcome of each",
           ]}
           note="A wallet with five launches and four collapses is a different object from one with a single appearance. The table above counts them the same"
+        />
+
+        <NextSteps
+          title="From a wallet"
+          steps={[
+            {
+              from: "A wallet bought in the creation block",
+              to: "Who it bought alongside",
+              href: "/investigation",
+              tone: "bad",
+            },
+            {
+              from: "Its launches keep collapsing",
+              to: "The deployers it worked with",
+              href: "/deployers",
+            },
+            {
+              from: "It follows a caller consistently",
+              to: "Whether that caller exits before it",
+              href: "/callers",
+            },
+            {
+              from: "You want to track it going forward",
+              to: "Add it to the watchlist",
+              href: "/watchlist",
+              tone: "acid",
+            },
+          ]}
         />
       </div>
     </div>

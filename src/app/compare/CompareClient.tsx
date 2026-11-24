@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { Demo, Panel, Tag, Gauge, Split } from "@/components/ui";
 import { DEMO_TOKENS } from "@/lib/demo";
 import { fmtUsd } from "@/lib/http";
+import { NextSteps } from "@/components/NextSteps";
 
 /* ==================================================================== *
  * COMPARE — pick any tokens, not the three that were hardcoded
@@ -253,6 +254,34 @@ export function CompareClient() {
             ))}
           </div>
         )}
+
+        <NextSteps
+          title="From a comparison"
+          steps={[
+            {
+              from: "One token is cleaner on every row",
+              to: "Check where its supply actually sits",
+              href: "/check",
+              tone: "acid",
+            },
+            {
+              from: "Both have the same bundle pattern",
+              to: "Whether the same wallets are in both",
+              href: "/investigation",
+              tone: "bad",
+            },
+            {
+              from: "The same deployer is behind them",
+              to: "Its full record",
+              href: "/deployers",
+            },
+            {
+              from: "You want to watch the one you picked",
+              to: "Add it to the watchlist",
+              href: "/watchlist",
+            },
+          ]}
+        />
       </div>
     </div>
   );
