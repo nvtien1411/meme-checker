@@ -122,7 +122,21 @@ export function Graph({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let reduce = motionQuery.matches;
+    const onMotionChange = (ev: MediaQueryListEvent) => {
+      reduce = ev.matches;
+      if (reduce) {
+        if (raf) {
+          cancelAnimationFrame(raf);
+          raf = 0;
+        }
+        draw(performance.now());
+      } else {
+        loop();
+      }
+    };
+    motionQuery.addEventListener("change", onMotionChange);
     let raf = 0;
     let visible = true;
     let started = performance.now();
@@ -159,6 +173,127 @@ export function Graph({
 
     const nodeById = new Map(nodes.map((n) => [n.id, n]));
 
+    /* ------------------------------------------------------------------
+     * Curve geometry with an arc-length table.
+     *
+     * A quadratic Bézier does not advance at constant speed in its parameter:
+     * t=0.5 sits closer to one end on curves with strong asymmetry, so a
+     * particle moved by raw t visibly accelerates through the bend. The table
+     * below is sampled once per edge and used to map distance -> point, which is
+     * what makes a stream read as travelling at a steady rate.
+     *
+     * The control point is offset perpendicular to the chord, so every edge bows
+     * the same way relative to its own direction and parallel edges fan apart
+     * instead of overlapping.
+     * ------------------------------------------------------------------ */
+
+    interface Stream {
+      phase: number;
+      speed: number;
+      dir: 1 | -1;
+      colour: string;
+      alpha: number;
+    }
+
+    interface EdgeGeom {
+      edge: GraphEdge;
+      p0: { x: number; y: number };
+      p1: { x: number; y: number };
+      ctrl: { x: number; y: number };
+      pointAt: (u: number) => { x: number; y: number };
+      streams: Stream[];
+    }
+
+    const SAMPLES = 24;
+    const geometry: EdgeGeom[] = [];
+
+    for (const e of edges) {
+      const a = layout.get(e.from);
+      const b = layout.get(e.to);
+      if (!a || !b) continue;
+
+      // Bow the chord perpendicular to its own direction.
+      //
+      // 12% was too shallow to read: with edges radiating from a centre, the
+      // perpendicular offset is nearly radial and the curve looks like a
+      // straight line at a glance. 26% is enough that every edge reads as an arc,
+      // and the sign is derived from the edge id rather than always positive, so
+      // edges on the same chord bow to opposite sides instead of stacking.
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const mx = (a.x + b.x) / 2;
+      const my = (a.y + b.y) / 2;
+      const nx = -dy;
+      const ny = dx;
+      const nlen = Math.hypot(nx, ny) || 1;
+      const chord = Math.hypot(dx, dy);
+      const sign = ((e.from + e.to).length % 2 === 0) ? 1 : -1;
+      const bow = (0.26 + (chord > 150 ? 0.06 : 0)) * chord * sign;
+      const ctrl = { x: mx + (nx / nlen) * bow, y: my + (ny / nlen) * bow };
+
+      // sample the curve, accumulate arc length
+      const pts: { x: number; y: number }[] = [];
+      const cum: number[] = [];
+      let acc = 0;
+      for (let i = 0; i <= SAMPLES; i++) {
+        const t2 = i / SAMPLES;
+        const it = 1 - t2;
+        const x = it * it * a.x + 2 * it * t2 * ctrl.x + t2 * t2 * b.x;
+        const y = it * it * a.y + 2 * it * t2 * ctrl.y + t2 * t2 * b.y;
+        if (i > 0) {
+          const prev = pts[i - 1];
+          acc += Math.hypot(x - prev.x, y - prev.y);
+        }
+        pts.push({ x, y });
+        cum.push(acc);
+      }
+      const total = acc || 1;
+
+      // distance -> point, by binary search on the cumulative table
+      const pointAt = (u: number) => {
+        const target = Math.max(0, Math.min(1, u)) * total;
+        let lo = 0;
+        let hi = cum.length - 1;
+        while (lo < hi) {
+          const mid = (lo + hi) >> 1;
+          if (cum[mid] < target) lo = mid + 1;
+          else hi = mid;
+        }
+        const i = Math.max(1, lo);
+        const seg = cum[i] - cum[i - 1] || 1;
+        const f = (target - cum[i - 1]) / seg;
+        return {
+          x: pts[i - 1].x + (pts[i].x - pts[i - 1].x) * f,
+          y: pts[i - 1].y + (pts[i].y - pts[i - 1].y) * f,
+        };
+      };
+
+      // Streams per edge: one for a plain co-appearance line, two for a
+      // directed one. Deterministic from the edge id, so the pattern is stable
+      // across renders instead of reshuffling on every state change.
+      const seed = [...(e.from + e.to)].reduce((n, c) => n + c.charCodeAt(0), 0);
+      const count = e.directed ? 2 : 1;
+      const streams: Stream[] = [];
+      for (let k = 0; k < count; k++) {
+        const r1 = ((seed * (k + 7)) % 997) / 997;
+        const r2 = ((seed * (k + 13)) % 991) / 991;
+        streams.push({
+          phase: r1,
+          // 0.00009..0.00017 per ms -> a full traverse every 6-11s, which is
+          // slow enough to read as flow rather than as a spinner
+          speed: 0.00009 + r2 * 0.00008,
+          // Directed edges alternate direction; undirected ones still flow so
+          // the network looks alive, but they carry no arrowhead to contradict.
+          dir: e.directed ? (k % 2 === 0 ? 1 : -1) : r1 > 0.5 ? 1 : -1,
+          colour: e.tone === "bad" ? "#ff6b78" : e.tone === "warn" ? "#f7c14a" : "#c6ff43",
+          alpha: 0.55 + r2 * 0.35,
+        });
+      }
+
+      geometry.push({ edge: e, p0: a, p1: b, ctrl, pointAt, streams });
+    }
+
+
     function draw(now: number) {
       if (!ctx) return;
       const t = now - started;
@@ -166,89 +301,111 @@ export function Graph({
       const cx = w / 2;
       const cy = h / 2;
 
-      // ---- edges ---------------------------------------------------------
-      for (const e of edges) {
-        const a = layout.get(e.from);
-        const b = layout.get(e.to);
-        if (!a || !b) continue;
+      // =================================================================
+      // EDGES — curved, with energy streams travelling along the real arc.
+      //
+      // Streams are pre-generated with their own phase and speed and then
+      // advanced by modulo of elapsed time, so the loop is seamless and there is
+      // no per-frame state to drift. A stream is drawn as a bright head plus a
+      // short trail of decaying samples behind it, all resolved through the
+      // same arc-length table the curve itself is drawn from — so a stream
+      // physically follows the line rather than approximating it.
+      // =================================================================
 
+      const arrival = new Map<string, number>();
+
+      for (const g of geometry) {
+        const e = g.edge;
         const focus = selected ?? hover;
         const dim = focus !== null && !(e.from === focus || e.to === focus);
         const onPath = focus !== null && (e.from === focus || e.to === focus);
 
-        // draw-on: an edge appears only after both its endpoints were
-        // discovered, and the delay is the later of the two orders. The
-        // sequence is the information.
+        // reveal: an edge appears only after both endpoints were discovered
         const na = nodeById.get(e.from);
         const nb = nodeById.get(e.to);
         const appear = reduce ? 0 : Math.max(na?.order ?? 0, nb?.order ?? 0) * 130;
         const progress = Math.max(0, Math.min(1, (t - appear) / 620));
         if (progress <= 0) continue;
 
-        const x1 = cx + a.x;
-        const y1 = cy + a.y;
-        const x2 = cx + b.x;
-        const y2 = cy + b.y;
-        const len = Math.hypot(x2 - x1, y2 - y1);
-
+        // ---- the line -------------------------------------------------
         ctx.save();
         ctx.strokeStyle = TONE[e.tone];
-        ctx.globalAlpha = dim ? 0.07 : onPath ? 0.75 : 0.28;
-        ctx.lineWidth = onPath ? 1.5 : 1;
-        ctx.setLineDash([len, len]);
-        ctx.lineDashOffset = len * (1 - progress);
-
-        // direction: draw from the earlier-discovered end so the line grows
-        // outward from what was known first.
-        const fromA = (na?.order ?? 0) <= (nb?.order ?? 0);
+        ctx.globalAlpha = dim ? 0.06 : onPath ? 0.6 : 0.24;
+        ctx.lineWidth = onPath ? 1.4 : 0.9;
         ctx.beginPath();
-        if (fromA) {
-          ctx.moveTo(x1, y1);
-          ctx.lineTo(x2, y2);
-        } else {
-          ctx.moveTo(x2, y2);
-          ctx.lineTo(x1, y1);
-        }
+        ctx.moveTo(cx + g.p0.x, cy + g.p0.y);
+        ctx.quadraticCurveTo(cx + g.ctrl.x, cy + g.ctrl.y, cx + g.p1.x, cy + g.p1.y);
         ctx.stroke();
 
-        // arrowhead on directed edges only. Without it every line reads as
-        // co-appearance, which is the weaker claim.
-        if (e.directed && progress > 0.85) {
-          const ang = Math.atan2(y2 - y1, x2 - x1);
-          // Place the head 62% along the edge rather than at its tip: the tip is
-          // inside the destination node, where a 5px triangle is invisible.
-          const at = 0.62;
-          const tipX = fromA ? x1 + (x2 - x1) * at : x2 + (x1 - x2) * at;
-          const tipY = fromA ? y1 + (y2 - y1) * at : y2 + (y1 - y2) * at;
-          const a2 = fromA ? ang : ang + Math.PI;
-          const size = onPath ? 9 : 7;
-          ctx.globalAlpha = dim ? 0.08 : onPath ? 0.9 : 0.4;
+        // direction marker: a small head tangent to the curve. Motion carries
+        // the direction when streams run; this is for the static and
+        // reduced-motion case, and it is deliberately small.
+        if (e.directed && progress > 0.9) {
+          const at = g.pointAt(0.68);
+          const ahead = g.pointAt(0.70);
+          const ang = Math.atan2(ahead.y - at.y, ahead.x - at.x);
+          const size = onPath ? 5.5 : 4;
+          ctx.globalAlpha = dim ? 0.06 : onPath ? 0.8 : 0.35;
           ctx.fillStyle = TONE[e.tone];
           ctx.beginPath();
-          ctx.moveTo(tipX, tipY);
-          ctx.lineTo(tipX - Math.cos(a2 - 0.4) * size, tipY - Math.sin(a2 - 0.4) * size);
-          ctx.lineTo(tipX - Math.cos(a2 + 0.4) * size, tipY - Math.sin(a2 + 0.4) * size);
+          ctx.moveTo(cx + at.x, cy + at.y);
+          ctx.lineTo(cx + at.x - Math.cos(ang - 0.45) * size, cy + at.y - Math.sin(ang - 0.45) * size);
+          ctx.lineTo(cx + at.x - Math.cos(ang + 0.45) * size, cy + at.y - Math.sin(ang + 0.45) * size);
           ctx.closePath();
           ctx.fill();
         }
         ctx.restore();
 
-        // ---- particles: only on directed edges, only when the path is live --
-        if (e.directed && !reduce && onPath && progress >= 1) {
-          const speed = 0.00022;
-          const phase = (t * speed) % 1;
-          const px = x1 + (x2 - x1) * phase;
-          const py = y1 + (y2 - y1) * phase;
+        // ---- the streams ----------------------------------------------
+        if (reduce || progress < 1) continue;
+
+        for (const st of g.streams) {
+          // u walks 0..1 forever. Modulo, so nothing ever resets visibly.
+          const raw = (t * st.speed + st.phase) % 1;
+          const u = st.dir === 1 ? raw : 1 - raw;
+
+          // arrival bloom: the destination lights up as the head reaches it
+          if (raw > 0.86) {
+            const dest = st.dir === 1 ? g.edge.to : g.edge.from;
+            const k = (raw - 0.86) / 0.14;
+            arrival.set(dest, Math.max(arrival.get(dest) ?? 0, k));
+          }
+
+          const headAlpha = (dim ? 0.05 : onPath ? 1 : 0.42) * st.alpha;
+
+          // trail: samples behind the head on the same arc, each smaller and
+          // fainter. This is what makes it read as light moving rather than a
+          // dot blinking.
+          const TAIL = 7;
+          for (let i = TAIL; i >= 0; i--) {
+            const back = i * 0.022 * (st.dir === 1 ? 1 : -1);
+            const uu = u + back;
+            if (uu < 0.02 || uu > 0.98) continue;
+            const pt = g.pointAt(uu);
+            const f = 1 - i / TAIL;
+            const a = headAlpha * f * f;
+            if (a < 0.012) continue;
+            ctx.save();
+            ctx.globalAlpha = a;
+            ctx.fillStyle = st.colour;
+            ctx.beginPath();
+            ctx.arc(cx + pt.x, cy + pt.y, 0.9 + f * 1.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+
+          // the head itself: a small solid core and one soft halo. No
+          // shadowBlur — it is the most expensive thing on this canvas.
+          const hp = g.pointAt(u);
           ctx.save();
-          ctx.fillStyle = TONE[e.tone];
-          ctx.globalAlpha = 0.9;
+          ctx.globalAlpha = headAlpha * 0.22;
+          ctx.fillStyle = st.colour;
           ctx.beginPath();
-          ctx.arc(px, py, 1.9, 0, Math.PI * 2);
+          ctx.arc(cx + hp.x, cy + hp.y, 5.5, 0, Math.PI * 2);
           ctx.fill();
-          // a short trail so the dot reads as movement, not a stray pixel
-          ctx.globalAlpha = 0.28;
+          ctx.globalAlpha = headAlpha;
           ctx.beginPath();
-          ctx.arc(x1 + (x2 - x1) * Math.max(0, phase - 0.04), y1 + (y2 - y1) * Math.max(0, phase - 0.04), 1.3, 0, Math.PI * 2);
+          ctx.arc(cx + hp.x, cy + hp.y, 1.7, 0, Math.PI * 2);
           ctx.fill();
           ctx.restore();
         }
@@ -266,19 +423,44 @@ export function Graph({
         const isFocus = (selected ?? hover) === n.id;
         const colour = KIND_COLOR[n.kind];
         const ease = 1 - Math.pow(1 - k, 3);
-        const radius = p.r * ease * (isFocus ? 1.35 : 1);
+
+        // A stream arriving lights the node it reaches. The bloom decays on its
+        // own because `arrival` is rebuilt every frame from the streams that are
+        // currently in their last 14% — nothing has to be timed or cleared.
+        const hit = arrival.get(n.id) ?? 0;
+        const pulse = reduce ? 0 : hit * hit * 1.6;
+
+        // The hub carries a slow standing energy: a ring that widens and fades
+        // on a 3.4s cycle, and a core that breathes 6%. Both are subtle enough
+        // to stay invisible while reading and visible at rest.
+        const isHub = p.x === 0 && p.y === 0;
+        if (isHub && !reduce) {
+          const cycle = (t % 3400) / 3400;
+          ctx.save();
+          ctx.globalAlpha = dim ? 0.03 : (1 - cycle) * 0.22;
+          ctx.strokeStyle = colour;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.arc(cx + p.x, cy + p.y, p.r + 5 + cycle * 20, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+        const breathe = isHub && !reduce ? 1 + Math.sin(t / 680) * 0.06 : 1;
+
+        const radius = p.r * ease * breathe * (isFocus ? 1.35 : 1) * (1 + pulse * 0.12);
 
         ctx.save();
         ctx.globalAlpha = dim ? 0.12 : 1;
 
-        // halo on the focused node only — restrained, no neon bloom
-        if (isFocus) {
-          ctx.globalAlpha = 0.16;
+        // halo: focus wins, otherwise the arrival bloom
+        const halo = Math.max(isFocus ? 0.16 : 0, pulse * 0.18);
+        if (halo > 0.005) {
+          ctx.globalAlpha = dim ? 0.02 : halo;
           ctx.fillStyle = colour;
           ctx.beginPath();
-          ctx.arc(cx + p.x, cy + p.y, radius + 7, 0, Math.PI * 2);
+          ctx.arc(cx + p.x, cy + p.y, radius + 7 + pulse * 6, 0, Math.PI * 2);
           ctx.fill();
-          ctx.globalAlpha = 1;
+          ctx.globalAlpha = dim ? 0.12 : 1;
         }
 
         ctx.fillStyle = colour;
@@ -303,11 +485,17 @@ export function Graph({
       }
 
       raf = 0;
-      if (visible) raf = requestAnimationFrame(draw);
+      if (visible && !reduce) raf = requestAnimationFrame(draw);
     }
 
     function loop() {
-      if (!raf) raf = requestAnimationFrame(draw);
+      if (raf) return;
+      // reduced motion: one frame, no loop
+      if (reduce) {
+        draw(performance.now());
+        return;
+      }
+      raf = requestAnimationFrame(draw);
     }
 
     started = performance.now();
@@ -317,6 +505,7 @@ export function Graph({
       if (raf) cancelAnimationFrame(raf);
       ro.disconnect();
       io.disconnect();
+      motionQuery.removeEventListener("change", onMotionChange);
     };
   }, [nodes, edges, layout, selected, hover, activeSet, height, ready]);
 
