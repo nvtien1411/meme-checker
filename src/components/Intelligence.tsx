@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Panel, Tag } from "./ui";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Panel } from "./ui";
 import { shortAddr } from "@/lib/demo";
 import {
   classifyWallet,
@@ -77,10 +77,13 @@ function curve(a: Pt, b: Pt, bowFrac: number, sign: number): string {
 }
 
 export function WalletNetworkView({ limit = 12 }: { limit?: number }) {
-  // One selection, read by the graph and by both panels. Nothing else decides
-  // what is highlighted: hover is below and is deliberately cosmetic.
+  // ONE state for the whole view. The graph, the detail panel and the Repeat
+  // participants table all read this, and clicking either the graph or a row
+  // calls the same setter with the same address string. There is no second
+  // source of truth to fall out of sync, and no hover state at all — hover is
+  // pure CSS below, so moving the cursor cannot re-render this component.
   const [selected, setSelected] = useState<string | null>(null);
-  const [hovered, setHovered] = useState<string | null>(null);
+
   const net = useMemo(() => walletNetwork(), []);
 
   const nodes = useMemo(
@@ -98,6 +101,9 @@ export function WalletNetworkView({ limit = 12 }: { limit?: number }) {
 
   const R = 118;
   const C = 150;
+  // Positions depend only on the node list, which depends only on `net`. A
+  // selection change cannot move a node, which is why nothing here is keyed on
+  // `selected`.
   const pos = useMemo(() => {
     const m = new Map<string, Pt>();
     nodes.forEach((n, i) => {
@@ -130,9 +136,6 @@ export function WalletNetworkView({ limit = 12 }: { limit?: number }) {
 
   const svgRef = useRef<SVGSVGElement>(null);
 
-  // Only an explicit click moves this. Deriving it from `selected ?? hovered`
-  // made the graph re-layout itself whenever the cursor crossed a node, which
-  // is not what a pointer moving across a chart is supposed to mean.
   const relatedEdges = useMemo(
     () =>
       selected
@@ -154,6 +157,19 @@ export function WalletNetworkView({ limit = 12 }: { limit?: number }) {
     return set;
   }, [selected, geometry]);
 
+  // Both directions go through here, so the graph and the table cannot disagree
+  // about what is selected. Matching is by address — never by position or index.
+  const selectWallet = useCallback((addr: string) => {
+    setSelected((cur) => (cur === addr ? null : addr));
+  }, []);
+
+  // A row click can happen while the graph is scrolled out of view. `nearest`
+  // scrolls only if it has to, and never changes the layout or the coordinates.
+  const selectFromTable = useCallback((addr: string) => {
+    setSelected((cur) => (cur === addr ? null : addr));
+    svgRef.current?.scrollIntoView({ block: "nearest" });
+  }, []);
+
   return (
     <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-[300px_minmax(0,1fr)]">
       <div className="panel overflow-hidden">
@@ -169,7 +185,11 @@ export function WalletNetworkView({ limit = 12 }: { limit?: number }) {
           data-selected={selected ?? ""}
           data-related={relatedNodes ? relatedNodes.size - 1 : 0}
         >
-          {/* edges first, so nodes sit on top of their own lines */}
+          {/* edges first, so nodes sit on top of their own lines.
+              Every Flow stays mounted for the life of the graph. Unmounting the
+              muted ones on selection was restarting their particles from their
+              starting offset when the selection cleared — which reads as the
+              whole graph rebuilding itself. */}
           {geometry.map((g) => {
             const related = relatedEdges?.has(g.key) ?? false;
             const muted = relatedEdges !== null && !related;
@@ -181,19 +201,14 @@ export function WalletNetworkView({ limit = 12 }: { limit?: number }) {
                   stroke={related ? "var(--color-acid)" : "currentColor"}
                   className={related ? "" : "text-fg4"}
                   strokeWidth={
-                    related ? Math.min(2.6, 0.9 + g.together * 0.4) : Math.min(2, 0.5 + g.together * 0.3)
+                    related
+                      ? Math.min(2.6, 0.9 + g.together * 0.4)
+                      : Math.min(2, 0.5 + g.together * 0.3)
                   }
-                  // Unrelated edges stay drawn, just low enough that the
-                  // highlighted ones read first. Hiding them would lose the
-                  // shape of the network the user is navigating.
                   strokeOpacity={muted ? 0.08 : related ? 0.8 : 0.16}
                   strokeLinecap="round"
                 />
-                {/* Particles run on the selected wallet's edges only, and across
-                    the whole graph when nothing is selected */}
-                {!muted && (
-                  <Flow g={g} active={related} seedIndex={g.key.charCodeAt(0) + g.together} />
-                )}
+                <Flow g={g} active={related} muted={muted} seedIndex={g.key.charCodeAt(0) + g.together} />
               </g>
             );
           })}
@@ -203,18 +218,15 @@ export function WalletNetworkView({ limit = 12 }: { limit?: number }) {
             if (!p) return null;
             const isSel = selected === n.addr;
             const isRelated = relatedNodes?.has(n.addr) ?? false;
-            const isHover = hovered === n.addr && !isSel;
             const role = ROLE_TONE[n.behaviour.label];
             const baseR = n.degree >= 8 ? 8 : n.degree >= 5 ? 6.5 : 5;
-            const r = isSel ? baseR + 1.5 : isHover ? baseR + 0.8 : baseR;
+            const r = isSel ? baseR + 1.5 : baseR;
             const muted = relatedNodes !== null && !isRelated;
             return (
               <g
                 key={n.addr}
-                onClick={() => setSelected(isSel ? null : n.addr)}
-                onMouseEnter={() => setHovered(n.addr)}
-                onMouseLeave={() => setHovered((h) => (h === n.addr ? null : h))}
-                className="cursor-pointer"
+                onClick={() => selectWallet(n.addr)}
+                className="mc-net-hit cursor-pointer"
                 role="button"
                 tabIndex={0}
                 aria-pressed={isSel}
@@ -222,16 +234,10 @@ export function WalletNetworkView({ limit = 12 }: { limit?: number }) {
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    setSelected(isSel ? null : n.addr);
+                    selectWallet(n.addr);
                   }
                 }}
               >
-                {/* the arrival glow sits under the node and is driven by the
-                    same CSS keyframe every node shares; the delay is per-node so
-                    they do not all breathe in step */}
-                {/* selected: a filled halo and a hard border, so the choice
-                    survives the cursor leaving — and so it reads on a node whose
-                    role colour is already loud */}
                 {isSel && (
                   <>
                     <circle cx={p.x} cy={p.y} r={r + 9} fill="var(--color-acid)" fillOpacity={0.1} />
@@ -252,7 +258,7 @@ export function WalletNetworkView({ limit = 12 }: { limit?: number }) {
                   cy={p.y}
                   r={r}
                   fill={isSel ? "var(--color-acid)" : role}
-                  fillOpacity={muted ? 0.22 : isSel ? 1 : isHover ? 1 : isRelated ? 0.95 : 0.8}
+                  fillOpacity={muted ? 0.22 : isSel ? 1 : isRelated ? 0.95 : 0.8}
                   className="mc-net-node"
                   style={{ animationDelay: `${(n.degree % 7) * -0.42}s` }}
                 />
@@ -263,9 +269,7 @@ export function WalletNetworkView({ limit = 12 }: { limit?: number }) {
                   fill="none"
                   stroke={isSel ? "var(--color-acid)" : role}
                   strokeWidth={n.degree >= 8 ? 1.3 : 0.9}
-                  strokeOpacity={
-                    muted ? 0.04 : isSel ? 0.85 : Math.min(0.7, 0.18 + n.degree / 18)
-                  }
+                  strokeOpacity={muted ? 0.04 : isSel ? 0.85 : Math.min(0.7, 0.18 + n.degree / 18)}
                   className="mc-net-ring"
                   style={{ animationDelay: `${(n.degree % 5) * -0.9}s` }}
                 />
@@ -296,27 +300,42 @@ export function WalletNetworkView({ limit = 12 }: { limit?: number }) {
       </div>
 
       <div className="space-y-2.5">
-        {selected ? (
+        {selected && (
           <NetworkNodeDetail
             node={net.nodes.find((n) => n.addr === selected) as NetworkNode}
             edges={edges.filter((e) => e.a === selected || e.b === selected)}
             onClose={() => setSelected(null)}
           />
-        ) : (
-          <Panel title="Repeat participants" note="ranked by how many other addresses they keep appearing with" flush>
-            <div>
-              {nodes.slice(0, 7).map((n) => (
+        )}
+
+        {/* The table stays visible while something is selected. Hiding it behind
+            the detail panel meant you could select from the graph but never
+            switch from the table — the second direction simply had nowhere to
+            click. */}
+        <Panel title="Repeat participants" note="ranked by how many other addresses they keep appearing with" flush>
+          <div>
+            {nodes.slice(0, 7).map((n) => {
+              const isSel = selected === n.addr;
+              return (
                 <button
                   key={n.addr}
                   type="button"
-                  onClick={() => setSelected(selected === n.addr ? null : n.addr)}
-                  onMouseEnter={() => setHovered(n.addr)}
-                  onMouseLeave={() => setHovered((h) => (h === n.addr ? null : h))}
-                  aria-pressed={selected === n.addr}
-                  className="drow flex w-full items-baseline gap-2 border-b border-line px-3 py-1.5 text-left last:border-b-0"
+                  onClick={() => selectFromTable(n.addr)}
+                  aria-pressed={isSel}
+                  className={`drow flex w-full items-baseline gap-2 border-b border-line px-3 py-1.5 text-left last:border-b-0 ${
+                    isSel ? "bg-acid/5" : ""
+                  }`}
                 >
-                  <span aria-hidden className="mt-[4px] h-[5px] w-[5px] shrink-0" style={{ background: ROLE_TONE[n.behaviour.label] }} />
-                  <Link href={`/wallets/${n.addr}`} className="font-mono text-[10.5px] text-fg2 hover:text-acid" onClick={(e) => e.stopPropagation()}>
+                  <span
+                    aria-hidden
+                    className="mt-[4px] h-[5px] w-[5px] shrink-0"
+                    style={{ background: ROLE_TONE[n.behaviour.label] }}
+                  />
+                  <Link
+                    href={`/wallets/${n.addr}`}
+                    className={`font-mono text-[10.5px] hover:text-acid ${isSel ? "text-acid" : "text-fg2"}`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {shortAddr(n.addr, 6, 4)}
                   </Link>
                   <span className="t-xs text-fg4">{n.behaviour.label}</span>
@@ -327,16 +346,16 @@ export function WalletNetworkView({ limit = 12 }: { limit?: number }) {
                     {n.profile.launchCount}L
                   </span>
                 </button>
-              ))}
-            </div>
-            <div className="border-t border-line px-3 py-1.5">
-              <p className="t-xs leading-relaxed text-fg4">
-                {net.core.length} addresses appear with at least three others more than once. The full
-                graph holds {net.nodes.length} nodes and {net.edges.filter((e) => e.together >= 2).length} repeat pairs
-              </p>
-            </div>
-          </Panel>
-        )}
+              );
+            })}
+          </div>
+          <div className="border-t border-line px-3 py-1.5">
+            <p className="t-xs leading-relaxed text-fg4">
+              {net.core.length} addresses appear with at least three others more than once. The full
+              graph holds {net.nodes.length} nodes and {net.edges.filter((e) => e.together >= 2).length} repeat pairs
+            </p>
+          </div>
+        </Panel>
 
         <GroupRead />
       </div>
@@ -349,8 +368,11 @@ export function WalletNetworkView({ limit = 12 }: { limit?: number }) {
  *
  * SVG motion rather than CSS offset-path: the path is already in the DOM, so
  * getPointAtLength is exact and works in every browser this product supports.
- * Each particle is animated by a single requestAnimationFrame loop that is
- * shared by the whole graph and stops when the tab or element is not visible.
+ *
+ * This component is memoised and its animation effect depends only on the path
+ * element and the seed. Selection is read from a ref inside the loop, so a
+ * click changes how bright the particles are instead of tearing down the loop
+ * and restarting every particle at offset zero.
  *
  * Direction is nominal. These edges mean "appeared together", which has no
  * direction, so the flow alternates along a pair rather than pretending money
@@ -360,33 +382,37 @@ export function WalletNetworkView({ limit = 12 }: { limit?: number }) {
 const FLOW_COUNT = 3;
 const TRAIL = 6;
 
-function Flow({
+const Flow = memo(function Flow({
   g,
   active,
+  muted,
   seedIndex,
 }: {
   g: EdgeGeom;
   active: boolean;
+  muted: boolean;
   seedIndex: number;
 }) {
   const headRefs = useRef<(SVGCircleElement | null)[]>([]);
   const trailRefs = useRef<(SVGCircleElement | null)[][]>([]);
-  // The path element is discovered from the DOM, not passed in: reading a ref
-  // during render is not allowed, and this is the one value the animation
-  // genuinely needs from the rendered tree.
   const [pathEl, setPathEl] = useState<SVGPathElement | null>(null);
 
+  // The loop reads these every frame, so selection changes take effect without
+  // being an effect dependency. Writing them in an effect (not during render)
+  // keeps the render pure.
+  const live = useRef({ active, muted });
   useEffect(() => {
-    const el = pathEl;
-    if (!el) return;
-    const path: SVGPathElement = el;
+    live.current = { active, muted };
+  }, [active, muted]);
 
-    // Read live, not once. A snapshot at mount means changing the OS setting
-    // while the page is open does nothing, and — worse — turning reduced motion
-    // ON leaves every particle mid-flight forever because the loop that would
-    // have faded them out is the loop being disabled.
+  useEffect(() => {
+    if (!pathEl) return;
+    // Bound to a non-null const: the guard above narrows `pathEl` only in this
+    // scope, and the closures below are separate scopes that TypeScript will
+    // not carry the narrowing into.
+    const path: SVGPathElement = pathEl;
+
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
-
     const len = path.getTotalLength();
     if (len < 1) return;
 
@@ -418,6 +444,7 @@ function Flow({
 
     function tick(now: number) {
       const t = now - started;
+      const { active: isActive, muted: isMuted } = live.current;
       for (let i = 0; i < FLOW_COUNT; i++) {
         const p = parts[i];
         const raw = (t * p.speed + p.offset) % 1;
@@ -429,7 +456,7 @@ function Flow({
           head.setAttribute("cx", pt.x.toFixed(2));
           head.setAttribute("cy", pt.y.toFixed(2));
           const edgeFade = u < 0.04 ? u / 0.04 : u > 0.96 ? (1 - u) / 0.04 : 1;
-          head.style.opacity = String((active ? 1 : 0.34) * edgeFade);
+          head.style.opacity = String((isMuted ? 0.08 : isActive ? 1 : 0.3) * edgeFade);
         }
 
         // The trail is this particle's own previous positions on this curve,
@@ -449,7 +476,7 @@ function Flow({
           dot.setAttribute("cx", tp.x.toFixed(2));
           dot.setAttribute("cy", tp.y.toFixed(2));
           const f = 1 - k / TRAIL;
-          dot.style.opacity = String((active ? 0.46 : 0.14) * f * f);
+          dot.style.opacity = String((isMuted ? 0.04 : isActive ? 0.46 : 0.13) * f * f);
         }
       }
       raf = visible && !motion.matches ? requestAnimationFrame(tick) : 0;
@@ -487,7 +514,35 @@ function Flow({
       motion.removeEventListener("change", onMotionChange);
       io.disconnect();
     };
-  }, [pathEl, active, seedIndex]);
+  }, [pathEl, seedIndex]);
+
+  // Stable ref callbacks. Inline arrows here were re-created on every parent
+  // render, so React detached and re-attached all ~900 particle refs whenever
+  // the cursor crossed a node — one frame with no refs is one frame of black.
+  const setTrail = useMemo(
+    () =>
+      Array.from({ length: FLOW_COUNT }, (_, i) =>
+        Array.from(
+          { length: TRAIL },
+          (__, k) => (el: SVGCircleElement | null) => {
+            if (!trailRefs.current[i]) trailRefs.current[i] = [];
+            trailRefs.current[i][k] = el;
+          },
+        ),
+      ),
+    [],
+  );
+  const setHead = useMemo(
+    () =>
+      Array.from(
+        { length: FLOW_COUNT },
+        (_, i) => (el: SVGCircleElement | null) => {
+          headRefs.current[i] = el;
+        },
+      ),
+    [],
+  );
+  const setPath = useCallback((el: SVGPathElement | null) => setPathEl(el), []);
 
   const colour = active ? "var(--color-acid)" : "#7dd3fc";
   const key = g.key;
@@ -496,40 +551,24 @@ function Flow({
     <g className="pointer-events-none" aria-hidden>
       {/* the same geometry, invisible: Flow measures this element rather than
           reaching back into its parent's refs */}
-      <path
-        ref={setPathEl}
-        d={g.path}
-        fill="none"
-        stroke="none"
-        strokeWidth={0}
-      />
+      <path ref={setPath} d={g.path} fill="none" stroke="none" strokeWidth={0} />
       {Array.from({ length: FLOW_COUNT }).map((_, i) => (
         <g key={`${key}-p${i}`}>
           {Array.from({ length: TRAIL }).map((__, k) => (
             <circle
               key={k}
-              ref={(el) => {
-                if (!trailRefs.current[i]) trailRefs.current[i] = [];
-                trailRefs.current[i][k] = el;
-              }}
+              ref={setTrail[i][k]}
               r={Math.max(0.5, 1.2 - k * 0.14)}
               fill={colour}
               opacity={0}
             />
           ))}
-          <circle
-            ref={(el) => {
-              headRefs.current[i] = el;
-            }}
-            r={1.9}
-            fill={colour}
-            opacity={0}
-          />
+          <circle ref={setHead[i]} r={1.9} fill={colour} opacity={0} />
         </g>
       ))}
     </g>
   );
-}
+});
 
 function NetworkNodeDetail({
   node,
@@ -554,7 +593,18 @@ function NetworkNodeDetail({
       flush
     >
       <div className="flex flex-wrap items-center gap-1.5 border-b border-line px-3 py-1.5">
-        <Tag tone="bad">{b.label}</Tag>
+        {/* The tag carries the same colour the node does. A red tag on a
+            patient holder read as a risk verdict when it was only a label. */}
+        <span
+          className="inline-flex shrink-0 items-center border px-1.5 py-[1px] font-mono text-[9px] uppercase leading-[1.5] tracking-[0.07em]"
+          style={{
+            color: ROLE_TONE[b.label] ?? "var(--color-fg3)",
+            borderColor: `${ROLE_TONE[b.label] ?? "#7d8794"}55`,
+            background: `${ROLE_TONE[b.label] ?? "#7d8794"}12`,
+          }}
+        >
+          {b.label}
+        </span>
         <span className="font-mono text-[9.5px] tabular-nums text-fg4">
           confidence {(b.confidence * 100).toFixed(0)}%
         </span>

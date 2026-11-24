@@ -420,6 +420,36 @@ body {
  * same thing louder". A state the user chose should look held, not busy — the
  * only motion on it is a slow 2.6s opacity shift small enough to feel alive
  * without competing with the particles arriving on its edges. */
+/* Hover is CSS only, and that is the fix rather than a shortcut.
+ *
+ * A hover state in React re-rendered the whole WalletNetworkView on every
+ * mousemove between nodes. Each render re-created ~900 inline ref callbacks,
+ * so React detached and re-attached every particle element — one frame with no
+ * refs is one frame where the particles have no coordinates, which is the
+ * flicker. Nothing about a cursor crossing a chart needs a re-render, so hover
+ * now lives where it can be composited: the style system.
+ *
+ * `fill-opacity` and `stroke-opacity` are real CSS properties for SVG, and CSS
+ * beats the presentation attribute, so this lifts the node without React
+ * knowing anything happened. Scale is on a wrapper-free basis: the circle
+ * grows, the coordinates do not move. */
+.mc-net-hit:hover .mc-net-node,
+.mc-net-hit:focus-visible .mc-net-node {
+  fill-opacity: 1;
+}
+
+.mc-net-hit:hover .mc-net-ring,
+.mc-net-hit:focus-visible .mc-net-ring {
+  stroke-opacity: 0.8;
+}
+
+/* Hover must never look like selection. Selection is a filled acid halo plus a
+ * hard border; hover is only a lift in opacity and a 1px grow, and it is
+ * suppressed on the already-selected node so the two states stay distinct. */
+.mc-net-hit:hover .mc-net-node {
+  transform: scale(1.06);
+}
+
 /* Keyboard focus is real and must be visible, but the browser's default
  * outline on an SVG <g> renders as a white rectangle floating away from the
  * circle it belongs to — it looks like a second selection box, which is
