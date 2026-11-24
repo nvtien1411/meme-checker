@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { PageHead } from "@/components/Shell";
-import { Demo, Panel, ProReveal, Tag } from "@/components/ui";
+import { Demo, Panel, Tag } from "@/components/ui";
 import { Graph, type GraphEdge, type GraphNode } from "@/components/Graph";
-import { ExitOrderTable, WalletNetworkView } from "@/components/Intelligence";
+import { ExitOrderTable } from "@/components/Intelligence";
+import { WalletNetworkView } from "@/components/WalletWorkspace";
 import { exitOrdering } from "@/lib/intel";
 import { DEMO_TOKENS } from "@/lib/demo";
 
@@ -172,25 +173,16 @@ export default function InvestigationPage() {
               the wallet network derived from every recorded launch, and who exits first
             </span>
           </div>
-          <ProReveal
-            title="The full relationship graph"
-            shown={0}
-            rows={[]}
-            more={[
-              "Every address that appears on two or more of the same launches",
-              "Which of them bought inside the creation block on every shared launch",
-              "The group's measured holding time and the point of the peak it exits at",
-              "Whether the group leaves together or in sequence, in minutes",
-              "How many of those launches collapsed after the group left",
-              "Which single wallet left first, launch by launch",
-            ]}
-            note="Edges are co-appearance on a launch, drawn from history rather than inferred from a funding trace"
-          >
-            <div className="space-y-2.5">
-              <WalletNetworkView />
-              <ExitOrderTable rows={exitOrdering().slice(0, 12)} />
-            </div>
-          </ProReveal>
+          {/* The workspace is the page, not a preview of it. It used to sit
+              behind a Pro reveal with zero rows, which meant a free visitor saw
+              a locked box where the investigation surface should be — and every
+              control in it (zoom, filter, path, cluster) was unreachable. The
+              gate stays on the deeper per-wallet intelligence, which is a
+              different claim from "can I look at the graph". */}
+          <div className="space-y-2.5">
+            <WalletNetworkView />
+            <ExitOrderTable rows={exitOrdering().slice(0, 12)} />
+          </div>
         </div>
       </div>
     </div>

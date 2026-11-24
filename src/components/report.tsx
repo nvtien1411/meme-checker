@@ -8,7 +8,7 @@ import { fmtAge, fmtChange, fmtPct, fmtPrice, fmtUsd } from "@/lib/http";
 import { callerByHandle, shortAddr } from "@/lib/demo";
 import { Demo, Gauge, Panel, ProReveal, RiskDot, Split, Stat, Tag } from "./ui";
 import { BundleDeep, BundleFree } from "./BundleIntel";
-import { WalletNetworkView } from "./Intelligence";
+import { WalletNetworkView } from "./WalletWorkspace";
 import {
   DistributionBar,
   ExitCurve,
