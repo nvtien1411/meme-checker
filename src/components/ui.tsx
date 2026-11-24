@@ -449,15 +449,38 @@ export function ProReveal({
             />
           </div>
 
-          <div className="border-t border-acid/25 bg-acid/[0.03] px-3 py-1.5">
-            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+          <div className="border-t border-acid/25 bg-acid/[0.03] px-3 py-2">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+              {/* "open" said nothing about what was being bought. The label is
+                  now the count of what is behind the line plus the price, so the
+                  decision is priced at the point of the decision. */}
               <Button onClick={() => setPro(true)} variant="ghost" aria-label="Open the paid layer">
-                open
+                {hidden > 0 ? `open ${hidden} more rows` : "open the full layer"}
               </Button>
               <span className="font-mono text-[9px] uppercase tracking-[0.06em] text-fg4">
-                {hidden > 0 ? `+${hidden} rows below` : "clipped — the data continues"}
+                pro · $39/mo
               </span>
+              <a
+                href="/pricing"
+                className="ml-auto font-mono text-[9px] uppercase tracking-[0.05em] text-fg4 underline decoration-line2 underline-offset-2 hover:text-acid hover:decoration-acid"
+              >
+                every pro module →
+              </a>
             </div>
+
+            {/* What the verdict words mean. Without this the strongest thing on
+                the page — "exit liquidity" — was an unexplained label. */}
+            <p className="mt-1.5 border-t border-acid/15 pt-1.5 t-xs leading-relaxed text-fg4">
+              <span className="text-bad">exit liquidity</span> their exit landed above the price
+              their own post produced, and most of the position went after followers arrived ·{" "}
+              <span className="text-warn">mixed</span> one of those two, not both ·{" "}
+              <span className="text-good">worth following</span> neither
+            </p>
+            {note && (
+              <p className="mt-1.5 border-t border-acid/15 pt-1.5 t-xs leading-relaxed text-fg4">
+                {note}
+              </p>
+            )}
           </div>
         </>
       )}
@@ -475,7 +498,7 @@ export function ProReveal({
         </ul>
       )}
 
-      {note && (
+      {note && !canClip && (
         <p className="border-t border-line px-3 py-1.5 t-xs leading-relaxed text-fg4">{note}</p>
       )}
     </section>

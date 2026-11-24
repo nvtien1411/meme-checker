@@ -147,7 +147,7 @@ function PeekPanel({
             <button
               type="button"
               onClick={onPin}
-              className="font-mono text-[8.5px] uppercase tracking-[0.05em] text-acid hover:underline"
+              className="font-mono text-[8.5px] uppercase tracking-[0.05em] text-fg3 hover:text-fg hover:underline"
             >
               pin
             </button>

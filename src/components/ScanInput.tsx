@@ -3,8 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useViewer } from "@/lib/viewer";
-import { SCAN_LIMIT, bumpScansUsed, readScansUsed } from "@/lib/plan";
-import { CHAINS, guessAddressKind, isValidForChain, type ChainId } from "@/lib/chains";
+import { PLAN, SCAN_LIMIT, bumpScansUsed, readScansUsed } from "@/lib/plan";
+import { guessAddressKind, isValidForChain, type ChainId } from "@/lib/chains";
 
 /** Best-effort chain from the address shape alone. Base58 → Solana, hex → an
  *  EVM chain, which is ambiguous between several, so it returns the most
@@ -39,10 +39,9 @@ export function ScanInput({ autoFocus = false }: { autoFocus?: boolean }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState("");
-  const [chain, setChain] = useState<ChainId | "auto">("auto");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const { pro, toggle } = useViewer();
+  const { pro } = useViewer();
   const [used, setUsed] = useState<number | null>(null);
 
   // The rail shows the same counter. Both read one key and listen to one event,
@@ -64,7 +63,7 @@ export function ScanInput({ autoFocus = false }: { autoFocus?: boolean }) {
 
   const trimmed = value.trim();
   const detected = trimmed.length >= 32 ? detectChain(trimmed) : null;
-  const effective: ChainId | null = chain === "auto" ? detected : chain;
+  const effective: ChainId | null = detected;
   const valid = trimmed.length > 0 && effective !== null && isValidForChain(trimmed, effective);
 
   function submit(e?: React.FormEvent) {
@@ -105,24 +104,34 @@ export function ScanInput({ autoFocus = false }: { autoFocus?: boolean }) {
   return (
     <form onSubmit={submit} className="w-full">
       {overLimit && (
-        <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1.5 border border-warn/30 bg-warn/[0.06] px-2.5 py-2">
-          <span className="min-w-0 flex-1 t-xs text-fg2">
-            You have used today&apos;s {SCAN_LIMIT} free scans. Pro removes the limit — and opens the
-            wallet layer the free tier cannot see
-          </span>
-          <button
-            type="button"
-            onClick={toggle}
-            className="shrink-0 border border-acid/40 px-2 py-[3px] font-mono text-[9px] uppercase tracking-[0.06em] text-acid transition-colors hover:bg-acid/10"
-          >
-            preview pro
-          </button>
-          <a
-            href="/pricing"
-            className="shrink-0 bg-acid px-2 py-[3px] font-mono text-[9px] font-semibold uppercase tracking-[0.06em] text-bg transition-colors hover:bg-acid2"
-          >
-            plans
-          </a>
+        <div className="mb-2 border border-warn/30 bg-warn/[0.06]">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 px-2.5 py-2">
+            <span aria-hidden className="h-[5px] w-[5px] shrink-0 bg-warn" />
+            <span className="min-w-0 flex-1 t-xs text-fg2">
+              That was scan {SCAN_LIMIT} of {SCAN_LIMIT} today. The limit exists to stop automated
+              scraping, not to stop you reading — {PLAN.pro.price ? `$${PLAN.pro.price}/mo` : "Pro"}{" "}
+              removes it and opens the wallet layer
+            </span>
+            {/* No "preview pro" button here. The scan limit is the one wall a
+                free user hits by doing the thing the product is for, so it is
+                the one place a preview toggle would teach them that the wall is
+                optional. Preview lives on content gates, where it shows what a
+                paid finding looks like; here it would only undo the pricing. */}
+            <a
+              href="/pricing"
+              className="shrink-0 bg-acid px-2 py-[3px] font-mono text-[9px] font-semibold uppercase tracking-[0.06em] text-bg transition-colors hover:bg-acid2"
+            >
+              {PLAN.pro.price ? `pro · $${PLAN.pro.price}/mo` : "see plans"}
+            </a>
+          </div>
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-warn/20 px-2.5 py-1.5">
+            <span className="font-mono text-[9px] uppercase tracking-[0.05em] text-fg4">
+              still free today
+            </span>
+            <span className="t-xs text-fg3">
+              every page, every table, and the full report on any token you already have open
+            </span>
+          </div>
         </div>
       )}
       <div
@@ -130,38 +139,19 @@ export function ScanInput({ autoFocus = false }: { autoFocus?: boolean }) {
           err ? "border-bad/50" : valid ? "border-line2" : "border-line"
         }`}
       >
-        {/* chain — on auto this reads as a finding, but stays one control so
-            overriding it is a real action rather than a decorative label */}
-        <div className="flex items-center border-b border-line px-2.5 py-2 sm:border-b-0 sm:border-r">
-          <label htmlFor="chain" className="sr-only">
-            Chain — detected from the address, change it if wrong
-          </label>
-          <select
-            id="chain"
-            value={chain}
-            onChange={(e) => {
-              setChain(e.target.value as ChainId | "auto");
-              setErr(null);
-            }}
-            title={
-              chain === "auto"
-                ? "Read from the address shape. Pick a chain manually if this is wrong"
-                : "Overridden manually"
-            }
-            className={`cursor-pointer appearance-none bg-transparent font-mono text-[10.5px] uppercase tracking-[0.06em] outline-none ${
-              chain === "auto" ? "text-fg3" : "text-warn"
-            }`}
+        {/* chain — an icon, not a field. The address shape decides it, and
+            the report offers the other chains when the guess is wrong. Putting
+            a labelled select here made the one action look like a form. */}
+        {detected && (
+          <div
+            className="flex items-center border-b border-line px-2.5 py-2 sm:border-b-0 sm:border-r"
+            title={`Reading this as ${detected}`}
           >
-            <option value="auto" className="bg-surf text-fg">
-              {chain === "auto" ? (detected ? `on ${detected}` : "auto") : "auto"}
-            </option>
-            {CHAINS.map((c) => (
-              <option key={c.id} value={c.id} className="bg-surf text-fg">
-                {c.label}
-              </option>
-            ))}
-          </select>
-        </div>
+            <span className="font-mono text-[9.5px] uppercase tracking-[0.06em] text-fg4">
+              {detected === "solana" ? "SOL" : detected === "ethereum" ? "ETH" : detected.toUpperCase()}
+            </span>
+          </div>
+        )}
 
         {/* input */}
         <div className="flex min-w-0 flex-1 items-center">
@@ -238,7 +228,6 @@ export function ScanInput({ autoFocus = false }: { autoFocus?: boolean }) {
                 type="button"
                 onClick={() => {
                   setValue(e.addr);
-                  setChain(e.chain);
                   setErr(null);
                   inputRef.current?.focus();
                 }}

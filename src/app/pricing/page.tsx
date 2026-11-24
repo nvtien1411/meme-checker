@@ -364,31 +364,7 @@ export default function PricingPage() {
         </div>
 
         {/* ---------- the cost accounting ---------- */}
-        <Panel title="Why the wallet layer costs money" note="the honest reason, not a paywall">
-          <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-2">
-            <p className="t-xs leading-relaxed text-fg3">
-              A contract check is one request to a public API. It is cheap, cacheable, and it can be
-              free forever. Reading a launch block, tracing funding two hops back and classifying a
-              wallet&apos;s entire trade history is a thousand RPC calls per token. The subscription
-              pays for that, not for a gate in front of information that already existed
-            </p>
-            <div className="mt-2 sm:mt-0">
-              {[
-                ["free scan", "~5 API calls"],
-                ["pro scan", "~1,400 RPC calls"],
-                ["bundle trace", "launch block, every tx, every funder"],
-                ["wallet classification", "full history per wallet"],
-              ].map(([k, v]) => (
-                <div key={k} className="flex items-baseline justify-between gap-3 border-b border-line py-[5px] last:border-b-0">
-                  <span className="shrink-0 t-xs text-fg4">{k}</span>
-                  <span className="text-right t-mono text-[10.5px] text-fg3">{v}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Panel>
-
-        {/* ---------- the full list ---------- */}
+                {/* ---------- the full list ---------- */}
         <Panel title="Every difference" note="wallets open — the other groups expand" flush>
           {PRO_VALUE.map((g, gi) => (
             <details key={g.group} open={gi === 0} className="group border-b border-line last:border-b-0">

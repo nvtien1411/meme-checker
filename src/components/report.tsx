@@ -95,6 +95,24 @@ export function IdentityBar({ data, demo }: { data: AnalysisResult; demo: DemoTo
     },
     { label: "age", value: fmtAge(m.ageHours) },
     {
+      // The number that decides whether a position is a trade or a donation.
+      // It was buried three rows into "what fired"; a degen needs it next to
+      // liquidity, because liquidity alone does not say what you can get out.
+      label: "exit at 5%",
+      value:
+        data.exit.available && data.exit.maxSellUsd.slip5 !== null
+          ? fmtUsd(data.exit.maxSellUsd.slip5)
+          : "—",
+      sub:
+        data.exit.available && data.exit.maxSellUsd.slip5 !== null && data.exit.maxSellUsd.slip5 < 2000
+          ? "tiny"
+          : undefined,
+      tone:
+        data.exit.available && data.exit.maxSellUsd.slip5 !== null && data.exit.maxSellUsd.slip5 < 2000
+          ? "bad"
+          : undefined,
+    },
+    {
       label: "top 10",
       value: data.holders.meaningful ? fmtPct(data.holders.effectiveTop10Pct) : "—",
       tone: data.holders.meaningful && (data.holders.effectiveTop10Pct ?? 0) >= 30 ? "bad" : undefined,
@@ -214,6 +232,17 @@ function CopyAddr({ addr }: { addr: string }) {
  * Report shell
  * ------------------------------------------------------------------ */
 
+/** The band word names a severity; a reader wants an instruction. */
+function verdictWord(v: { band: string }): string {
+  return v.band === "avoid"
+    ? "Do not touch"
+    : v.band === "risky"
+      ? "High risk"
+      : v.band === "watch"
+        ? "Watch only"
+        : "Nothing fired";
+}
+
 export function ReportConsole({ data }: { data: AnalysisResult }) {
   const [tab, setTab] = useState("verdict");
   const demo = tokenByMint(data.token.address);
@@ -264,15 +293,25 @@ function VerdictTab({ data, demo }: { data: AnalysisResult; demo: DemoToken | nu
           style={{ "--wash": band.wash } as React.CSSProperties}
         >
           <div className="flex items-center justify-between">
-            <span className="t-eyebrow">risk score</span>
+            <span className="t-eyebrow">verdict</span>
             <span aria-hidden className={`h-[5px] w-[5px] ${band.dot}`} />
           </div>
-          <div className="mt-2 flex items-end gap-1.5">
-            <span className={`t-num-xl ${band.cls}`}>{v.score}</span>
-            <span className="pb-1 t-mono text-[11px] text-fg4">/100</span>
+
+          {/* The answer, at the size of an answer. The score used to sit where
+              this is — a 56 in 120px type above a smaller "Critical" — and a
+              56/100 reads as "roughly half risky" when the band actually means
+              do-not-touch. A degen scanning for three seconds reads the largest
+              word first, so the largest word has to be the verdict. */}
+          <div
+            className={`mt-1.5 text-[30px] font-semibold leading-[1.05] tracking-[-0.03em] ${band.cls}`}
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            {verdictWord(v)}
           </div>
-          <div className={`mt-1 text-[17px] font-semibold tracking-[-0.02em] ${band.cls}`} style={{ fontFamily: "var(--font-display)" }}>
-            {band.word}
+
+          <div className="mt-1.5 flex items-baseline gap-1.5">
+            <span className={`t-mono text-[12px] tabular-nums ${band.cls} opacity-80`}>{v.score}</span>
+            <span className="t-mono text-[9.5px] text-fg4">/100 risk score</span>
           </div>
 
           <div className="mt-2.5 grid grid-cols-4 border-y border-line">
@@ -294,7 +333,7 @@ function VerdictTab({ data, demo }: { data: AnalysisResult; demo: DemoToken | nu
             ))}
           </div>
 
-          <p className="mt-2 t-xs leading-relaxed text-fg3">{v.tldr}</p>
+          <p className="mt-2 border-t border-line pt-2 t-xs leading-relaxed text-fg2">{v.tldr}</p>
           <p className="mt-1.5 t-xs leading-relaxed text-fg4">
             The band comes from how many checks failed, not from the number. One disqualifying
             finding sets a floor the rest cannot average away
@@ -828,7 +867,7 @@ function CallersTab({ data, demo }: { data: AnalysisResult; demo: DemoToken | nu
                     href={c.postUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-2 inline-block t-xs text-acid hover:underline"
+                    className="mt-2 inline-block t-xs text-fg3 underline decoration-line2 underline-offset-2 hover:text-fg"
                   >
                     original post ↗
                   </a>

@@ -25,53 +25,72 @@ const rowCls = "grid items-baseline gap-x-2 border-b border-line px-2.5 py-[5px]
 
 /* ---------------------------- callers ---------------------------- */
 
-export function CallerProRows() {
-  const ps = allCallerProfiles().sort((a, b) => b.exitVsCall - a.exitVsCall);
+/** One caller's row, so the gate can count and clip it like a row. */
+export function callerRow(p: ReturnType<typeof allCallerProfiles>[number]) {
+  return (
+    <div key={p.caller.handle} className={rowCls}>
+      <div className="grid grid-cols-[minmax(0,1fr)_42px_44px_46px_40px_92px] gap-x-2 sm:grid-cols-[minmax(0,1fr)_48px_48px_50px_42px_92px]">
+        <span className="truncate t-xs text-fg2">@{p.caller.handle}</span>
+        <span className={`${cell} ${(p.deadShare ?? 0) > 0.5 ? "text-bad" : "text-fg3"}`}>
+          {p.deadShare === null ? "—" : `${(p.deadShare * 100).toFixed(0)}%`}
+        </span>
+        <span className={`${cell} ${p.lead < 0 ? "text-warn" : "text-fg3"}`}>
+          {p.lead === 0 ? "same" : `${p.lead > 0 ? "+" : ""}${p.lead}s`}
+        </span>
+        <span className={`${cell} ${p.preRun > 15 ? "text-warn" : "text-fg3"}`}>
+          {p.preRun.toFixed(0)}%
+        </span>
+        <span className={`${cell} ${p.soldAfter > 45 ? "text-bad" : "text-fg3"}`}>
+          {p.soldAfter.toFixed(0)}%
+        </span>
+        <span className="hidden whitespace-nowrap text-right font-mono text-[9px] uppercase tracking-[0.04em] sm:block">
+          <span
+            className={
+              p.verdict === "exit liquidity"
+                ? "text-bad"
+                : p.verdict === "worth following"
+                  ? "text-good"
+                  : "text-warn"
+            }
+          >
+            {p.verdict}
+          </span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** Server-safe wrapper: a component can be rendered from either side. */
+export function CallerProTable() {
+  const rows = [...allCallerProfiles()].sort((a, b) => b.exitVsCall - a.exitVsCall);
   return (
     <>
-      <div className={`${rowCls} bg-surf2/40`}>
-        <div className="grid grid-cols-[minmax(0,1fr)_46px_46px_50px_42px] gap-x-2 sm:grid-cols-[minmax(0,1fr)_52px_52px_56px_46px_58px]">
-          <span className="t-eyebrow">caller</span>
-          <span className="t-eyebrow text-right" title="share of calls that never touched 2×">dead</span>
-          <span className="t-eyebrow text-right" title="seconds between their buy and their post — negative means they posted first">lead</span>
-          <span className="t-eyebrow text-right" title="percent already moved in the three minutes before the post">pre-run</span>
-          <span className="t-eyebrow text-right" title="share of their own position sold after posting">sold</span>
-          <span className="hidden t-eyebrow text-right sm:block">verdict</span>
-        </div>
-      </div>
-      {ps.map((p) => (
-        <div key={p.caller.handle} className={rowCls}>
-          <div className="grid grid-cols-[minmax(0,1fr)_46px_46px_50px_42px] gap-x-2 sm:grid-cols-[minmax(0,1fr)_52px_52px_56px_46px_58px]">
-            <span className="truncate t-xs text-fg2">@{p.caller.handle}</span>
-            <span className={`${cell} ${(p.deadShare ?? 0) > 0.5 ? "text-bad" : "text-fg3"}`}>
-              {p.deadShare === null ? "—" : `${(p.deadShare * 100).toFixed(0)}%`}
-            </span>
-            <span className={`${cell} ${p.lead < 0 ? "text-warn" : "text-fg3"}`}>
-              {p.lead === 0 ? "same" : `${p.lead > 0 ? "+" : ""}${p.lead}s`}
-            </span>
-            <span className={`${cell} ${p.preRun > 15 ? "text-warn" : "text-fg3"}`}>
-              {p.preRun.toFixed(0)}%
-            </span>
-            <span className={`${cell} ${p.soldAfter > 45 ? "text-bad" : "text-fg3"}`}>
-              {p.soldAfter.toFixed(0)}%
-            </span>
-            <span className="hidden truncate text-right font-mono text-[9px] uppercase tracking-[0.04em] sm:block">
-              <span
-                className={
-                  p.verdict === "exit liquidity"
-                    ? "text-bad"
-                    : p.verdict === "worth following"
-                      ? "text-good"
-                      : "text-warn"
-                }
-              >
-                {p.verdict}
-              </span>
-            </span>
-          </div>
-        </div>
-      ))}
+      {callerHeader()}
+      {rows.map(callerRow)}
     </>
+  );
+}
+
+/** The header + definitions, as one row so it can be pinned above a clip. */
+export function callerHeader() {
+  return (
+    <div key="chdr" className="border-b border-line bg-surf2/40">
+      <div className="grid grid-cols-[minmax(0,1fr)_42px_44px_46px_40px_92px] gap-x-2 px-2.5 py-1.5 sm:grid-cols-[minmax(0,1fr)_48px_48px_50px_42px_92px]">
+        <span className="t-eyebrow">caller</span>
+        <span className="t-eyebrow text-right" title="share of calls that never touched 2×">dead</span>
+        <span className="t-eyebrow text-right" title="their buy minus their post — minus means they posted first">lead</span>
+        <span className="t-eyebrow text-right" title="price move in the 3 minutes before the post">pre-run</span>
+        <span className="t-eyebrow text-right" title="share of their own position sold after followers arrived">sold</span>
+        <span className="hidden t-eyebrow text-right sm:block">verdict</span>
+      </div>
+      <p className="border-t border-line/60 px-2.5 py-1 t-xs leading-relaxed text-fg4">
+        <span className="text-fg3">dead</span> calls that never reached 2× ·{" "}
+        <span className="text-fg3">lead</span> negative means they posted before buying ·{" "}
+        <span className="text-fg3">pre-run</span> move before the post ·{" "}
+        <span className="text-fg3">sold</span> after followers arrived
+      </p>
+    </div>
   );
 }
 

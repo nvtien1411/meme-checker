@@ -493,7 +493,7 @@ export function FollowerEntryChart({
       {mode === "time" ? (
         <div className="mt-1 flex items-center justify-between border-t border-line pt-1">
           <span className="t-xs text-info">before the post</span>
-          <span className="t-xs text-acid">after the post</span>
+          <span className="t-xs text-fg3 hover:text-fg">after the post</span>
         </div>
       ) : (
         <div className="mt-1 flex items-center justify-between gap-1 border-t border-line pt-1">

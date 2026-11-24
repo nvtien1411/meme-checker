@@ -241,7 +241,7 @@ export function DiscoverClient() {
           note="collapses with the signal that fired"
           flush
           right={
-            <Link href="/rugs" className="text-acid hover:underline">
+            <Link href="/rugs" className="text-fg3 hover:text-fg hover:underline">
               archive →
             </Link>
           }

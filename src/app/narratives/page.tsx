@@ -35,22 +35,7 @@ export default function NarrativesPage() {
 
       <div className="space-y-2.5 p-3 sm:p-4">
 
-        <Panel title="How to read a narrative" note="three numbers decide it">
-          <div className="grid grid-cols-1 gap-x-5 sm:grid-cols-3">
-            {[
-              ["copies", "How many tokens already ran this idea in seven days. Copy #1 is the original; copy #12 is a photocopy of a photocopy"],
-              ["organic", "Share of mentions that carry no contract address. People talking about the idea rather than the chart — the only version that survives a price drop"],
-              ["lifespan", "The median time prior tokens in this narrative held their peak before losing 90%. This is what the idea usually does, not a forecast"],
-            ].map(([k, v]) => (
-              <div key={k} className="border-b border-line pb-2 last:border-b-0 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-4 sm:last:border-r-0">
-                <div className="font-mono text-[9.5px] uppercase tracking-[0.08em] text-acid">{k}</div>
-                <p className="mt-1 t-xs leading-relaxed text-fg3">{v}</p>
-              </div>
-            ))}
-          </div>
-        </Panel>
-
-        {DEMO_NARRATIVES.map((n) => (
+                {DEMO_NARRATIVES.map((n) => (
           <Panel key={n.name} flush>
             <div className="flex flex-wrap items-baseline gap-x-2.5 border-b border-line px-3 py-2">
               <h2 className="t-section text-fg">{n.name}</h2>
@@ -193,16 +178,7 @@ export default function NarrativesPage() {
           <NarrativeTable />
         </ProReveal>
 
-        <Panel title="What this does not tell you" note="read before acting on a narrative call">
-          <p className="t-xs leading-relaxed text-fg3">
-            A narrative can be early and still fail, and a twelfth copy can still run if the crowd
-            has not noticed the first eleven yet. Copy index and lifespan describe what happened
-            before — they do not predict what happens next, and the tokens listed are only the ones
-            this scanner has seen
-          </p>
-        </Panel>
-
-        <NextSteps
+                <NextSteps
           title="If one of these is early"
           steps={[
             {

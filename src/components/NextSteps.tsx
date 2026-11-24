@@ -74,7 +74,7 @@ export function NextStepInline({ label, href }: { label: string; href: string })
   return (
     <Link
       href={href}
-      className="inline-flex items-baseline gap-1 font-mono text-[9.5px] uppercase tracking-[0.05em] text-acid hover:underline"
+      className="inline-flex items-baseline gap-1 font-mono text-[9.5px] uppercase tracking-[0.05em] text-fg3 hover:text-fg hover:underline"
     >
       <Tag tone="acid">next</Tag>
       {label}

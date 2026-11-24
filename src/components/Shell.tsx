@@ -530,13 +530,24 @@ export function PageHead({
   children?: ReactNode;
 }) {
   return (
-    <div className="border-b border-line px-3 py-2.5 sm:px-4">
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <h1 className="t-section text-fg">{title}</h1>
-        {note && <span className="t-xs text-fg4">{note}</span>}
+    <div className="border-b border-line px-3 py-3 sm:px-4">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        {/* The title is the loudest thing on the page. It was set at the same
+            size as section headings inside it, so nothing on a page announced
+            itself first. A terminal still needs one element a reader's eye
+            lands on before the data. */}
+        <h1
+          className="text-[19px] font-semibold leading-none tracking-[-0.02em] text-fg"
+          style={{ fontFamily: "var(--font-display)" }}
+        >
+          {title}
+        </h1>
+        {note && (
+          <span className="hidden min-w-0 truncate text-[11.5px] text-fg4 sm:inline">{note}</span>
+        )}
         {right && <div className="ml-auto flex items-center gap-1.5">{right}</div>}
       </div>
-      {children && <div className="mt-2">{children}</div>}
+      {children && <div className="mt-2.5">{children}</div>}
     </div>
   );
 }

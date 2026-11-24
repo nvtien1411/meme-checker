@@ -608,7 +608,7 @@ function NetworkNodeDetail({
         <span className="font-mono text-[9.5px] tabular-nums text-fg4">
           confidence {(b.confidence * 100).toFixed(0)}%
         </span>
-        <Link href={`/wallets/${node.addr}`} className="ml-auto font-mono text-[9px] uppercase tracking-[0.06em] text-acid hover:underline">
+        <Link href={`/wallets/${node.addr}`} className="ml-auto font-mono text-[9px] uppercase tracking-[0.06em] text-fg4 hover:text-fg">
           full profile
         </Link>
       </div>

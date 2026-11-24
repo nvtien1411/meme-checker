@@ -282,18 +282,7 @@ export default function SmartFollowersPage() {
           note="The rows above are real wallet histories. The follower-to-post link is the missing pipeline, and no amount of framing turns it into a measurement"
         />
 
-        <Panel title="Why this matters more than follower count" note="the one thing this module exists to say">
-          <p className="t-xs leading-relaxed text-fg3">
-            A follower count counts accounts that pressed a button. It says nothing about whether
-            those accounts bought, whether they bought before or after the post, or whether they
-            are still holding. The number that matters is how many wallets repeatedly arrive after
-            a given account posts{" "}
-            <span className="text-fg2">and leave before the crowd does</span> — because those
-            wallets are not followers, they are the exit, and the account is the door
-          </p>
-        </Panel>
-
-        <NextSteps
+                <NextSteps
           title="From a caller's follower problem"
           steps={[
             {

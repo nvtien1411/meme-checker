@@ -573,7 +573,7 @@ export function Graph({
             <span className="t-xs font-semibold text-fg">{selectedNode.label}</span>
             {selectedNode.sub && <span className="t-xs text-fg4">{selectedNode.sub}</span>}
             {selectedNode.href && (
-              <Link href={selectedNode.href} className="ml-auto font-mono text-[9px] uppercase tracking-[0.06em] text-acid hover:underline">
+              <Link href={selectedNode.href} className="ml-auto font-mono text-[9px] uppercase tracking-[0.06em] text-fg4 hover:text-fg">
                 open
               </Link>
             )}

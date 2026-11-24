@@ -1,11 +1,10 @@
-import Link from "next/link";
 import { PageHead } from "@/components/Shell";
 import { Demo, Panel, Tag } from "@/components/ui";
 import { Graph, type GraphEdge, type GraphNode } from "@/components/Graph";
 import { ExitOrderTable } from "@/components/Intelligence";
 import { WalletNetworkView } from "@/components/WalletWorkspace";
 import { exitOrdering } from "@/lib/intel";
-import { DEMO_TOKENS } from "@/lib/demo";
+
 
 /* ==================================================================== *
  * INVESTIGATION WORKSPACE
@@ -64,22 +63,7 @@ export default function InvestigationPage() {
 
       <div className="space-y-2.5 p-3 sm:p-4">
 
-        <Panel title="How to use this" note="three rules, because a graph without rules is a picture">
-          <div className="grid grid-cols-1 gap-x-5 sm:grid-cols-3">
-            {[
-              ["every edge is a named relationship", "funded, bought, deployed, posted, appears together. If an edge cannot be named it is not drawn"],
-              ["a line means one observed event", "two wallets that moved value six times show one line labelled six transfers, not six lines"],
-              ["grey means no longer holding", "a wallet that has exited is still on the graph, because the exit is part of the story"],
-            ].map(([k, v]) => (
-              <div key={k} className="border-b border-line pb-2 last:border-b-0 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-4 sm:last:border-r-0">
-                <div className="t-xs font-semibold text-fg2">{k}</div>
-                <p className="mt-0.5 t-xs leading-relaxed text-fg4">{v}</p>
-              </div>
-            ))}
-          </div>
-        </Panel>
-
-        <Panel
+                <Panel
           title="RATS — connected entities"
           note="select a node to isolate its relationships; the graph redraws from the record"
           flush
@@ -111,60 +95,7 @@ export default function InvestigationPage() {
         </Panel>
 
         <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-3">
-          <Panel title="What this graph shows" note="the finding, in words">
-            <ul className="space-y-1.5">
-              {[
-                "The wallet that funded the deployer also funded the largest launch-block buyer",
-                "That buyer holds 18.7% and has not sold",
-                "Three callers posted inside a 19-minute window, the last of them six minutes after the first",
-                "The same deployer's previous token is in this graph because the funder is shared",
-              ].map((t) => (
-                <li key={t} className="flex items-start gap-1.5">
-                  <span aria-hidden className="mt-[6px] h-[3px] w-[3px] shrink-0 bg-bad" />
-                  <span className="t-xs leading-snug text-fg3">{t}</span>
-                </li>
-              ))}
-            </ul>
-          </Panel>
-
-          <Panel title="What it does not show" note="the limits, stated rather than hidden">
-            <ul className="space-y-1.5">
-              {[
-                "Whether the funder and the deployer are the same person — shared funding is a relationship, not an identity",
-                "Whether the callers knew each other — posting at the same time happens organically",
-                "Anything outside seven days of history, which is the current trace depth",
-                "Wallets funded from an exchange hot wallet, where the trail ends",
-              ].map((t) => (
-                <li key={t} className="flex items-start gap-1.5">
-                  <span aria-hidden className="mt-[6px] h-[3px] w-[3px] shrink-0 bg-line2" />
-                  <span className="t-xs leading-snug text-fg4">{t}</span>
-                </li>
-              ))}
-            </ul>
-          </Panel>
-
-          <Panel title="Next step" note="where to go from here">
-            <div className="space-y-1.5">
-              {[
-                ["open the wallet", `/wallets`],
-                ["read the deployer record", `/deployers`],
-                ["check the callers", `/callers/cryptocole`],
-                ["see the token report", `/token/solana/${DEMO_TOKENS[0].mint}`],
-              ].map(([label, href]) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className="flex items-center justify-between border border-line px-2 py-1.5 transition-colors hover:border-line2 hover:bg-surf2"
-                >
-                  <span className="t-xs text-fg2">{label}</span>
-                  <span aria-hidden className="font-mono text-[10px] text-acid">
-                    →
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </Panel>
-        </div>
+                                      </div>
 
         <div>
           <div className="mb-1.5 flex flex-wrap items-baseline gap-2">

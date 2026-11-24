@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Demo, Panel, ProReveal, Tag } from "@/components/ui";
-import { CallerProRows } from "@/components/ProRows";
+import { callerHeader, callerRow } from "@/components/ProRows";
 import { DEMO_CALLS, DEMO_CALLERS } from "@/lib/demo";
 import { allCallerProfiles } from "@/lib/intel2";
 import { fmtUsd } from "@/lib/http";
@@ -201,8 +201,8 @@ export function CallersClient() {
                 ).toFixed(2)}×`;
           })()}
           clip={5}
-          shown={2}
-          rows={[<CallerProRows key="c" />]}
+          shown={3}
+          rows={[callerHeader(), ...[...allCallerProfiles()].sort((a, b) => b.exitVsCall - a.exitVsCall).map(callerRow)]}
           more={[
             "Their exit against the price at the moment they posted, per caller",
             "Win rate with dead calls counted — the ones that never touched 2×",

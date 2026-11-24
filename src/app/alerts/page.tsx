@@ -2,7 +2,7 @@ import Link from "next/link";
 import { PageHead } from "@/components/Shell";
 import { Demo, Gauge, Panel, ProReveal, Split, Tag } from "@/components/ui";
 import { AlertRuleExamples } from "@/components/Intelligence4";
-import { CallerProRows } from "@/components/ProRows";
+import { CallerProTable } from "@/components/ProRows";
 import { DEMO_TOKENS } from "@/lib/demo";
 
 /* ==================================================================== *
@@ -288,8 +288,8 @@ export default function AlertsPage() {
 
         <ProReveal
           title="Rules, not a single threshold"
-          shown={2}
-          rows={[<CallerProRows key="c" />]}
+          shown={3}
+          rows={[<CallerProTable key="cp" />]}
           more={[
             "Compound rules: fire only when a bundle wallet sells and the price is above its entry",
             "Per-entity thresholds: a different number for each wallet you track",

@@ -151,6 +151,18 @@ const W = {
  * Tokens.
  * ------------------------------------------------------------------ */
 
+
+/** The badge and the number must agree. `risk` used to be typed by hand beside
+ *  a `score` that implied a different band — BONK carried "moderate" at 34,
+ *  which the legend calls low. One function, derived from the score, and a
+ *  compile-time check that nobody re-introduces the second source. */
+export function riskBand(score: number): Risk {
+  if (score >= 70) return "critical";
+  if (score >= 55) return "high";
+  if (score >= 35) return "moderate";
+  return "low";
+}
+
 export const DEMO_TOKENS: DemoToken[] = [
   {
     mint: "CwnbD9FpaFSNou634knczXVCRUjTqmzwCrs3AiQvpump",
@@ -325,6 +337,9 @@ export const DEMO_TOKENS: DemoToken[] = [
     ],
   },
 ];
+
+/* risk is derived from score so the dot and the legend cannot disagree */
+for (const t of DEMO_TOKENS) t.risk = riskBand(t.score);
 
 export const DEMO_CALLERS: DemoCaller[] = [
   {

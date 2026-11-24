@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { PageHead } from "@/components/Shell";
-import { Demo, Gauge, Panel, ProReveal, Split, Stat, Tag } from "@/components/ui";
+import { Demo, Gauge, ProReveal, Split, Stat, Tag } from "@/components/ui";
 import { RugCaseFile } from "@/components/Intelligence4";
 import { DeployerProRows } from "@/components/ProRows";
 import { PeekButton } from "@/components/report";
@@ -66,22 +66,7 @@ export default function RugsPage() {
           ))}
         </div>
 
-        <Panel title="Why the three labels matter" note="a database that calls everything a rug is worth nothing">
-          <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-3">
-            {[
-              ["confirmed", "The collapse is verifiable on chain — the pool emptied, or the price lost 90% and never returned"],
-              ["reported", "A credible report exists but this scanner did not observe the collapse directly. Treated as a lead, not a fact"],
-              ["suspected", "One or more signals fired and the token is dead, but no single cause is established. This is the weakest class and is labelled as such"],
-            ].map(([k, v]) => (
-              <div key={k} className="border-b border-line pb-2 last:border-b-0 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-4 sm:last:border-r-0">
-                <Tag tone={FLAG_TONE[k] ?? "neutral"}>{k}</Tag>
-                <p className="mt-1 t-xs leading-relaxed text-fg3">{v}</p>
-              </div>
-            ))}
-          </div>
-        </Panel>
-
-        {DEMO_RUGS.map((r) => (
+                {DEMO_RUGS.map((r) => (
           <article key={r.mint} className="panel">
             <div className="flex flex-wrap items-baseline gap-x-2.5 border-b border-line px-3 py-2">
               <h2 className="t-section text-fg">{r.symbol}</h2>

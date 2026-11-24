@@ -57,16 +57,7 @@ export default function HistoryPage() {
           <ScanMemory />
         </ProReveal>
 
-        <Panel title="Why this page exists" note="the product grading itself">
-          <p className="t-xs leading-relaxed text-fg3">
-            A scan is a claim about the future. Recording the claim and showing what happened is the
-            cheapest way to find out whether the claim is any good — and the only way a reader can
-            judge the tool instead of trusting it. A score that rose from 51 to 71 in two hours is
-            also a warning that the token is moving
-          </p>
-        </Panel>
-
-        <Panel flush>
+                <Panel flush>
           <div className="grid grid-cols-[minmax(0,1fr)_56px_56px_60px] items-baseline gap-x-2.5 border-b border-line bg-surf2/40 px-3 py-1.5 sm:grid-cols-[minmax(0,1fr)_60px_64px_64px_72px]">
             <span className="t-eyebrow">token</span>
             <span className="t-eyebrow text-right">score</span>
