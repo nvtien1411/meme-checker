@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Panel, Tag } from "./ui";
 import { shortAddr } from "@/lib/demo";
 import {
@@ -30,10 +30,55 @@ import {
  * A radial layout on a deterministic ring, edges weighted by how many launches
  * two addresses share. No force simulation: a graph that settles differently on
  * every render is a graph nobody can compare against the last time they looked.
+ *
+ * The flow animation reports co-appearance, not transfers. Nothing here is a
+ * transaction: two addresses sharing a launch is a weaker claim than one paying
+ * the other, and the caption says so. If these were funding paths the particles
+ * would be earning their meaning; here they are only showing which pairs are
+ * connected, and the direction is nominal.
  * ------------------------------------------------------------------ */
+
+const ROLE_TONE: Record<string, string> = {
+  "block-0 bundler": "#ff2d55",
+  "launch sniper": "#ffb020",
+  "insider supply": "#a855f7",
+  "fast flipper": "#38bdf8",
+  "mid-curve seller": "#94a3b8",
+  "patient holder": "#4ade80",
+  "insufficient history": "#52525f",
+};
+
+interface Pt {
+  x: number;
+  y: number;
+}
+
+interface EdgeGeom {
+  key: string;
+  a: string;
+  b: string;
+  path: string;
+  together: number;
+}
+
+/** Quadratic curve bowed perpendicular to its chord. The bow is what makes a
+ *  shared chord readable: two edges between the same pair, or many edges
+ *  radiating from the same hub, would otherwise overlap exactly. */
+function curve(a: Pt, b: Pt, bowFrac: number, sign: number): string {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const mx = (a.x + b.x) / 2;
+  const my = (a.y + b.y) / 2;
+  const nlen = Math.hypot(-dy, dx) || 1;
+  const bow = Math.hypot(dx, dy) * bowFrac * sign;
+  const cx = mx + (-dy / nlen) * bow;
+  const cy = my + (dx / nlen) * bow;
+  return `M ${a.x} ${a.y} Q ${cx} ${cy} ${b.x} ${b.y}`;
+}
 
 export function WalletNetworkView({ limit = 12 }: { limit?: number }) {
   const [picked, setPicked] = useState<string | null>(null);
+  const [hovered, setHovered] = useState<string | null>(null);
   const net = useMemo(() => walletNetwork(), []);
 
   const nodes = useMemo(
@@ -43,20 +88,60 @@ export function WalletNetworkView({ limit = 12 }: { limit?: number }) {
         .slice(0, limit),
     [net, limit],
   );
-  const nodeIds = new Set(nodes.map((n) => n.addr));
-  const edges = net.edges.filter((e) => e.together >= 2 && nodeIds.has(e.a) && nodeIds.has(e.b));
+  const nodeIds = useMemo(() => new Set(nodes.map((n) => n.addr)), [nodes]);
+  const edges = useMemo(
+    () => net.edges.filter((e) => e.together >= 2 && nodeIds.has(e.a) && nodeIds.has(e.b)),
+    [net, nodeIds],
+  );
 
   const R = 118;
   const C = 150;
-  const pos = new Map(
-    nodes.map((n, i) => {
+  const pos = useMemo(() => {
+    const m = new Map<string, Pt>();
+    nodes.forEach((n, i) => {
       const angle = (i / nodes.length) * Math.PI * 2 - Math.PI / 2;
-      return [n.addr, { x: C + R * Math.cos(angle), y: C + R * Math.sin(angle) }];
-    }),
-  );
+      m.set(n.addr, { x: C + R * Math.cos(angle), y: C + R * Math.sin(angle) });
+    });
+    return m;
+  }, [nodes]);
 
-  const sel = picked ? net.nodes.find((n) => n.addr === picked) : null;
-  const selEdges = picked ? edges.filter((e) => e.a === picked || e.b === picked) : [];
+  // Geometry is computed once per layout: paths are strings, and the browser
+  // measures them. Recomputing per frame would be the whole cost of this view.
+  const geometry = useMemo<EdgeGeom[]>(() => {
+    const out: EdgeGeom[] = [];
+    for (const e of edges) {
+      const a = pos.get(e.a);
+      const b = pos.get(e.b);
+      if (!a || !b) continue;
+      const seed = [...(e.a + e.b)].reduce((n, c) => n + c.charCodeAt(0), 0);
+      const sign = seed % 2 === 0 ? 1 : -1;
+      out.push({
+        key: e.a + e.b,
+        a: e.a,
+        b: e.b,
+        path: curve(a, b, 0.22, sign),
+        together: e.together,
+      });
+    }
+    return out;
+  }, [edges, pos]);
+
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  const sel = picked ?? hovered;
+  const activeEdges = useMemo(
+    () => (sel ? new Set(geometry.filter((g) => g.a === sel || g.b === sel).map((g) => g.key)) : null),
+    [sel, geometry],
+  );
+  const activeNodes = useMemo(() => {
+    if (!sel) return null;
+    const s = new Set<string>([sel]);
+    for (const g of geometry) {
+      if (g.a === sel) s.add(g.b);
+      if (g.b === sel) s.add(g.a);
+    }
+    return s;
+  }, [sel, geometry]);
 
   return (
     <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-[300px_minmax(0,1fr)]">
@@ -64,58 +149,115 @@ export function WalletNetworkView({ limit = 12 }: { limit?: number }) {
         <div className="border-b border-line px-2.5 py-1.5">
           <span className="t-eyebrow">wallet network</span>
         </div>
-        <svg viewBox="0 0 300 300" className="block h-auto w-full" role="img" aria-label="Wallets that repeatedly appear on the same launches">
-          {edges.map((e) => {
-            const a = pos.get(e.a);
-            const b = pos.get(e.b);
-            if (!a || !b) return null;
-            const active = picked === e.a || picked === e.b;
-            const dim = picked !== null && !active;
+        <svg
+          ref={svgRef}
+          viewBox="0 0 300 300"
+          className="mc-net block h-auto w-full"
+          role="img"
+          aria-label="Wallets that repeatedly appear on the same launches"
+        >
+          {/* edges first, so nodes sit on top of their own lines */}
+          {geometry.map((g) => {
+            const active = activeEdges?.has(g.key) ?? false;
+            const dim = activeEdges !== null && !active;
             return (
-              <line
-                key={e.a + e.b}
-                x1={a.x}
-                y1={a.y}
-                x2={b.x}
-                y2={b.y}
-                stroke={active ? "var(--color-acid)" : "currentColor"}
-                className={active ? "" : "text-fg4"}
-                strokeWidth={Math.min(2.4, 0.5 + e.together * 0.4)}
-                strokeOpacity={dim ? 0.08 : active ? 0.7 : 0.22}
-              />
+              <g key={g.key}>
+                <path
+                  d={g.path}
+                  fill="none"
+                  stroke={active ? "var(--color-acid)" : "currentColor"}
+                  className={active ? "" : "text-fg4"}
+                  strokeWidth={Math.min(2.2, 0.5 + g.together * 0.35)}
+                  strokeOpacity={dim ? 0.07 : active ? 0.6 : 0.2}
+                  strokeLinecap="round"
+                />
+                {/* streams: only on the selected node's edges when something is
+                    selected, otherwise across the whole network at low opacity */}
+                {!dim && (
+                  <Flow
+                    g={g}
+                    active={active}
+                    seedIndex={g.key.charCodeAt(0) + g.together}
+                  />
+                )}
+              </g>
             );
           })}
+
           {nodes.map((n) => {
             const p = pos.get(n.addr);
             if (!p) return null;
             const isSel = picked === n.addr;
+            const isHover = hovered === n.addr;
             const role = ROLE_TONE[n.behaviour.label];
+            const dim = activeNodes !== null && !activeNodes.has(n.addr);
             return (
-              <g key={n.addr} onClick={() => setPicked(isSel ? null : n.addr)} className="cursor-pointer">
+              <g
+                key={n.addr}
+                onClick={() => setPicked(isSel ? null : n.addr)}
+                onMouseEnter={() => setHovered(n.addr)}
+                onMouseLeave={() => setHovered((h) => (h === n.addr ? null : h))}
+                className="cursor-pointer"
+              >
+                {/* the arrival glow sits under the node and is driven by the
+                    same CSS keyframe every node shares; the delay is per-node so
+                    they do not all breathe in step */}
                 <circle
                   cx={p.x}
                   cy={p.y}
                   r={n.degree >= 8 ? 8 : n.degree >= 5 ? 6.5 : 5}
                   fill={isSel ? "var(--color-acid)" : role}
-                  fillOpacity={isSel ? 1 : picked ? 0.35 : 0.85}
+                  fillOpacity={dim ? 0.25 : isSel ? 1 : isHover ? 1 : 0.85}
+                  className="mc-net-node"
+                  style={{ animationDelay: `${(n.degree % 7) * -0.42}s` }}
                 />
-                <circle cx={p.x} cy={p.y} r={13} fill="transparent" />
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={(n.degree >= 8 ? 8 : n.degree >= 5 ? 6.5 : 5) + 3}
+                  fill="none"
+                  stroke={role}
+                  strokeWidth={n.degree >= 8 ? 1.3 : 0.9}
+                  strokeOpacity={dim ? 0.04 : Math.min(0.7, 0.18 + n.degree / 18)}
+                  className="mc-net-ring"
+                  style={{ animationDelay: `${(n.degree % 5) * -0.9}s` }}
+                />
+                <circle cx={p.x} cy={p.y} r={14} fill="transparent" />
                 <title>{`${shortAddr(n.addr, 6, 4)} — ${n.behaviour.label}, ${n.profile.launchCount} launches, ${n.degree} repeat partners`}</title>
               </g>
             );
           })}
         </svg>
         <div className="border-t border-line px-2.5 py-1.5">
-          <p className="t-xs leading-relaxed text-fg4">
+          <div className="flex flex-wrap gap-x-2.5 gap-y-1">
+            {[...new Set(nodes.map((n) => n.behaviour.label))].map((label) => (
+              <span
+                key={label}
+                className="flex items-center gap-1 font-mono text-[8px] uppercase tracking-[0.05em] text-fg4"
+              >
+                <span aria-hidden className="h-[4px] w-[4px]" style={{ background: ROLE_TONE[label] }} />
+                {label}
+              </span>
+            ))}
+          </div>
+          <p className="mt-1 t-xs leading-relaxed text-fg4">
             An edge means two addresses appeared on the same launch. It is not proof of common
-            ownership — it is a reason to look. Line weight is the number of launches shared
+            ownership and not a transfer — the moving light shows which pairs are connected, not
+            money changing hands. Node size and ring weight follow the number of repeat partners
           </p>
         </div>
       </div>
 
       <div className="space-y-2.5">
         {sel ? (
-          <NetworkNodeDetail node={sel} edges={selEdges} onClose={() => setPicked(null)} />
+          <NetworkNodeDetail
+            node={net.nodes.find((n) => n.addr === sel) as NetworkNode}
+            edges={edges.filter((e) => e.a === sel || e.b === sel)}
+            onClose={() => {
+              setPicked(null);
+              setHovered(null);
+            }}
+          />
         ) : (
           <Panel title="Repeat participants" note="ranked by how many other addresses they keep appearing with" flush>
             <div>
@@ -124,6 +266,8 @@ export function WalletNetworkView({ limit = 12 }: { limit?: number }) {
                   key={n.addr}
                   type="button"
                   onClick={() => setPicked(n.addr)}
+                  onMouseEnter={() => setHovered(n.addr)}
+                  onMouseLeave={() => setHovered((h) => (h === n.addr ? null : h))}
                   className="drow flex w-full items-baseline gap-2 border-b border-line px-3 py-1.5 text-left last:border-b-0"
                 >
                   <span aria-hidden className="mt-[4px] h-[5px] w-[5px] shrink-0" style={{ background: ROLE_TONE[n.behaviour.label] }} />
@@ -155,15 +299,158 @@ export function WalletNetworkView({ limit = 12 }: { limit?: number }) {
   );
 }
 
-const ROLE_TONE: Record<string, string> = {
-  "block-0 bundler": "#ff2d55",
-  "launch sniper": "#ffb020",
-  "insider supply": "#a855f7",
-  "fast flipper": "#38bdf8",
-  "mid-curve seller": "#94a3b8",
-  "patient holder": "#4ade80",
-  "insufficient history": "#52525f",
-};
+/* ------------------------------------------------------------------ *
+ * Flow — particles travelling the actual path
+ *
+ * SVG motion rather than CSS offset-path: the path is already in the DOM, so
+ * getPointAtLength is exact and works in every browser this product supports.
+ * Each particle is animated by a single requestAnimationFrame loop that is
+ * shared by the whole graph and stops when the tab or element is not visible.
+ *
+ * Direction is nominal. These edges mean "appeared together", which has no
+ * direction, so the flow alternates along a pair rather than pretending money
+ * moves one way.
+ * ------------------------------------------------------------------ */
+
+const FLOW_COUNT = 3;
+const TRAIL = 6;
+
+function Flow({
+  g,
+  active,
+  seedIndex,
+}: {
+  g: EdgeGeom;
+  active: boolean;
+  seedIndex: number;
+}) {
+  const headRefs = useRef<(SVGCircleElement | null)[]>([]);
+  const trailRefs = useRef<(SVGCircleElement | null)[][]>([]);
+  // The path element is discovered from the DOM, not passed in: reading a ref
+  // during render is not allowed, and this is the one value the animation
+  // genuinely needs from the rendered tree.
+  const [pathEl, setPathEl] = useState<SVGPathElement | null>(null);
+
+  useEffect(() => {
+    const el = pathEl;
+    if (!el) return;
+    const path: SVGPathElement = el;
+
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (motion.matches) return;
+
+    const len = path.getTotalLength();
+    if (len < 1) return;
+
+    // Deterministic from the edge, so the pattern does not reshuffle when the
+    // selection changes: three particles, spread out, each with its own speed
+    // and direction.
+    const parts = Array.from({ length: FLOW_COUNT }, (_, i) => {
+      const seed = (seedIndex * (i + 3) * 37) % 1000;
+      return {
+        offset: seed / 1000,
+        speed: 0.00006 + ((seed % 47) / 47) * 0.00007,
+        dir: (seed + i) % 2 === 0 ? 1 : -1,
+      };
+    });
+
+    let raf = 0;
+    let visible = true;
+    const started = performance.now();
+
+    const io = new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+      if (visible && !raf) raf = requestAnimationFrame(tick);
+    });
+    io.observe(path);
+
+    function tick(now: number) {
+      const t = now - started;
+      for (let i = 0; i < FLOW_COUNT; i++) {
+        const p = parts[i];
+        const raw = (t * p.speed + p.offset) % 1;
+        const u = p.dir === 1 ? raw : 1 - raw;
+
+        const head = headRefs.current[i];
+        if (head) {
+          const pt = path.getPointAtLength(u * len);
+          head.setAttribute("cx", pt.x.toFixed(2));
+          head.setAttribute("cy", pt.y.toFixed(2));
+          const edgeFade = u < 0.04 ? u / 0.04 : u > 0.96 ? (1 - u) / 0.04 : 1;
+          head.style.opacity = String((active ? 1 : 0.34) * edgeFade);
+        }
+
+        // The trail is this particle's own previous positions on this curve,
+        // which is what makes it read as light travelling the path rather than
+        // a dot appearing somewhere new each frame.
+        const dots = trailRefs.current[i];
+        if (!dots) continue;
+        for (let k = 0; k < TRAIL; k++) {
+          const dot = dots[k];
+          if (!dot) continue;
+          const tu = u - (k + 1) * 0.018 * (p.dir === 1 ? 1 : -1);
+          if (tu < 0.02 || tu > 0.98) {
+            dot.style.opacity = "0";
+            continue;
+          }
+          const tp = path.getPointAtLength(tu * len);
+          dot.setAttribute("cx", tp.x.toFixed(2));
+          dot.setAttribute("cy", tp.y.toFixed(2));
+          const f = 1 - k / TRAIL;
+          dot.style.opacity = String((active ? 0.46 : 0.14) * f * f);
+        }
+      }
+      raf = visible ? requestAnimationFrame(tick) : 0;
+    }
+
+    raf = requestAnimationFrame(tick);
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      io.disconnect();
+    };
+  }, [pathEl, active, seedIndex]);
+
+  const colour = active ? "var(--color-acid)" : "#7dd3fc";
+  const key = g.key;
+
+  return (
+    <g className="pointer-events-none" aria-hidden>
+      {/* the same geometry, invisible: Flow measures this element rather than
+          reaching back into its parent's refs */}
+      <path
+        ref={setPathEl}
+        d={g.path}
+        fill="none"
+        stroke="none"
+        strokeWidth={0}
+      />
+      {Array.from({ length: FLOW_COUNT }).map((_, i) => (
+        <g key={`${key}-p${i}`}>
+          {Array.from({ length: TRAIL }).map((__, k) => (
+            <circle
+              key={k}
+              ref={(el) => {
+                if (!trailRefs.current[i]) trailRefs.current[i] = [];
+                trailRefs.current[i][k] = el;
+              }}
+              r={Math.max(0.5, 1.2 - k * 0.14)}
+              fill={colour}
+              opacity={0}
+            />
+          ))}
+          <circle
+            ref={(el) => {
+              headRefs.current[i] = el;
+            }}
+            r={1.9}
+            fill={colour}
+            opacity={0}
+          />
+        </g>
+      ))}
+    </g>
+  );
+}
 
 function NetworkNodeDetail({
   node,

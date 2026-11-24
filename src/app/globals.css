@@ -387,6 +387,55 @@ body {
   }
 }
 
+/* ---- 2b. network nodes -----------------------------------------------
+ *
+ * The wallet graph is SVG, so its motion lives in CSS where it can be composited
+ * rather than driven by the particle loop. Two effects and nothing else:
+ *
+ *   mc-net-node  a 6% brightness lift on a slow cycle, staggered per node so the
+ *                graph does not pulse in unison — in unison it reads as a
+ *                loading state, which is the opposite of what this means
+ *   mc-net-ring  the ring expands by 2px and fades, which is the "this node is
+ *                receiving" signal without any JavaScript involvement
+ * -------------------------------------------------------------------- */
+
+.mc-net-node {
+  animation: mc-net-node 4.2s var(--e-in-out) infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes mc-net-node {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.14);
+  }
+}
+
+.mc-net-ring {
+  animation: mc-net-ring 3.8s var(--e-out) infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes mc-net-ring {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.75;
+  }
+  60% {
+    transform: scale(1.18);
+    opacity: 0.32;
+  }
+  100% {
+    transform: scale(1.26);
+    opacity: 0;
+  }
+}
+
 /* ---- 3. scanning -----------------------------------------------------
  *
  * Three distinct states, because a scan is not one indeterminate wait:
@@ -705,7 +754,9 @@ body {
   .mc-active::after,
   .mc-flow,
   .mc-breathe,
-  .pulse-dot {
+  .pulse-dot,
+  .mc-net-node,
+  .mc-net-ring {
     animation: none !important;
   }
 
