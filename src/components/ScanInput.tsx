@@ -130,10 +130,11 @@ export function ScanInput({ autoFocus = false }: { autoFocus?: boolean }) {
           err ? "border-bad/50" : valid ? "border-line2" : "border-line"
         }`}
       >
-        {/* chain */}
-        <div className="flex items-center gap-1.5 border-b border-line px-2.5 py-2 sm:border-b-0 sm:border-r">
+        {/* chain — on auto this reads as a finding, but stays one control so
+            overriding it is a real action rather than a decorative label */}
+        <div className="flex items-center border-b border-line px-2.5 py-2 sm:border-b-0 sm:border-r">
           <label htmlFor="chain" className="sr-only">
-            Chain
+            Chain — detected from the address, change it if wrong
           </label>
           <select
             id="chain"
@@ -142,10 +143,17 @@ export function ScanInput({ autoFocus = false }: { autoFocus?: boolean }) {
               setChain(e.target.value as ChainId | "auto");
               setErr(null);
             }}
-            className="cursor-pointer appearance-none bg-transparent font-mono text-[10.5px] uppercase tracking-[0.06em] text-fg2 outline-none"
+            title={
+              chain === "auto"
+                ? "Read from the address shape. Pick a chain manually if this is wrong"
+                : "Overridden manually"
+            }
+            className={`cursor-pointer appearance-none bg-transparent font-mono text-[10.5px] uppercase tracking-[0.06em] outline-none ${
+              chain === "auto" ? "text-fg3" : "text-warn"
+            }`}
           >
             <option value="auto" className="bg-surf text-fg">
-              auto{detected ? ` · ${detected}` : ""}
+              {chain === "auto" ? (detected ? `on ${detected}` : "auto") : "auto"}
             </option>
             {CHAINS.map((c) => (
               <option key={c.id} value={c.id} className="bg-surf text-fg">
