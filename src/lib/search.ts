@@ -1,3 +1,4 @@
+import Fuse from "fuse.js";
 import { DEMO_CALLERS, DEMO_NARRATIVES, DEMO_TOKENS, DEMO_WALLETS, shortAddr } from "./demo";
 import { walletNetwork } from "./intel";
 
@@ -52,6 +53,7 @@ function isDeployer(addr: string): boolean {
 }
 
 let cached: SearchResult[] | null = null;
+let fuse: Fuse<SearchResult> | null = null;
 
 export function buildIndex(): SearchResult[] {
   if (cached) return cached;
@@ -125,60 +127,72 @@ export function buildIndex(): SearchResult[] {
   }
 
   cached = out;
+  fuse = new Fuse(out, {
+    keys: [
+      { name: "label", weight: 2 },
+      { name: "needle", weight: 1 },
+      { name: "detail", weight: 0.35 },
+    ],
+    threshold: 0.34,
+    ignoreLocation: true,
+    minMatchCharLength: 2,
+  });
   return out;
 }
 
 /* ------------------------------------------------------------------ *
  * Matching
  *
- * Substring, ranked: exact prefix beats prefix beats contains, and a mint or
- * address match outranks a name match because someone pasting a 44-character
- * string wants that exact token, not a token whose name contains "pump".
+ * Two passes. First exact / prefix / address, ranked by how specific the hit
+ * is. Then Fuse for everything the first pass missed, so a misspelling still
+ * lands somewhere instead of showing an empty palette. Fuse alone is not
+ * enough: it will rank a fuzzy token above an exact ticker, and someone who
+ * typed RATS means RATS.
  * ------------------------------------------------------------------ */
+
+const ADDRESSISH = /^[1-9a-hj-np-z]{20,}$|^0x[a-f0-9]{20,}$/i;
 
 export function search(q: string, limit = 18): SearchResult[] {
   const needle = q.trim().toLowerCase();
   if (!needle) return [];
 
   const idx = buildIndex();
-  const scored: { r: SearchResult; score: number }[] = [];
+  const exact: { r: SearchResult; score: number }[] = [];
+  const taken = new Set<string>();
+  const isAddress = ADDRESSISH.test(needle);
 
   for (const r of idx) {
-    const hay = r.needle;
-    if (!hay.includes(needle)) continue;
-
-    let score = 0;
     const label = r.label.toLowerCase();
 
-    // An address or mint match is the most specific thing a user can type.
-    if (hay === needle) score += 1000;
-    else if (/^[1-9A-HJ-NP-Za-km-z]{20,}$|^0x[a-f0-9]{20,}$/i.test(needle) && hay.includes(needle))
-      score += 500;
-
-    if (label.startsWith(needle)) score += 200;
-    else if (label.includes(needle)) score += 80;
-
-    // Word-boundary match on the needle inside the label, e.g. "rats" in "RATS · Dancing Rats".
-    if (new RegExp(`\\b${needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`).test(label)) score += 60;
+    let score = 0;
+    if (isAddress && r.needle.includes(needle)) score += 1000;
+    if (r.needle === needle) score += 600;
+    if (label === needle) score += 400;
+    else if (label.startsWith(needle)) score += 200;
+    else if (label.includes(needle)) score += 90;
+    else if (r.needle.includes(needle)) score += 40;
+    if (score === 0) continue;
 
     // Shorter labels are usually the thing you meant.
     score -= Math.min(40, r.label.length / 4);
-
-    scored.push({ r, score });
+    exact.push({ r, score });
+    taken.add(r.href + r.label);
   }
 
-  scored.sort((a, b) => b.score - a.score);
+  exact.sort((a, b) => b.score - a.score);
+  const out: SearchResult[] = exact.map((x) => x.r);
 
-  // Dedupe by href so a wallet can't appear twice.
-  const seen = new Set<string>();
-  const out: SearchResult[] = [];
-  for (const { r } of scored) {
-    if (seen.has(r.href + r.label)) continue;
-    seen.add(r.href + r.label);
-    out.push(r);
-    if (out.length >= limit) break;
+  // A pasted address should return the one thing it names, not a fuzzy cloud.
+  if (!(isAddress && out.length > 0) && fuse) {
+    for (const hit of fuse.search(needle)) {
+      const key = hit.item.href + hit.item.label;
+      if (taken.has(key)) continue;
+      taken.add(key);
+      out.push(hit.item);
+    }
   }
-  return out;
+
+  return out.slice(0, limit);
 }
 
 /** Group results for display, preserving the order each group first appeared. */

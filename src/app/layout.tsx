@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { Shell } from "@/components/Shell";
+import { PeekProvider } from "@/components/Peek";
 import { ToastProvider } from "@/components/feedback";
 import { ViewerProvider } from "@/lib/viewer";
 
@@ -54,7 +55,9 @@ export default function RootLayout({
             >
               Skip to content
             </a>
-            <Shell>{children}</Shell>
+            <Shell>
+              <PeekProvider>{children}</PeekProvider>
+            </Shell>
           </ViewerProvider>
         </ToastProvider>
       </body>

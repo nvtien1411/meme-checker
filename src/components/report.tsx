@@ -10,6 +10,7 @@ import { Demo, Gauge, Panel, ProReveal, RiskDot, Split, Stat, Tag } from "./ui";
 import { BundleDeep, BundleFree } from "./BundleIntel";
 import { WalletNetworkView } from "./WalletWorkspace";
 import { WatchToggle } from "./WatchToggle";
+import { usePeek } from "./Peek";
 import {
   DistributionBar,
   ExitCurve,
@@ -648,6 +649,23 @@ function WalletsTab({ demo }: { demo: DemoToken | null }) {
   );
 }
 
+/* A wallet address anywhere in a report opens the peek panel instead of
+ * navigating. This is the single biggest friction change in the product: the
+ * reader keeps the bundle, the timeline and the tab they were on. */
+export function PeekButton({ addr, className = "" }: { addr: string; className?: string }) {
+  const peek = usePeek();
+  return (
+    <button
+      type="button"
+      onClick={() => peek.open(addr)}
+      title="Open without leaving this page"
+      className={`font-mono text-[10.5px] text-fg2 underline decoration-dotted decoration-fg4/40 underline-offset-2 hover:text-acid hover:decoration-acid ${className}`}
+    >
+      {addr.slice(0, 6)}…{addr.slice(-4)}
+    </button>
+  );
+}
+
 function WalletList({ wallets }: { wallets: DemoToken["wallets"] }) {
   if (wallets.length === 0) {
     return <p className="px-3 py-2.5 t-xs text-fg4">None identified in this token</p>;
@@ -661,12 +679,7 @@ function WalletList({ wallets }: { wallets: DemoToken["wallets"] }) {
         return (
           <div key={w.addr} className="border-b border-line px-3 py-1.5 last:border-b-0">
             <div className="flex flex-wrap items-baseline gap-x-1.5">
-              <Link
-                href={`/wallets/${w.addr}`}
-                className="font-mono text-[10.5px] text-fg2 hover:text-acid"
-              >
-                {w.addr.slice(0, 6)}…{w.addr.slice(-4)}
-              </Link>
+              <PeekButton addr={w.addr} />
               <span className={`font-mono text-[8.5px] uppercase tracking-[0.05em] ${tone}`}>
                 {w.status ?? "holding"}
               </span>
