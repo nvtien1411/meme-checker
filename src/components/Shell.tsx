@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { CommandPalette } from "./CommandPalette";
+import { usePathname, useRouter } from "next/navigation";
 import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import { useViewer } from "@/lib/viewer";
 import { PLAN, readScansUsed } from "@/lib/plan";
@@ -40,25 +41,39 @@ function G({ d }: { d: string }) {
   );
 }
 
+/* The five groups are the five questions a degen actually asks, in the order
+ * they get asked. The old groups were organised by where the data comes from,
+ * which is a fact about the backend, not about the person using it.
+ *
+ *   FIND         what should I look at
+ *   CHECK        is this token worth it
+ *   TRACK        who is buying or calling
+ *   INVESTIGATE  what is happening behind it
+ *   WATCH        what do I keep an eye on
+ */
 const NAV: NavItem[] = [
-  { group: "Trade", href: "/", label: "Token Scan", glyph: <G d="M2 8h3l2-4 2 8 2-4h3" /> },
-  { group: "Trade", href: "/discover", label: "Trending", glyph: <G d="M8 2.5 9.7 6.3 14 7l-3 3 .7 4.2L8 12.4 4.3 14.2 5 10 2 7l4.3-.7z" /> },
-  { group: "Trade", href: "/compare", label: "Compare", glyph: <G d="M3 3v10M13 3v10M3 8h10M6.5 5.5 3 8l3.5 2.5M9.5 5.5 13 8l-3.5 2.5" /> },
+  { group: "Find", href: "/", label: "Token Scan", glyph: <G d="M2 8h3l2-4 2 8 2-4h3" /> },
+  { group: "Find", href: "/discover", label: "Trending", glyph: <G d="M8 2.5 9.7 6.3 14 7l-3 3 .7 4.2L8 12.4 4.3 14.2 5 10 2 7l4.3-.7z" /> },
+  { group: "Find", href: "/narratives", label: "Narratives", glyph: <G d="M3 3.5h10v7h-5l-3 2.5v-2.5H3z" /> },
 
-  { group: "On-chain", href: "/wallets", label: "Wallet Tracker", glyph: <G d="M2.5 4.5h11v8h-11zM2.5 7h11M10.5 9.5h1.5" /> },
-  { group: "On-chain", href: "/callers", label: "Alpha Calls", glyph: <G d="M6 7a2.2 2.2 0 1 0 0-4.4A2.2 2.2 0 0 0 6 7zM2 13c0-2 1.8-3.2 4-3.2s4 1.2 4 3.2M11 8.4a1.8 1.8 0 1 0 0-3.6M11.5 13c0-1.6-.6-2.6-1.5-3.2" /> },
-  { group: "On-chain", href: "/smart-followers", label: "Smart Money", glyph: <G d="M2.5 12.5c1.5-2.5 3.5-4 5.5-4s4 1.5 5.5 4M8 8.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" />, badge: "VIP" },
-  { group: "On-chain", href: "/narratives", label: "Meta Radar", glyph: <G d="M3 3.5h10v7h-5l-3 2.5v-2.5H3z" /> },
-  { group: "On-chain", href: "/deployers", label: "Deployers", glyph: <G d="M8 2.5 13 5v3.5c0 2.5-2 4-5 5.5-3-1.5-5-3-5-5.5V5z" /> },
-  { group: "On-chain", href: "/investigation", label: "Wallet Intel", glyph: <G d="M7 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM10.8 10.8 14 14" />, badge: "VIP" },
+  { group: "Track", href: "/wallets", label: "Wallet Tracker", glyph: <G d="M2.5 4.5h11v8h-11zM2.5 7h11M10.5 9.5h1.5" /> },
+  { group: "Track", href: "/callers", label: "Alpha Calls", glyph: <G d="M6 7a2.2 2.2 0 1 0 0-4.4A2.2 2.2 0 0 0 6 7zM2 13c0-2 1.8-3.2 4-3.2s4 1.2 4 3.2M11 8.4a1.8 1.8 0 1 0 0-3.6M11.5 13c0-1.6-.6-2.6-1.5-3.2" /> },
+  { group: "Track", href: "/smart-followers", label: "Smart Money", glyph: <G d="M2.5 12.5c1.5-2.5 3.5-4 5.5-4s4 1.5 5.5 4M8 8.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" />, badge: "VIP" },
+  { group: "Track", href: "/deployers", label: "Deployers", glyph: <G d="M8 2.5 13 5v3.5c0 2.5-2 4-5 5.5-3-1.5-5-3-5-5.5V5z" /> },
 
-  { group: "My desk", href: "/watchlist", label: "Watchlist", glyph: <G d="M8 2.5 9.7 6.3 14 7l-3 3 .7 4.2L8 12.4 4.3 14.2 5 10 2 7l4.3-.7z" /> },
-  { group: "My desk", href: "/alerts", label: "Alerts", glyph: <G d="M8 2.5a3.5 3.5 0 0 1 3.5 3.5v3l1 2h-9l1-2v-3A3.5 3.5 0 0 1 8 2.5zM6.5 12.5a1.5 1.5 0 0 0 3 0" />, badge: "3" },
-  { group: "My desk", href: "/rugs", label: "Rug Archive", glyph: <G d="M3 3h10v10H3zM3 6.5h10M6.5 6.5V13" /> },
-  { group: "My desk", href: "/history", label: "Scan History", glyph: <G d="M8 4v4l2.5 1.5M8 14a6 6 0 1 1 0-12 6 6 0 0 1 0 12z" /> },
+  { group: "Investigate", href: "/investigation", label: "Wallet Network", glyph: <G d="M7 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM10.8 10.8 14 14" />, badge: "VIP" },
+  { group: "Investigate", href: "/compare", label: "Compare", glyph: <G d="M3 3v10M13 3v10M3 8h10M6.5 5.5 3 8l3.5 2.5M9.5 5.5 13 8l-3.5 2.5" /> },
+
+  { group: "Watch", href: "/watchlist", label: "Watchlist", glyph: <G d="M8 2.5 9.7 6.3 14 7l-3 3 .7 4.2L8 12.4 4.3 14.2 5 10 2 7l4.3-.7z" /> },
+  { group: "Watch", href: "/alerts", label: "Alerts", glyph: <G d="M8 2.5a3.5 3.5 0 0 1 3.5 3.5v3l1 2h-9l1-2v-3A3.5 3.5 0 0 1 8 2.5zM6.5 12.5a1.5 1.5 0 0 0 3 0" />, badge: "3" },
+  { group: "Watch", href: "/rugs", label: "Rug Archive", glyph: <G d="M3 3h10v10H3zM3 6.5h10M6.5 6.5V13" /> },
+  { group: "Watch", href: "/history", label: "Scan History", glyph: <G d="M8 4v4l2.5 1.5M8 14a6 6 0 1 1 0-12 6 6 0 0 1 0 12z" /> },
 ];
 
-const GROUPS = ["Trade", "On-chain", "My desk"];
+/* Token Scan is the entry point rather than a nav row: it is what the product
+ * opens on, and it is reachable from the search bar on every page. Listing it
+ * under Find as well duplicated it. */
+const GROUPS = ["Find", "Track", "Investigate", "Watch"];
 
 function Mark() {
   return (
@@ -219,6 +234,8 @@ function TopStrip() {
       </span>
 
       <div className="ml-auto flex items-center gap-2">
+        <CommandPalette />
+        <QuickScan />
         {pro ? (
           <Link
             href="/pricing"
@@ -429,6 +446,75 @@ export function Shell({ children }: { children: ReactNode }) {
         {children}
       </main>
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * QuickScan — a contract input that follows you
+ *
+ * Pasting a CA used to mean going back to the home page, which is the moment
+ * an investigation dies. It now lives on the header bar: paste, enter, and the
+ * scan opens without losing the page you were reading.
+ *
+ * The chain is guessed from the address shape, using the same rule the scanner
+ * uses — a base58 string of Solana length is Solana, 0x + 40 hex is EVM. The
+ * guess is shown before submitting, so a wrong guess is visible rather than
+ * silent. EVM cannot be resolved to a single chain from the address alone, so
+ * it goes to Ethereum and the report page offers the others.
+ * ------------------------------------------------------------------ */
+
+const SOLANA_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+const EVM_RE = /^0x[a-fA-F0-9]{40}$/;
+
+function QuickScan() {
+  const [value, setValue] = useState("");
+  const router = useRouter();
+
+  const trimmed = value.trim();
+  const chain = SOLANA_RE.test(trimmed) ? "solana" : EVM_RE.test(trimmed) ? "ethereum" : null;
+  const valid = chain !== null;
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!valid) return;
+    router.push(`/token/${chain}/${trimmed}`);
+    setValue("");
+  };
+
+  return (
+    <form onSubmit={submit} className="hidden items-center gap-1 xl:flex">
+      <label className="sr-only" htmlFor="quick-scan">
+        Scan a contract address
+      </label>
+      <input
+        id="quick-scan"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="paste CA"
+        spellCheck={false}
+        autoComplete="off"
+        className={`w-[132px] border bg-transparent px-1.5 py-[3px] font-mono text-[9.5px] text-fg outline-none transition-colors placeholder:text-fg4/50 focus:w-[176px] ${
+          trimmed && !valid ? "border-bad/50" : "border-line focus:border-acid"
+        }`}
+        aria-invalid={trimmed !== "" && !valid}
+        title={
+          trimmed === ""
+            ? "Paste a Solana or EVM contract address"
+            : valid
+              ? `Opens a ${chain} scan`
+              : "Not a contract address — Solana base58 or 0x + 40 hex"
+        }
+      />
+      {trimmed !== "" && (
+        <span
+          className={`shrink-0 font-mono text-[8px] uppercase tracking-[0.05em] ${
+            valid ? "text-acid" : "text-bad"
+          }`}
+        >
+          {valid ? (chain === "solana" ? "sol" : "evm") : "?"}
+        </span>
+      )}
+    </form>
   );
 }
 
