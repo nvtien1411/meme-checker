@@ -6,6 +6,7 @@ import { DEMO_TOKENS, DEMO_WALLETS, WALLET_ROLE, shortAddr } from "@/lib/demo";
 import { fmtPrice, fmtUsd } from "@/lib/http";
 import { classifyWallet, crossTokenMemory, walletProfile } from "@/lib/intel";
 import { ExitOrderTable } from "@/components/Intelligence";
+import { WatchToggle } from "@/components/WatchToggle";
 import { exitOrdering } from "@/lib/intel";
 
 /* ==================================================================== *
@@ -66,6 +67,12 @@ export default async function WalletPage({ params }: { params: Promise<{ addr: s
         note={role}
         right={
           <>
+            <WatchToggle
+              kind="wallet"
+              id={decoded}
+              label={shortAddr(decoded, 6, 4)}
+              href={`/wallets/${decoded}`}
+            />
             <Demo />
             <Tag tone={priorRugs >= 3 ? "bad" : priorRugs > 0 ? "warn" : "neutral"}>
               {priorRugs > 0 ? `${priorRugs} prior rugs` : "no rug history"}
@@ -91,23 +98,37 @@ export default async function WalletPage({ params }: { params: Promise<{ addr: s
             {
               label: "funded by",
               value: funder ? shortAddr(funder, 4, 4) : "—",
-              sub: funder ? "shared source" : "not traced",
+              sub: funder ? "shared source → open it" : "not traced",
               tone: funder ? "warn" : "default",
+              href: funder ? `/wallets/${funder}` : undefined,
             },
-          ].map((s) => (
-            <div key={s.label} className="panel p-2.5">
+          ].map((s) => {
+            const tone =
+              s.tone === "bad" ? "bad" : s.tone === "warn" ? "warn" : s.tone === "good" ? "good" : "default";
+            const body = (
               <Stat
                 label={s.label}
                 value={s.value}
                 sub={s.sub}
                 size="md"
                 mono={s.label !== "wallet age" && s.label !== "funded by"}
-                tone={
-                  s.tone === "bad" ? "bad" : s.tone === "warn" ? "warn" : s.tone === "good" ? "good" : "default"
-                }
+                tone={tone}
               />
-            </div>
-          ))}
+            );
+            return s.href ? (
+              <Link
+                key={s.label}
+                href={s.href}
+                className="panel p-2.5 transition-colors hover:border-fg4/60"
+              >
+                {body}
+              </Link>
+            ) : (
+              <div key={s.label} className="panel p-2.5">
+                {body}
+              </div>
+            );
+          })}
         </div>
 
         {/* the verdict on this wallet */}

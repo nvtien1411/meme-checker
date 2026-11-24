@@ -9,6 +9,7 @@ import { callerByHandle, shortAddr } from "@/lib/demo";
 import { Demo, Gauge, Panel, ProReveal, RiskDot, Split, Stat, Tag } from "./ui";
 import { BundleDeep, BundleFree } from "./BundleIntel";
 import { WalletNetworkView } from "./WalletWorkspace";
+import { WatchToggle } from "./WatchToggle";
 import {
   DistributionBar,
   ExitCurve,
@@ -136,7 +137,22 @@ export function IdentityBar({ data, demo }: { data: AnalysisResult; demo: DemoTo
           {demo && <Demo />}
         </div>
 
-        <div className="flex items-center gap-2 sm:ml-auto">
+        <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+          {/* save and compare sit with the identity, because both are things you
+              decide the moment you look at a token, not after reading it */}
+          <WatchToggle
+            kind="token"
+            id={data.token.address}
+            label={data.token.symbol ?? `${data.token.address.slice(0, 6)}…`}
+            href={`/token/${data.token.chain}/${data.token.address}`}
+          />
+          <Link
+            href={`/compare?left=${data.token.address}`}
+            className="shrink-0 border border-line px-1.5 py-[2px] font-mono text-[9px] uppercase tracking-[0.04em] text-fg4 transition-colors hover:border-fg4 hover:text-fg2"
+            title="Compare this token against another"
+          >
+            compare
+          </Link>
           <CopyAddr addr={data.token.address} />
           <a
             href={data.token.explorerUrl}
