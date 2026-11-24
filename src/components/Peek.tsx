@@ -25,28 +25,67 @@ import { WatchToggle } from "./WatchToggle";
  * ==================================================================== */
 
 interface PeekState {
+  /** Pin the panel. Stays until closed. */
   open: (addr: string) => void;
+  /** Preview on hover. Closes when the cursor leaves. */
+  hover: (addr: string) => void;
+  unhover: () => void;
   close: () => void;
+  /** The address on screen, pinned or previewed. */
   current: string | null;
+  /** True when the panel is a transient hover preview. */
+  transient: boolean;
 }
 
 const PeekContext = createContext<PeekState>({
   open: () => {},
+  hover: () => {},
+  unhover: () => {},
   close: () => {},
   current: null,
+  transient: false,
 });
 
 export function usePeek() {
   return useContext(PeekContext);
 }
 
+type Mode = "closed" | "preview" | "pinned";
+
 export function PeekProvider({ children }: { children: React.ReactNode }) {
   const [current, setCurrent] = useState<string | null>(null);
+  const [mode, setMode] = useState<Mode>("closed");
 
-  const open = useCallback((addr: string) => setCurrent(addr), []);
-  const close = useCallback(() => setCurrent(null), []);
+  const open = useCallback((addr: string) => {
+    setCurrent(addr);
+    setMode("pinned");
+  }, []);
 
-  // Escape closes, and the body must not scroll behind the panel.
+  // A preview never replaces a panel the user pinned on purpose — hovering a
+  // second address while one is open would otherwise throw away their place.
+  const hover = useCallback((addr: string) => {
+    setMode((m) => {
+      // a pinned panel outranks a preview: the user asked for that one
+      if (m === "pinned") return m;
+      setCurrent(addr);
+      return "preview";
+    });
+  }, []);
+
+  const unhover = useCallback(() => {
+    setMode((m) => {
+      if (m !== "preview") return m;
+      setCurrent(null);
+      return "closed";
+    });
+  }, []);
+
+  const close = useCallback(() => {
+    setCurrent(null);
+    setMode("closed");
+  }, []);
+
+  // Escape closes, whichever mode it is in.
   useEffect(() => {
     if (!current) return;
     const onKey = (e: KeyboardEvent) => {
@@ -57,16 +96,30 @@ export function PeekProvider({ children }: { children: React.ReactNode }) {
   }, [current, close]);
 
   return (
-    <PeekContext.Provider value={{ open, close, current }}>
+    <PeekContext.Provider
+      value={{ open, hover, unhover, close, current, transient: mode === "preview" }}
+    >
       {children}
-      {current && <PeekPanel addr={current} onClose={close} />}
+      {current && (
+        <PeekPanel addr={current} onClose={close} transient={mode === "preview"} onPin={() => open(current)} />
+      )}
     </PeekContext.Provider>
   );
 }
 
 /* ------------------------------------------------------------------ */
 
-function PeekPanel({ addr, onClose }: { addr: string; onClose: () => void }) {
+function PeekPanel({
+  addr,
+  onClose,
+  transient,
+  onPin,
+}: {
+  addr: string;
+  onClose: () => void;
+  transient: boolean;
+  onPin: () => void;
+}) {
   // Both of these are cheap and pure; no fetch, no loading state to design.
   const profile = walletProfile(addr);
   const graph = buildGraph(walletNetwork());
@@ -74,19 +127,31 @@ function PeekPanel({ addr, onClose }: { addr: string; onClose: () => void }) {
 
   return (
     <>
-      <button
-        type="button"
-        aria-label="Close wallet preview"
-        onClick={onClose}
-        className="fixed inset-0 z-40 bg-bg/60"
-      />
+      {/* a preview gets no scrim: the page behind it is still being read */}
+      {!transient && (
+        <button
+          type="button"
+          aria-label="Close wallet preview"
+          onClick={onClose}
+          className="fixed inset-0 z-40 bg-bg/60"
+        />
+      )}
       <aside
         role="dialog"
         aria-label={`Wallet ${shortAddr(addr, 6, 4)}`}
         className="fixed inset-y-0 right-0 z-50 flex w-[min(400px,100vw)] flex-col border-l border-line bg-surf shadow-2xl"
       >
         <div className="flex items-center gap-2 border-b border-line px-3 py-2">
-          <span className="t-eyebrow">wallet</span>
+          <span className="t-eyebrow">{transient ? "preview" : "wallet"}</span>
+          {transient && (
+            <button
+              type="button"
+              onClick={onPin}
+              className="font-mono text-[8.5px] uppercase tracking-[0.05em] text-acid hover:underline"
+            >
+              pin
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}

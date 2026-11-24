@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import type { AnalysisResult, CheckState } from "@/lib/types";
 import { CHAIN_BY_ID } from "@/lib/chains";
@@ -654,11 +654,29 @@ function WalletsTab({ demo }: { demo: DemoToken | null }) {
  * reader keeps the bundle, the timeline and the tab they were on. */
 export function PeekButton({ addr, className = "" }: { addr: string; className?: string }) {
   const peek = usePeek();
+  // Hovering only *previews* — a short delay opens a read-only panel that the
+  // cursor leaving closes again. It never sets the selection, so the graph and
+  // the tables stay exactly where the user left them. Clicking pins it.
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const enter = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => peek.hover(addr), 380);
+  };
+  const leave = () => {
+    if (timer.current) clearTimeout(timer.current);
+    peek.unhover();
+  };
+
   return (
     <button
       type="button"
       onClick={() => peek.open(addr)}
-      title="Open without leaving this page"
+      onMouseEnter={enter}
+      onMouseLeave={leave}
+      onFocus={enter}
+      onBlur={leave}
+      title="Hover to preview, click to pin"
       className={`font-mono text-[10.5px] text-fg2 underline decoration-dotted decoration-fg4/40 underline-offset-2 hover:text-acid hover:decoration-acid ${className}`}
     >
       {addr.slice(0, 6)}…{addr.slice(-4)}

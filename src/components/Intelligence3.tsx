@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { Panel, Tag } from "./ui";
+import { PeekButton } from "./report";
 import { fmtUsd } from "@/lib/http";
 import { DEMO_CALLERS, DEMO_TOKENS, DEMO_WALLETS, shortAddr } from "@/lib/demo";
 import {
@@ -79,7 +80,7 @@ export function WalletDirectory() {
               href={`/wallets/${n.addr}`}
               className="drow grid grid-cols-[minmax(0,1fr)_74px_46px_52px] items-baseline gap-x-2 border-b border-line px-3 py-[6px] last:border-b-0 sm:grid-cols-[minmax(0,1fr)_96px_52px_56px_60px]"
             >
-              <span className="truncate font-mono text-[10.5px] text-fg2">{shortAddr(n.addr, 6, 4)}</span>
+              <PeekButton addr={n.addr} className="truncate text-left" />
               <span className={`hidden truncate font-mono text-[9px] uppercase tracking-[0.04em] sm:block ${BEHAVIOUR_TONE[b.label] ?? "text-fg4"}`}>
                 {b.label}
               </span>
