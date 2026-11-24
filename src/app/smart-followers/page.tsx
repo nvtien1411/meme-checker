@@ -1,40 +1,62 @@
-import { PageHead } from "@/components/Shell";
-import { Demo, Gauge, Panel, ProReveal, Split, Stat, Tag } from "@/components/ui";
-import { FollowerEntryChart, Timeline } from "@/components/viz";
 import Link from "next/link";
-import { DEMO_TIMELINE, DEMO_WALLETS, shortAddr } from "@/lib/demo";
+import type { Metadata } from "next";
+import { PageHead } from "@/components/Shell";
+import { Demo, Panel, ProReveal, Stat, Tag } from "@/components/ui";
+import { WalletProRows } from "@/components/ProRows";
+import { DEMO_CALLS, DEMO_WALLETS, shortAddr } from "@/lib/demo";
+import { allCallerProfiles } from "@/lib/intel2";
+import { walletProfile } from "@/lib/intel";
 
 /* ==================================================================== *
- * SMART FOLLOWERS
+ * SMART MONEY — who buys after a post, and whether they are the exit
  *
- * The product's sharpest module, and the one with the clearest question: who
- * buys after a caller posts, and are those buyers the exit? Everything here
- * exists to answer that, in that order.
+ * This page used to be six stat cards reading "5", "1,284", "186", "94",
+ * "T+4m", "61%" — literal strings in the JSX with nothing behind them, plus a
+ * five-step narrative that described a sequence of events the dataset has no
+ * record of. Every number on it was a decoration shaped like evidence.
+ *
+ * Rewritten so that every figure is computed on the page from DEMO_CALLS and
+ * the caller profiles. Where the demo dataset cannot support a metric, the
+ * metric is gone rather than zeroed — a table of wallets is honest, a made-up
+ * count of "1,284 follower wallets" is not.
  * ==================================================================== */
 
-export const metadata = { title: "Smart Money" };
+export const metadata: Metadata = {
+  title: "Smart Money — Meme Checker",
+  description: "Which wallets repeatedly buy after a call, and whether they beat the crowd out",
+};
 
-const BUCKETS = [
-  { label: "T−30", pct: 5 },
-  { label: "T−20", pct: 8 },
-  { label: "T−10", pct: 13 },
-  { label: "T−5", pct: 19 },
-  { label: "T+0", pct: 12 },
-  { label: "T+5", pct: 28 },
-  { label: "T+10", pct: 36 },
-  { label: "T+20", pct: 21 },
-  { label: "T+30", pct: 8 },
-  { label: "T+60", pct: 3 },
-];
+const REFERENCE = Math.max(...DEMO_CALLS.map((c) => Date.parse(c.at)));
 
-const REPEAT = [
-  { addr: DEMO_WALLETS.fol1, calls: 11, tokens: 9, entry: "T+2m", result: "+2.4×", holding: false },
-  { addr: DEMO_WALLETS.fol2, calls: 9, tokens: 8, entry: "T+4m", result: "+1.1×", holding: true },
-  { addr: DEMO_WALLETS.fol3, calls: 7, tokens: 7, entry: "T+1m", result: "−0.6×", holding: true },
-  { addr: DEMO_WALLETS.fol4, calls: 6, tokens: 6, entry: "T+7m", result: "−0.4×", holding: true },
-];
+function ago(iso: string): string {
+  const mins = Math.round((REFERENCE - Date.parse(iso)) / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1440) return `${Math.round(mins / 60)}h ago`;
+  return `${Math.round(mins / 1440)}d ago`;
+}
 
 export default function SmartFollowersPage() {
+  const profiles = allCallerProfiles();
+
+  // How many distinct tokens each tracked caller has posted, and how many of
+  // those posts were profitable for someone who bought at the call price.
+  const totalCalls = DEMO_CALLS.length;
+  const wonAtCall = DEMO_CALLS.filter(
+    (c) => c.hoursToPeak !== null && c.peakMc / c.mcAtCall >= 2,
+  ).length;
+
+  // Callers whose own exit landed above the price of their post: these are the
+  // accounts where "buying after the post" is structurally buying their exit.
+  const sellingInto = profiles.filter((p) => p.sellsAboveCall);
+  const leadNegative = profiles.filter((p) => p.lead < 0);
+
+  // The tracked follower wallets, with whatever the profile function can
+  // actually support. Anything it returns null for renders as a dash.
+  const followerAddrs = [DEMO_WALLETS.fol1, DEMO_WALLETS.fol2, DEMO_WALLETS.fol3, DEMO_WALLETS.fol4];
+  const followerRows = followerAddrs
+    .map((addr) => ({ addr, p: walletProfile(addr) }))
+    .filter((r): r is { addr: string; p: NonNullable<ReturnType<typeof walletProfile>> } => r.p !== null);
+
   return (
     <div>
       <PageHead
@@ -43,243 +65,232 @@ export default function SmartFollowersPage() {
         right={
           <>
             <Demo />
-            <Tag tone="acid">VIP</Tag>
+            <Tag tone="neutral">{profiles.length} callers</Tag>
           </>
         }
       />
 
       <div className="space-y-2.5 p-3 sm:p-4">
+        {/* what is actually measured */}
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+          <div className="panel p-2.5">
+            <Stat
+              label="calls on record"
+              value={String(totalCalls)}
+              sub={`across ${profiles.length} tracked accounts`}
+              size="md"
+            />
+          </div>
+          <div className="panel p-2.5">
+            <Stat
+              label="reached 2×"
+              value={`${Math.round((wonAtCall / totalCalls) * 100)}%`}
+              sub={`${wonAtCall} of ${totalCalls} calls`}
+              size="md"
+            />
+          </div>
+          <div className="panel p-2.5">
+            <Stat
+              label="sell above their call"
+              value={String(sellingInto.length)}
+              sub={`of ${profiles.length} callers`}
+              size="md"
+            />
+          </div>
+          <div className="panel p-2.5">
+            <Stat
+              label="posted before buying"
+              value={String(leadNegative.length)}
+              sub="negative lead time"
+              size="md"
+            />
+          </div>
+        </div>
 
-        {/* the question, stated once */}
-        <Panel title="The question this answers" note="one sentence, and every panel below is evidence for it">
-          <p className="t-body leading-relaxed text-fg2">
-            When an account posts a token, a crowd buys. Some of those buyers are real followers.
-            Others were positioned before the post and are selling into the crowd.{" "}
-            <span className="text-fg">
-              This module counts which is which, for every tracked caller.
-            </span>
+        {/* the boundary, stated in the place it matters */}
+        <Panel title="What this page can and cannot count" note="stated up front, because the difference decides the verdict">
+          <p className="t-xs leading-relaxed text-fg3">
+            Two things are measurable with the data behind this build: what each caller&apos;s own
+            wallet did with their own call, and how the calls themselves resolved. What is{" "}
+            <span className="text-fg2">not</span> measurable yet is the follower side — matching a
+            wallet to a post requires ingesting X, then reconciling buyer addresses against post
+            timestamps. That pipeline is not wired, so this page shows the caller-side evidence in
+            full and marks the follower-side module as unmeasured rather than filling it with
+            plausible numbers
           </p>
         </Panel>
 
-        {/* network overview */}
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
-          {[
-            { label: "callers tracked", value: "5", sub: "with wallet matching" },
-            { label: "follower wallets", value: "1,284", sub: "bought after a post" },
-            { label: "repeat followers", value: "186", sub: "3+ posts of one account" },
-            { label: "shared wallets", value: "94", sub: "follow 2+ callers" },
-            { label: "median entry", value: "T+4m", sub: "after the post" },
-            { label: "underwater", value: "61%", sub: "of followers now" },
-          ].map((s) => (
-            <div key={s.label} className="panel p-2.5">
-              <Stat label={s.label} value={s.value} sub={s.sub} size="md" />
-            </div>
-          ))}
-        </div>
-
-        {/* the core analysis */}
-        <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-          <Panel
-            title="Follower entry against the post"
-            note="every wallet that bought within an hour, bucketed by minute"
-          >
-            <FollowerEntryChart buckets={BUCKETS} postIndex={4} />
-            <div className="mt-2.5 grid grid-cols-2 gap-x-4">
-              <Split label="before the post" tone="bad">
-                45%
-              </Split>
-              <Split label="after the post">55%</Split>
-              <Split label="median entry">T+4m</Split>
-              <Split label="peak inflow">T+10m</Split>
-            </div>
-            <p className="mt-2 t-xs leading-relaxed text-fg4">
-              45% of the wallets that later sold into the inflow had bought before the post. Those
-              wallets were not followers — they were positioned, and the post was their bid
-            </p>
-          </Panel>
-
-          <Panel title="The sequence" note="RATS, relative to the first public post">
-            <Timeline events={DEMO_TIMELINE} />
-          </Panel>
-        </div>
-
-        {/* exit liquidity */}
-        <Panel title="Are followers the exit?" note="the chain, as observed" flush>
-          <div className="grid grid-cols-1 divide-y divide-line sm:grid-cols-5 sm:divide-x sm:divide-y-0">
-            {[
-              { step: "1", label: "early wallets buy", detail: "22.4% in the launch block", tone: "text-info" },
-              { step: "2", label: "caller posts", detail: "mcap $41k at post", tone: "text-acid" },
-              { step: "3", label: "followers buy", detail: "41 wallets in 6 minutes", tone: "text-fg" },
-              { step: "4", label: "early wallets sell", detail: "68% of position, 25m later", tone: "text-hot" },
-              { step: "5", label: "price reacts", detail: "−38% from post-call high", tone: "text-bad" },
-            ].map((s) => (
-              <div key={s.step} className="px-3 py-2.5">
-                <div className="flex items-baseline gap-1.5">
-                  <span className="t-mono text-[9px] text-fg4">{s.step}</span>
-                  <span className={`t-xs font-semibold ${s.tone}`}>{s.label}</span>
-                </div>
-                <p className="mt-0.5 t-xs leading-snug text-fg4">{s.detail}</p>
-              </div>
-            ))}
-          </div>
-          <div className="border-t border-line px-3 py-1.5">
-            <span className="t-xs text-fg3">
-              Observed transactions: steps 1, 3 and 4. Estimated: the share attributed to each
-              bucket. Inferred: that the post was timed to the inflow — the timing is consistent
-              with it and does not prove it
-            </span>
-          </div>
-        </Panel>
-
-        {/* repeat followers */}
+        {/* caller-side evidence, real rows */}
         <Panel
-          title="Repeat followers"
-          note="wallets that buy after the same account, three or more times"
+          title="Callers, worst first"
+          note="their own exit against the price of their own post"
           flush
         >
-          <div className="grid grid-cols-[minmax(0,1fr)_44px_52px_56px] items-baseline gap-x-2.5 border-b border-line bg-surf2/40 px-3 py-1.5 sm:grid-cols-[minmax(0,1fr)_52px_56px_56px_64px_68px]">
-            <span className="t-eyebrow">wallet</span>
-            <span className="t-eyebrow text-right">calls</span>
-            <span className="hidden text-right t-eyebrow sm:block">tokens</span>
-            <span className="t-eyebrow text-right">entry</span>
-            <span className="hidden text-right t-eyebrow sm:block">result</span>
-            <span className="t-eyebrow text-right">holds</span>
+          <div className="grid grid-cols-[minmax(0,1fr)_52px_54px_48px_76px] items-baseline gap-x-2 border-b border-line bg-surf2/40 px-2.5 py-1.5 sm:grid-cols-[minmax(0,1fr)_56px_58px_52px_76px]">
+            <span className="t-eyebrow">caller</span>
+            <span className="t-eyebrow text-right" title="their exit ÷ the price at their post">exit/call</span>
+            <span className="t-eyebrow text-right" title="seconds between their buy and their post">lead</span>
+            <span className="hidden t-eyebrow text-right sm:block" title="share of their own position sold after posting">sold</span>
+            <span className="t-eyebrow text-right">verdict</span>
           </div>
-          {REPEAT.map((w) => (
-            <div
-              key={w.addr}
-              className="drow grid grid-cols-[minmax(0,1fr)_44px_52px_56px] items-center gap-x-2.5 border-b border-line px-3 py-1.5 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_52px_56px_56px_64px_68px]"
-            >
-              <div className="flex min-w-0 items-baseline gap-1.5">
-                <span className="truncate font-mono text-[10.5px] text-fg2">
-                  {w.addr.slice(0, 6)}…{w.addr.slice(-4)}
-                </span>
-                {w.calls >= 9 && <Tag tone="warn">frequent</Tag>}
-              </div>
-              <span className="text-right t-mono text-[10.5px] text-fg3">{w.calls}</span>
-              <span className="hidden text-right t-mono text-[10.5px] text-fg4 sm:block">{w.tokens}</span>
-              <span className="text-right t-mono text-[10px] text-fg3">{w.entry}</span>
-              <span
-                className={`hidden text-right t-mono text-[10.5px] sm:block ${
-                  w.result.startsWith("+") ? "text-good" : "text-bad"
-                }`}
+          {[...profiles]
+            .sort((a, b) => b.exitVsCall - a.exitVsCall)
+            .map((p) => (
+              <Link
+                key={p.caller.handle}
+                href={`/callers/${p.caller.handle}`}
+                className="drow grid grid-cols-[minmax(0,1fr)_52px_54px_48px_76px] items-baseline gap-x-2 border-b border-line px-2.5 py-[6px] last:border-b-0 sm:grid-cols-[minmax(0,1fr)_56px_58px_52px_76px]"
               >
-                {w.result}
-              </span>
-              <span className={`text-right t-mono text-[10px] ${w.holding ? "text-warn" : "text-fg4"}`}>
-                {w.holding ? "yes" : "no"}
-              </span>
-            </div>
-          ))}
+                <div className="min-w-0">
+                  <span className="truncate t-xs font-semibold text-fg">@{p.caller.handle}</span>
+                  <div className="mt-0.5 t-xs text-fg4">
+                    {p.calls} calls · {p.caller.smartFollowers} smart followers
+                  </div>
+                </div>
+                <span
+                  className={`text-right t-mono text-[10.5px] tabular-nums ${
+                    p.exitVsCall > 1 ? "text-bad" : "text-good"
+                  }`}
+                >
+                  {p.exitVsCall.toFixed(2)}×
+                </span>
+                <span
+                  className={`text-right t-mono text-[10.5px] tabular-nums ${
+                    p.lead < 0 ? "text-warn" : "text-fg3"
+                  }`}
+                >
+                  {p.lead === 0 ? "same" : `${p.lead > 0 ? "+" : ""}${p.lead}s`}
+                </span>
+                <span
+                  className={`hidden text-right t-mono text-[10.5px] tabular-nums sm:block ${
+                    p.soldAfter > 45 ? "text-bad" : "text-fg3"
+                  }`}
+                >
+                  {p.soldAfter.toFixed(0)}%
+                </span>
+                <span className="whitespace-nowrap text-right font-mono text-[9px] uppercase tracking-[0.04em]">
+                  <span
+                    className={
+                      p.verdict === "exit liquidity"
+                        ? "text-bad"
+                        : p.verdict === "worth following"
+                          ? "text-good"
+                          : "text-warn"
+                    }
+                  >
+                    {p.verdict}
+                  </span>
+                </span>
+              </Link>
+            ))}
         </Panel>
 
-        {/* cabal */}
-        <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
-          <Panel title="Cabal intelligence" note="coordination signals across the tracked network">
-            <div className="flex items-baseline gap-2">
-              <span className="t-mono text-[24px] text-bad">Elevated</span>
-              <span className="t-xs text-fg4">4 of 7 signals fired</span>
-            </div>
-            <div className="mt-2 space-y-1">
-              {[
-                ["Pre-call accumulation", true, "wallets bought before the first post"],
-                ["Repeated participation", true, "3 wallets on 4 prior calls"],
-                ["Shared funding", true, "bundle funded from one address"],
-                ["Wallet clusters", true, "6 addresses, 2 clusters"],
-                ["Coordinated entry", false, "no same-slot entry detected"],
-                ["Caller-wallet connection", false, "no direct transfer found"],
-                ["Early distribution", false, "sellers were pre-call, not the caller"],
-              ].map(([label, fired, note]) => (
-                <div key={label as string} className="flex items-start gap-2 border-b border-line py-1 last:border-b-0">
-                  <span
-                    aria-hidden
-                    className={`mt-[4px] h-[5px] w-[5px] shrink-0 ${fired ? "bg-bad" : "bg-line2"}`}
-                  />
-                  <span className={`min-w-0 flex-1 t-xs ${fired ? "text-fg" : "text-fg3"}`}>
-                    {label as string}
-                  </span>
-                  <span className="shrink-0 t-mono text-[9.5px] text-fg4">{note as string}</span>
+        {/* recent calls, dated from the dataset reference, not the clock */}
+        <Panel
+          title="Calls, newest first"
+          note={`${DEMO_CALLS.length} on record — times relative to the newest`}
+          flush
+        >
+          <div className="grid grid-cols-[56px_minmax(0,1fr)_62px_44px] items-baseline gap-x-2 border-b border-line bg-surf2/40 px-2.5 py-1.5">
+            <span className="t-eyebrow">when</span>
+            <span className="t-eyebrow">caller</span>
+            <span className="t-eyebrow">token</span>
+            <span className="t-eyebrow text-right" title="peak market cap ÷ market cap at the call">
+              peak
+            </span>
+          </div>
+          {[...DEMO_CALLS]
+            .sort((a, b) => b.at.localeCompare(a.at))
+            .map((c) => (
+              <div
+                key={`${c.handle}-${c.mint}-${c.at}`}
+                className="grid grid-cols-[56px_minmax(0,1fr)_62px_44px] items-baseline gap-x-2 border-b border-line px-2.5 py-[5px] last:border-b-0"
+              >
+                <span className="t-mono text-[9.5px] text-fg4">{ago(c.at)}</span>
+                <Link
+                  href={`/callers/${c.handle}`}
+                  className="min-w-0 truncate t-xs text-fg3 hover:text-acid"
+                >
+                  @{c.handle}
+                </Link>
+                <span className="truncate t-xs font-semibold text-fg">{c.symbol}</span>
+                <span
+                  className={`text-right t-mono text-[10px] tabular-nums ${
+                    c.outcome === "won" ? "text-good" : c.outcome === "lost" ? "text-bad" : "text-fg4"
+                  }`}
+                >
+                  {c.hoursToPeak !== null ? `${(c.peakMc / c.mcAtCall).toFixed(1)}×` : "dead"}
+                </span>
+              </div>
+            ))}
+        </Panel>
+
+        {/* the tracked follower wallets — real profiles, no invented counts */}
+        <Panel
+          title="Tracked buyer wallets"
+          note={`${followerRows.length} wallets in this dataset with a launch history`}
+          flush
+        >
+          {followerRows.length === 0 ? (
+            <p className="px-3 py-2.5 t-xs text-fg4">
+              None of the tracked buyer wallets appear in a launch this scanner recorded
+            </p>
+          ) : (
+            <div className="divide-y divide-line">
+              {followerRows.map(({ addr, p }) => (
+                <div key={addr} className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1 px-2.5 py-[6px]">
+                  <Link
+                    href={`/wallets/${addr}`}
+                    className="font-mono text-[10.5px] text-fg2 hover:text-acid"
+                  >
+                    {shortAddr(addr, 6, 4)}
+                  </Link>
+                  <span className="t-xs text-fg4">{p.launchCount} launches</span>
+                  {p.bundleCount > 0 && <Tag tone="bad">{p.bundleCount} in creation block</Tag>}
+                  {p.medianHoldMin !== null && (
+                    <span className="t-mono text-[9.5px] text-fg4">
+                      holds {p.medianHoldMin.toFixed(0)}m
+                    </span>
+                  )}
+                  <Link
+                    href={`/investigation?w=${addr}`}
+                    className="ml-auto border border-line px-1.5 py-[1px] font-mono text-[9px] uppercase text-fg4 hover:border-acid/40 hover:text-acid"
+                  >
+                    investigate
+                  </Link>
                 </div>
               ))}
             </div>
-            <p className="mt-2 t-xs leading-relaxed text-fg4">
-              Four signals is a pattern worth reading, not a conclusion. A busy launch produces
-              most of these by accident — what makes it notable is that the same clusters appear
-              again on other callers&apos; tokens
-            </p>
-          </Panel>
+          )}
+        </Panel>
 
-          <Panel title="Follower overlap" note="wallets following more than one caller" flush>
-            {[
-              { pair: "@cryptocole → @degenmira", shared: 61, total: 148 },
-              { pair: "@cryptocole → @soltrenches", shared: 44, total: 212 },
-              { pair: "@degenmira → @soltrenches", shared: 38, total: 190 },
-              { pair: "@lynk0x → @ricofintech", shared: 12, total: 96 },
-            ].map((o) => (
-              <div key={o.pair} className="border-b border-line px-3 py-1.5 last:border-b-0">
-                <div className="flex items-baseline gap-2">
-                  <span className="min-w-0 flex-1 truncate t-xs text-fg2">{o.pair}</span>
-                  <span className="t-mono text-[10.5px] text-fg3">
-                    {o.shared}/{o.total}
-                  </span>
-                </div>
-                <div className="mt-1">
-                  <Gauge pct={(o.shared / o.total) * 100} tone={o.shared / o.total > 0.3 ? "bad" : "warn"} height={3} />
-                </div>
-              </div>
-            ))}
-            <p className="px-3 py-1.5 t-xs leading-relaxed text-fg4">
-              Two callers sharing 41% of their follower base is either a shared audience or a
-              shared operator. The distinction needs the wallet graph, below
-            </p>
-          </Panel>
-        </div>
-
+        {/* what the paid layer would add, with the honest reason it is empty */}
         <ProReveal
-          title="The rest of the follower set"
+          title="Follower-side matching"
+          value={`${followerRows.length} buyer wallets have a launch history on record; the post-to-wallet match needs X ingestion`}
+          clip={4}
           shown={2}
-          rows={REPEAT.map((f) => (
-            <div
-              key={f.addr}
-              className="panel flex flex-wrap items-baseline gap-x-3 gap-y-1 px-2.5 py-1.5"
-            >
-              <Link
-                href={`/wallets/${f.addr}`}
-                className="font-mono text-[10.5px] text-fg2 hover:text-acid"
-              >
-                {shortAddr(f.addr, 6, 4)}
-              </Link>
-              <span className="t-xs tabular-nums text-fg4">{f.calls} calls</span>
-              <span className="t-xs tabular-nums text-fg4">{f.tokens} tokens</span>
-              <span className="font-mono text-[10px] text-fg4">entry {f.entry}</span>
-              <span
-                className={`ml-auto font-mono text-[10.5px] tabular-nums ${
-                  f.result.startsWith("+") ? "text-good" : "text-bad"
-                }`}
-              >
-                {f.result}
-              </span>
-              <span className="w-14 text-right t-xs text-fg4">
-                {f.holding ? "still in" : "exited"}
-              </span>
-            </div>
-          ))}
+          rows={[<WalletProRows key="wp" addrs={followerAddrs} />]}
           more={[
-            "Per-caller follower list with entry time, entry price and current position",
-            "Which follower wallets were created within 24h of the call",
-            "Funding connections between follower wallets and the caller's own wallet",
-            "Repeat chains: the same addresses across three or more callers",
-            "Historical follower outcomes for every prior call, not just this one",
-            "Wallet-cluster graph with edges labelled by the actual transfer",
-            "Alerts when a tracked caller posts and a known cluster buys within five minutes",
+            "Which wallets bought within N minutes of a specific post, per caller",
+            "Repeat followers: wallets that arrive after the same account three or more times",
+            "Wallets shared across callers — the same crowd following several accounts",
+            "Median entry time after a post, and how much of the move they captured",
+            "Which followers were already holding before the post, and when they left",
           ]}
-          note="Four wallets that appear on every one of this caller's calls, with their real outcomes. The free view shows the two at the top of the list"
+          note="The rows above are real wallet histories. The follower-to-post link is the missing pipeline, and no amount of framing turns it into a measurement"
         />
 
-        <p className="t-xs leading-relaxed text-fg4">
-          Nothing here accuses an account of anything. It reports which wallets bought, when, and
-          what they did next — the reader decides what that pattern means
-        </p>
+        <Panel title="Why this matters more than follower count" note="the one thing this module exists to say">
+          <p className="t-xs leading-relaxed text-fg3">
+            A follower count counts accounts that pressed a button. It says nothing about whether
+            those accounts bought, whether they bought before or after the post, or whether they
+            are still holding. The number that matters is how many wallets repeatedly arrive after
+            a given account posts{" "}
+            <span className="text-fg2">and leave before the crowd does</span> — because those
+            wallets are not followers, they are the exit, and the account is the door
+          </p>
+        </Panel>
       </div>
     </div>
   );

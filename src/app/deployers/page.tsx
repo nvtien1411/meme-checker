@@ -4,6 +4,7 @@ import { Demo, Gauge, Panel, ProReveal, RiskDot, Split, Stat, Tag } from "@/comp
 import { DEMO_RUGS, DEMO_TOKENS, DEMO_WALLETS } from "@/lib/demo";
 import { fmtUsd } from "@/lib/http";
 import { deployerRecord } from "@/lib/intel2";
+import { DeployerProRows } from "@/components/ProRows";
 
 /* ==================================================================== *
  * DEPLOYERS
@@ -16,6 +17,20 @@ import { deployerRecord } from "@/lib/intel2";
 export const metadata = { title: "Deployers" };
 
 export default function DeployersPage() {
+  // These four numbers were typed into the JSX. They are derived here so the
+  // header cannot disagree with the table beneath it.
+  // Pick the deployer with the longest record rather than a hard index: [2] is
+  // the bundle1 wallet with a single launch, which made the header say "one
+  // wallet, four launches" above a table showing 1.
+  const leadAddr =
+    [...new Set(DEMO_RUGS.map((r) => r.deployer))]
+      .map((a) => ({ a, r: deployerRecord(a) }))
+      .filter((x): x is { a: string; r: NonNullable<ReturnType<typeof deployerRecord>> } => x.r !== null)
+      .sort((x, y) => y.r.launchCount - x.r.launchCount)[0]?.a ?? DEMO_RUGS[0].deployer;
+  const lead = deployerRecord(leadAddr);
+  const leadLaunches = lead?.launchCount ?? 0;
+  const leadRugged = lead?.rugCount ?? 0;
+  const leadRugPct = leadLaunches > 0 ? Math.round((leadRugged / leadLaunches) * 100) : 0;
   const record = [
     { symbol: "RATS", mint: DEMO_TOKENS[0].mint, chain: "solana", at: "2026-11-18", peak: 612900, now: 43823, status: "live" as const },
     { symbol: "PEACH", mint: DEMO_RUGS[0].mint, chain: "solana", at: "2026-11-23", peak: 612900, now: null, status: "rugged" as const },
@@ -38,13 +53,31 @@ export default function DeployersPage() {
 
       <div className="space-y-2.5 p-3 sm:p-4">
 
-        <Panel title="Deployer" note="one wallet, four launches, three dead" flush>
+        <Panel
+          title="Deployer"
+          note={`${leadLaunches} launches on record, ${leadRugged} collapsed`}
+          flush
+        >
           <div className="grid grid-cols-2 divide-x divide-line border-b border-line sm:grid-cols-4">
             {[
-              { label: "launches", value: "4", sub: "on this chain" },
-              { label: "rugged", value: "3", sub: "75% of launches", tone: "bad" },
-              { label: "still holding", value: "0.0%", sub: "of this token" },
-              { label: "funded by", value: "1 wallet", sub: "same source every time", tone: "hot" },
+              { label: "launches", value: String(leadLaunches), sub: "on this chain" },
+              {
+                label: "rugged",
+                value: String(leadRugged),
+                sub: leadLaunches > 0 ? `${leadRugPct}% of launches` : "no launches on record",
+                tone: "bad",
+              },
+              {
+                label: "median drawdown",
+                value: lead?.medianDrawdown == null ? "—" : `${Math.round(lead.medianDrawdown)}%`,
+                sub: "across its launches",
+              },
+              {
+                label: "active span",
+                value: lead?.activeDays == null ? "—" : `${lead.activeDays}d`,
+                sub: "first to latest launch",
+                tone: "hot",
+              },
             ].map((s) => (
               <div key={s.label} className="px-3 py-2">
                 <Stat
@@ -176,19 +209,9 @@ export default function DeployersPage() {
               ? `${d.launchCount} launches on record, ${d.rugCount} collapsed, median drawdown ${d.medianDrawdown?.toFixed(0)}%`
               : "No launch record for this address";
           })()}
-          clip={3}
-          shown={2}
-          rows={DEMO_RUGS.slice(2, 5).map((r) => (
-            <div key={r.symbol} className="panel flex flex-wrap items-baseline gap-x-3 gap-y-1 px-2.5 py-1.5">
-              <span className="font-mono text-[11px] text-fg">{r.symbol}</span>
-              <RiskDot risk={r.drawdownPct > 95 ? "critical" : "high"} />
-              <span className="font-mono text-[10.5px] tabular-nums text-bad">
-                -{r.drawdownPct}%
-              </span>
-              <span className="t-xs tabular-nums text-fg4">peak ${(r.peakMc / 1000).toFixed(0)}k</span>
-              <span className="ml-auto t-xs text-fg4">{r.signals[0]}</span>
-            </div>
-          ))}
+          clip={5}
+          shown={3}
+          rows={[<DeployerProRows key="dp" />]}
           more={[
             "Which launches used the same configuration and funding source",
             "Wallets that received supply before the public launch on each one",

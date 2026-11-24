@@ -1,7 +1,8 @@
 import { PageHead } from "@/components/Shell";
 import { Demo, Panel, ProReveal, Tag } from "@/components/ui";
 import { WalletDirectory } from "@/components/Intelligence3";
-import { DEMO_TOKENS, WALLET_ROLE } from "@/lib/demo";
+import { WalletProRows } from "@/components/ProRows";
+import { DEMO_WALLETS, DEMO_TOKENS, WALLET_ROLE } from "@/lib/demo";
 
 /* ==================================================================== *
  * WALLETS — the directory, and the memory behind it
@@ -102,10 +103,14 @@ export default function WalletsPage() {
           })}
         </Panel>
 
+        <Panel title="Every wallet this scanner has seen" note="one row per address, with its launch history" flush>
+          <WalletDirectory />
+        </Panel>
+
         <ProReveal
           title="What each address is, and which one leaves first"
-          shown={0}
-          rows={[]}
+          shown={4}
+          rows={[<WalletProRows key="w" addrs={Object.values(DEMO_WALLETS)} />]}
           clip={4}
           more={[
             "A behaviour label per wallet, derived from its launch history, with confidence",
@@ -115,9 +120,7 @@ export default function WalletsPage() {
             "Every launch an address appears on, with the outcome of each",
           ]}
           note="A wallet with five launches and four collapses is a different object from one with a single appearance. The table above counts them the same"
-        >
-          <WalletDirectory />
-        </ProReveal>
+        />
       </div>
     </div>
   );

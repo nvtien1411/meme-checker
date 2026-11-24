@@ -3,6 +3,7 @@ import { PageHead } from "@/components/Shell";
 import { Demo, Gauge, Panel, ProReveal, Split, Tag } from "@/components/ui";
 import { NarrativeWalletGate } from "@/components/NarrativeGate";
 import { NarrativeTable } from "@/components/Intelligence2";
+import { NarrativeProRows } from "@/components/ProRows";
 import { DEMO_NARRATIVES, DEMO_TOKENS } from "@/lib/demo";
 import { allNarratives, narrativeAnalysis } from "@/lib/intel2";
 import { fmtUsd } from "@/lib/http";
@@ -179,8 +180,8 @@ export default function NarrativesPage() {
               : `None of the ${ns.length} narratives is crowded yet`;
           })()}
           clip={5}
-          shown={0}
-          rows={[]}
+          shown={2}
+          rows={[<NarrativeProRows key="n" />]}
           more={[
             "Copy count against attention for all tracked narratives at once",
             "Which are early, crowded, recycled or dying, with the reason",

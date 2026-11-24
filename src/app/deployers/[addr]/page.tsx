@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { PageHead } from "@/components/Shell";
 import { Demo, Gauge, Panel, ProReveal, RiskDot, Split, Stat, Tag } from "@/components/ui";
 import { DeployerRecordPanel } from "@/components/Intelligence2";
+import { DeployerProRows } from "@/components/ProRows";
 import { DEMO_RUGS, DEMO_TOKENS, DEMO_WALLETS, shortAddr } from "@/lib/demo";
 import { fmtUsd } from "@/lib/http";
 
@@ -206,8 +207,8 @@ export default async function DeployerPage({ params }: { params: Promise<{ addr:
 
         <ProReveal
           title="The record, and the tree behind it"
-          shown={0}
-          rows={[]}
+          shown={2}
+          rows={[<DeployerProRows key="d" />]}
           more={[
             "Every token this wallet deployed, including ones outside this dataset",
             "Which of them used the same launch configuration and funding source",

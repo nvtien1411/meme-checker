@@ -2,6 +2,7 @@ import Link from "next/link";
 import { PageHead } from "@/components/Shell";
 import { Demo, Gauge, Panel, ProReveal, Split, Stat, Tag } from "@/components/ui";
 import { RugCaseFile } from "@/components/Intelligence4";
+import { DeployerProRows } from "@/components/ProRows";
 import { DEMO_RUGS } from "@/lib/demo";
 import { fmtUsd } from "@/lib/http";
 
@@ -24,6 +25,9 @@ const FLAG_TONE: Record<string, string> = {
 
 export default function RugsPage() {
   const confirmed = DEMO_RUGS.filter((r) => r.flag === "confirmed").length;
+  const reported = DEMO_RUGS.filter((r) => r.flag === "reported").length;
+  const suspected = DEMO_RUGS.filter((r) => r.flag === "suspected").length;
+  const deployers = new Set(DEMO_RUGS.map((r) => r.deployer)).size;
   const total = DEMO_RUGS.length;
 
   return (
@@ -43,9 +47,9 @@ export default function RugsPage() {
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
           {[
             { label: "confirmed", value: `${confirmed}`, sub: "drawdown verified", tone: "bad" },
-            { label: "reported", value: "1", sub: "community, unverified", tone: "hot" },
-            { label: "suspected", value: "1", sub: "pattern only", tone: "warn" },
-            { label: "deployers", value: "3", sub: "behind these entries", tone: "default" },
+            { label: "reported", value: `${reported}`, sub: "community, unverified", tone: "hot" },
+            { label: "suspected", value: `${suspected}`, sub: "pattern only", tone: "warn" },
+            { label: "deployers", value: `${deployers}`, sub: "behind these entries", tone: "default" },
           ].map((s) => (
             <div key={s.label} className="panel p-2.5">
               <Stat
@@ -140,8 +144,8 @@ export default function RugsPage() {
 
         <ProReveal
           title="The case file for the worst one"
-          shown={0}
-          rows={[]}
+          shown={2}
+          rows={[<DeployerProRows key="d" />]}
           more={[
             "Every wallet that bought the launch, with its entry and exit",
             "Which wallet sold first, and how long the rest waited",

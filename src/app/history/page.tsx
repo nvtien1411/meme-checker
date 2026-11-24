@@ -2,7 +2,8 @@ import Link from "next/link";
 import { PageHead } from "@/components/Shell";
 import { Demo, Panel, ProReveal, RiskDot, Tag } from "@/components/ui";
 import { ScanMemory } from "@/components/Intelligence3";
-import { DEMO_TOKENS } from "@/lib/demo";
+import { WalletProRows } from "@/components/ProRows";
+import { DEMO_WALLETS, DEMO_TOKENS } from "@/lib/demo";
 
 /* ==================================================================== *
  * HISTORY
@@ -41,8 +42,8 @@ export default function HistoryPage() {
       <div className="space-y-2.5 p-3 sm:p-4">
         <ProReveal
           title="What every scan you have run has in common"
-          shown={0}
-          rows={[]}
+          shown={2}
+          rows={[<WalletProRows key="w" addrs={Object.values(DEMO_WALLETS)} />]}
           more={[
             "Every address that appeared in more than one of your scans",
             "Which of those wallets are still holding, and which have left",
