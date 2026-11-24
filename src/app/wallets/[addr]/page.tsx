@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { PageHead } from "@/components/Shell";
 import { Demo, Gauge, Panel, ProReveal, Split, Stat, Tag } from "@/components/ui";
 import { DEMO_TOKENS, DEMO_WALLETS, WALLET_ROLE, shortAddr } from "@/lib/demo";
-import { fmtPrice, fmtUsd } from "@/lib/http";
+import { fmtPrice } from "@/lib/http";
 import { classifyWallet, crossTokenMemory, walletProfile } from "@/lib/intel";
 import { ExitOrderTable } from "@/components/Intelligence";
 import { WatchToggle } from "@/components/WatchToggle";
@@ -366,39 +366,62 @@ export default async function WalletPage({ params }: { params: Promise<{ addr: s
         )}
 
         <ProReveal
-          title="The rest of this wallet&#39;s history"
-          shown={1}
+          title="Every move this wallet made, per launch"
+          shown={4}
           rows={[
-            <Panel key="hist" title="Full trade history" note="every entry and exit, newest first">
-              <div className="space-y-1">
-                {[
-                  { t: "2026-11-22 14:00", kind: "buy", token: "RATS", amount: "18.9%", usd: 12400 },
-                  { t: "2026-11-18 09:12", kind: "sell", token: "PEACH", amount: "62%", usd: 38800 },
-                  { t: "2026-11-15 22:41", kind: "buy", token: "TRIPLET", amount: "9.4%", usd: 9100 },
-                  { t: "2026-11-09 17:03", kind: "sell", token: "JELLY", amount: "100%", usd: 22100 },
-                ].map((tr) => (
-                  <div
-                    key={tr.t}
-                    className="flex items-baseline gap-2 border-b border-line py-1 last:border-b-0"
-                  >
-                    <span className="t-mono text-[9.5px] text-fg4">{tr.t}</span>
-                    <span
-                      className={`font-mono text-[9px] uppercase ${
-                        tr.kind === "buy" ? "text-good" : "text-bad"
-                      }`}
-                    >
-                      {tr.kind}
-                    </span>
-                    <span className="t-xs text-fg2">{tr.token}</span>
-                    <span className="ml-auto t-mono text-[10px] text-fg3">{tr.amount}</span>
-                    <span className="w-16 text-right t-mono text-[10px] text-fg4">
-                      {fmtUsd(tr.usd)}
-                    </span>
+            <div
+              key="hdr"
+              className="grid grid-cols-[minmax(0,1fr)_54px_48px_50px] items-baseline gap-x-2 border-b border-line bg-surf2/40 px-2.5 py-1.5 sm:grid-cols-[minmax(0,1fr)_58px_54px_58px_52px]"
+            >
+              <span className="t-eyebrow">token</span>
+              <span className="t-eyebrow text-right" title="share of supply bought">bought</span>
+              <span className="t-eyebrow text-right" title="seconds after the open it first bought">entry</span>
+              <span className="hidden t-eyebrow text-right sm:block" title="minutes held before its first sell">held</span>
+              <span className="t-eyebrow text-right" title="exit as a share of that token's peak">exit</span>
+            </div>,
+            ...[...(profile?.appearances ?? [])]
+            .sort((a, b) => b.launch.at.localeCompare(a.launch.at))
+            .map(({ launch, row, atLaunch }) => (
+              <div
+                key={`${launch.mint}-${launch.at}`}
+                className="grid grid-cols-[minmax(0,1fr)_54px_48px_50px] items-baseline gap-x-2 border-b border-line px-2.5 py-[5px] last:border-b-0 sm:grid-cols-[minmax(0,1fr)_58px_54px_58px_52px]"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="truncate t-xs font-semibold text-fg">{launch.symbol}</span>
+                    {atLaunch && <Tag tone="bad">block 0</Tag>}
+                    {row.sold === 0 && <Tag tone="neutral">never sold</Tag>}
                   </div>
-                ))}
+                  <div className="mt-0.5 t-mono text-[9px] text-fg4">{launch.at}</div>
+                </div>
+                <span className="text-right t-mono text-[10px] tabular-nums text-fg3">
+                  {row.bought.toFixed(1)}%
+                </span>
+                <span className="text-right t-mono text-[10px] tabular-nums text-fg4">
+                  {row.entrySec < 60 ? `${row.entrySec}s` : `${Math.round(row.entrySec / 60)}m`}
+                </span>
+                <span className="hidden text-right t-mono text-[10px] tabular-nums text-fg3 sm:block">
+                  {row.holdMin === null
+                    ? "—"
+                    : row.holdMin < 60
+                      ? `${row.holdMin}m`
+                      : `${(row.holdMin / 60).toFixed(1)}h`}
+                </span>
+                <span
+                  className={`text-right t-mono text-[10px] tabular-nums ${
+                    row.exitAtPeakFrac === null
+                      ? "text-fg4"
+                      : row.exitAtPeakFrac < 0.4
+                        ? "text-bad"
+                        : row.exitAtPeakFrac < 0.7
+                          ? "text-warn"
+                          : "text-good"
+                  }`}
+                >
+                  {row.exitAtPeakFrac === null ? "still in" : `${Math.round(row.exitAtPeakFrac * 100)}%`}
+                </span>
               </div>
-            </Panel>,
-          ]}
+            ))]}
           more={[
             "PnL and ROI on every token it has touched, not just the ones in this scan",
             "Every wallet it has ever received from, with the funding trail ranked by size",
@@ -407,7 +430,7 @@ export default async function WalletPage({ params }: { params: Promise<{ addr: s
             "Prior bundles it joined, and how each of those launches ended",
             "Alerts when this address next moves",
           ]}
-          note="The last four movements of this address are shown in full. Everything older requires Pro"
+          note="Every row is this wallet's own entry and exit on a recorded launch. What sits below the clip is the same table — the paywall is depth of history, not a different read"
         />
 
         <Panel title="Related wallets" note="same funder, same behaviour" flush>

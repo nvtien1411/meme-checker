@@ -3,8 +3,10 @@ import { PageHead } from "@/components/Shell";
 import { Demo, Gauge, Panel, ProReveal, Split, Stat, Tag } from "@/components/ui";
 import { RugCaseFile } from "@/components/Intelligence4";
 import { DeployerProRows } from "@/components/ProRows";
+import { PeekButton } from "@/components/report";
 import { DEMO_RUGS } from "@/lib/demo";
 import { fmtUsd } from "@/lib/http";
+import { deployerRecord } from "@/lib/intel2";
 
 /* ==================================================================== *
  * RUG DATABASE
@@ -118,24 +120,46 @@ export default function RugsPage() {
               <div className="p-3">
                 <span className="t-eyebrow">deployer</span>
                 <div className="mt-1 flex items-baseline gap-1.5">
-                  <span className="font-mono text-[10.5px] text-fg2">
-                    {r.deployer.slice(0, 8)}…{r.deployer.slice(-6)}
-                  </span>
-                  <Tag tone="warn">also on 3 others</Tag>
+                  <PeekButton addr={r.deployer} />
+                  {(() => {
+                    const rec = deployerRecord(r.deployer);
+                    const others = (rec?.launchCount ?? 1) - 1;
+                    return others > 0 ? <Tag tone="warn">also on {others} others</Tag> : null;
+                  })()}
                 </div>
 
-                <div className="mt-2">
-                  <Split label="tokens by this deployer">4</Split>
-                  <Split label="of those, collapsed" tone="bad">
-                    3
-                  </Split>
-                  <Split label="first flagged at" tone="warn">
-                    peak {fmtUsd(r.peakMc * 0.7)}
-                  </Split>
-                </div>
+                {(() => {
+                  const rec = deployerRecord(r.deployer);
+                  return (
+                    <div className="mt-2">
+                      <Split label="tokens by this deployer">{rec?.launchCount ?? 1}</Split>
+                      <Split label="of those, collapsed" tone="bad">
+                        {rec?.rugCount ?? 0}
+                      </Split>
+                      <Split label="median drawdown" tone="warn">
+                        {rec?.medianDrawdown == null ? "not measured" : `${Math.round(rec.medianDrawdown)}%`}
+                      </Split>
+                    </div>
+                  );
+                })()}
 
                 <div className="mt-1.5">
-                  <Gauge pct={75} tone="bad" height={3} label={<span className="t-xs text-fg4">3 of 4 launches ended here</span>} />
+                  {(() => {
+                    const rec = deployerRecord(r.deployer);
+                    const pct = rec && rec.launchCount > 0 ? Math.round((rec.rugCount / rec.launchCount) * 100) : 0;
+                    return (
+                      <Gauge
+                        pct={pct}
+                        tone="bad"
+                        height={3}
+                        label={
+                          <span className="t-xs text-fg4">
+                            {rec ? `${rec.rugCount} of ${rec.launchCount} launches ended here` : "no launches on record"}
+                          </span>
+                        }
+                      />
+                    );
+                  })()}
                 </div>
               </div>
             </div>

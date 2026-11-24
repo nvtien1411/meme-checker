@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { PageHead } from "@/components/Shell";
 import { Demo, Gauge, Panel, ProReveal, Split, Stat, Tag } from "@/components/ui";
 import { FollowerEntryChart, Timeline } from "@/components/viz";
-import { DEMO_TIMELINE, callerByHandle, callsByHandle } from "@/lib/demo";
+import { DEMO_TIMELINE, callerByHandle, callsByHandle, type DemoCall } from "@/lib/demo";
 import { fmtUsd } from "@/lib/http";
 
 /* ==================================================================== *
@@ -23,18 +23,29 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
   return { title: `@${handle}` };
 }
 
-const ENTRY_BUCKETS = [
-  { label: "T−30", pct: 6 },
-  { label: "T−20", pct: 9 },
-  { label: "T−10", pct: 14 },
-  { label: "T−5", pct: 18 },
-  { label: "T+0", pct: 11 },
-  { label: "T+5", pct: 26 },
-  { label: "T+10", pct: 34 },
-  { label: "T+20", pct: 22 },
-  { label: "T+30", pct: 9 },
-  { label: "T+60", pct: 4 },
-];
+/* The follower-entry histogram was ten literals, identical on every profile.
+ * A caller page exists to differentiate one account from another, and a chart
+ * that never changes differentiates nothing. What the dataset can support is
+ * the shape of this caller's own calls, so that is what is drawn: each call
+ * placed by how far it ran from the post price. */
+function callSpread(calls: DemoCall[]): { label: string; pct: number }[] {
+  const buckets = [
+    { label: "dead", test: (m: number) => m < 1 },
+    { label: "1–1.5×", test: (m: number) => m >= 1 && m < 1.5 },
+    { label: "1.5–2×", test: (m: number) => m >= 1.5 && m < 2 },
+    { label: "2–5×", test: (m: number) => m >= 2 && m < 5 },
+    { label: "5×+", test: (m: number) => m >= 5 },
+  ];
+  const total = calls.length || 1;
+  return buckets.map((b) => ({
+    label: b.label,
+    pct: Math.round(
+      (calls.filter((c) => b.test(c.hoursToPeak === null ? 0 : c.peakMc / c.mcAtCall)).length /
+        total) *
+        100,
+    ),
+  }));
+}
 
 export default async function CallerPage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
@@ -147,17 +158,45 @@ export default async function CallerPage({ params }: { params: Promise<{ handle:
         </Panel>
 
         <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
-          <Panel title="Follower entry timing" note="wallets that bought after the post, by minute">
-            <FollowerEntryChart buckets={ENTRY_BUCKETS} postIndex={4} />
+          <Panel
+            title="How far its calls ran"
+            note="every recorded call, bucketed by peak against the price at the post"
+          >
+            {calls.length === 0 ? (
+              <p className="py-3 t-xs text-fg4">
+                No individual call is on record for this account — only its aggregate record, which
+                is counted over every call it has made, not just the ones this scan saw
+              </p>
+            ) : (
+              <FollowerEntryChart buckets={callSpread(calls)} postIndex={0} mode="bucket" unit="of its calls" />
+            )}
             <div className="mt-2 grid grid-cols-2 gap-x-3">
-              <Split label="median entry">{`${(c.median * 0.9).toFixed(1)}× mcap at call`}</Split>
-              <Split label="still holding" tone="warn">
-                41%
-              </Split>
+              {calls.length === 0 ? (
+                <>
+                  <Split label="best call">{`${c.best.toFixed(1)}×`}</Split>
+                  <Split label="dead calls" tone="warn">{`${c.deadCalls}%`}</Split>
+                </>
+              ) : (
+                <>
+                  <Split label="best call">
+                    {`${Math.max(...calls.map((x) => (x.hoursToPeak === null ? 0 : x.peakMc / x.mcAtCall))).toFixed(1)}×`}
+                  </Split>
+                  <Split label="never recovered" tone="warn">
+                    {`${calls.filter((x) => x.hoursToPeak === null).length} of ${calls.length}`}
+                  </Split>
+                </>
+              )}
             </div>
           </Panel>
 
-          <Panel title="The sequence" note="what happened, relative to the post">
+          <Panel
+            title="The sequence"
+            note={
+              calls.length > 0
+                ? `relative to ${calls[0].symbol}'s post — the launch pattern, not this account's own trade`
+                : "what happened, relative to the post"
+            }
+          >
             <Timeline events={DEMO_TIMELINE} />
           </Panel>
         </div>

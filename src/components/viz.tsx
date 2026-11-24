@@ -462,9 +462,15 @@ export function FlowBar({
 export function FollowerEntryChart({
   buckets,
   postIndex,
+  /** "time" splits the axis into before/after a post. "bucket" prints the bucket
+   *  labels themselves, for distributions that are not a timeline. */
+  mode = "time",
+  unit = "of follower wallets",
 }: {
   buckets: { label: string; pct: number }[];
   postIndex: number;
+  mode?: "time" | "bucket";
+  unit?: string;
 }) {
   const max = Math.max(...buckets.map((b) => b.pct), 1);
 
@@ -473,21 +479,35 @@ export function FollowerEntryChart({
       <div className="flex h-[64px] items-end gap-[3px]">
         {buckets.map((b, i) => {
           const h = Math.max(3, (b.pct / max) * 100);
-          const before = i < postIndex;
+          const before = mode === "time" && i < postIndex;
           return (
             <div
               key={b.label}
               className={`w-full ${before ? "bg-info/70" : "bg-acid/70"}`}
               style={{ height: `${h}%` }}
-              title={`${b.label}: ${b.pct}% of follower wallets`}
+              title={`${b.label}: ${b.pct}% ${unit}`}
             />
           );
         })}
       </div>
-      <div className="mt-1 flex items-center justify-between border-t border-line pt-1">
-        <span className="t-xs text-info">before the post</span>
-        <span className="t-xs text-acid">after the post</span>
-      </div>
+      {mode === "time" ? (
+        <div className="mt-1 flex items-center justify-between border-t border-line pt-1">
+          <span className="t-xs text-info">before the post</span>
+          <span className="t-xs text-acid">after the post</span>
+        </div>
+      ) : (
+        <div className="mt-1 flex items-center justify-between gap-1 border-t border-line pt-1">
+          {buckets.map((b) => (
+            <span
+              key={b.label}
+              className="flex-1 text-center font-mono text-[8.5px] tabular-nums text-fg4"
+              title={`${b.pct}% ${unit}`}
+            >
+              {b.label}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

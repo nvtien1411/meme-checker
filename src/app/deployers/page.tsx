@@ -5,6 +5,7 @@ import { DEMO_RUGS, DEMO_TOKENS, DEMO_WALLETS } from "@/lib/demo";
 import { fmtUsd } from "@/lib/http";
 import { deployerRecord } from "@/lib/intel2";
 import { DeployerProRows } from "@/components/ProRows";
+import { PeekButton } from "@/components/report";
 
 /* ==================================================================== *
  * DEPLOYERS
@@ -93,18 +94,28 @@ export default function DeployersPage() {
 
           <div className="px-3 py-2">
             <div className="flex flex-wrap items-baseline gap-1.5">
+              <PeekButton addr={leadAddr} />
+              <Tag tone={lead?.verdict === "serial rugger" ? "bad" : "warn"}>{lead?.verdict ?? "no record"}</Tag>
+              <Tag tone="neutral">
+                {lead?.activeDays == null ? "span unknown" : `${lead.activeDays}d active`}
+              </Tag>
               <Link
-                href={`/deployers/${DEMO_WALLETS.dev}`}
-                className="font-mono text-[11px] text-fg2 underline decoration-line2 underline-offset-2 hover:text-acid"
+                href={`/deployers/${leadAddr}`}
+                className="ml-auto font-mono text-[9px] uppercase tracking-[0.05em] text-fg4 hover:text-acid"
               >
-                {DEMO_WALLETS.dev.slice(0, 10)}…{DEMO_WALLETS.dev.slice(-6)}
+                full record →
               </Link>
-              <Tag tone="bad">repeat offender</Tag>
-              <Tag tone="neutral">first seen 2026-10-30</Tag>
             </div>
             <p className="mt-1.5 t-xs leading-relaxed text-fg3">
-              Every launch was funded from the same wallet, and every launch had wallets buying in
-              the creation block. Three of the four collapsed within 48 hours of their peak
+              {lead && lead.launchCount > 0 ? (
+                <>
+                  {lead.launchCount} launches on record, {lead.rugCount} collapsed
+                  {lead.medianDrawdown != null && ` — the median one lost ${Math.round(lead.medianDrawdown)}% of its peak`}.
+                  {lead.evidence[0] ? ` ${lead.evidence[0]}` : ""}
+                </>
+              ) : (
+                <>No launches on record for this wallet</>
+              )}
             </p>
           </div>
         </Panel>
