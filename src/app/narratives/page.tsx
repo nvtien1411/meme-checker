@@ -15,13 +15,13 @@ import { fmtUsd } from "@/lib/http";
  * countable answer, so this page counts.
  * ==================================================================== */
 
-export const metadata = { title: "Narratives" };
+export const metadata = { title: "Meta Radar" };
 
 export default function NarrativesPage() {
   return (
     <div>
       <PageHead
-        title="Narratives"
+        title="Meta Radar"
         note="every idea currently running, and what the last attempt did"
         right={
           <>

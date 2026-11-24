@@ -14,7 +14,7 @@ import { fmtUsd } from "@/lib/http";
  * collapsing them into "rug" would make the database untrustworthy.
  * ==================================================================== */
 
-export const metadata = { title: "Rug database" };
+export const metadata = { title: "Rug Archive" };
 
 const FLAG_TONE: Record<string, string> = {
   confirmed: "bad",
@@ -29,7 +29,7 @@ export default function RugsPage() {
   return (
     <div>
       <PageHead
-        title="Rug database"
+        title="Rug Archive"
         note="collapses on record, with the signal that fired before it"
         right={
           <>

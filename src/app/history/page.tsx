@@ -12,7 +12,7 @@ import { DEMO_TOKENS } from "@/lib/demo";
  * result is the only kind that earns a second visit.
  * ==================================================================== */
 
-export const metadata = { title: "History" };
+export const metadata = { title: "Scan History" };
 
 const SF = DEMO_TOKENS[0];
 
@@ -28,7 +28,7 @@ export default function HistoryPage() {
   return (
     <div>
       <PageHead
-        title="History"
+        title="Scan History"
         note="every scan, and what the score did afterwards"
         right={
           <>

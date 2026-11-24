@@ -15,7 +15,7 @@ import { DEMO_TOKENS } from "@/lib/demo";
  * edges is decoration, and the reader cannot check decoration.
  * ==================================================================== */
 
-export const metadata = { title: "Investigation" };
+export const metadata = { title: "Wallet Intel" };
 
 /* Discovery order: the token first, then what the scan reached outward. The
    graph's entrance sequence is this order, so the animation reports what was
@@ -52,7 +52,7 @@ export default function InvestigationPage() {
   return (
     <div>
       <PageHead
-        title="Investigation"
+        title="Wallet Intel"
         note="one token, everything connected to it"
         right={
           <>

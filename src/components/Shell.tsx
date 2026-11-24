@@ -41,24 +41,24 @@ function G({ d }: { d: string }) {
 }
 
 const NAV: NavItem[] = [
-  { group: "Scan", href: "/", label: "Scanner", glyph: <G d="M2 8h3l2-4 2 8 2-4h3" /> },
-  { group: "Scan", href: "/discover", label: "Discover", glyph: <G d="M8 2.5 9.7 6.3 14 7l-3 3 .7 4.2L8 12.4 4.3 14.2 5 10 2 7l4.3-.7z" /> },
-  { group: "Scan", href: "/compare", label: "Compare", glyph: <G d="M3 3v10M13 3v10M3 8h10M6.5 5.5 3 8l3.5 2.5M9.5 5.5 13 8l-3.5 2.5" /> },
+  { group: "Trade", href: "/", label: "Token Scan", glyph: <G d="M2 8h3l2-4 2 8 2-4h3" /> },
+  { group: "Trade", href: "/discover", label: "Trending", glyph: <G d="M8 2.5 9.7 6.3 14 7l-3 3 .7 4.2L8 12.4 4.3 14.2 5 10 2 7l4.3-.7z" /> },
+  { group: "Trade", href: "/compare", label: "Compare", glyph: <G d="M3 3v10M13 3v10M3 8h10M6.5 5.5 3 8l3.5 2.5M9.5 5.5 13 8l-3.5 2.5" /> },
 
-  { group: "Intelligence", href: "/wallets", label: "Wallets", glyph: <G d="M2.5 4.5h11v8h-11zM2.5 7h11M10.5 9.5h1.5" /> },
-  { group: "Intelligence", href: "/callers", label: "Callers", glyph: <G d="M6 7a2.2 2.2 0 1 0 0-4.4A2.2 2.2 0 0 0 6 7zM2 13c0-2 1.8-3.2 4-3.2s4 1.2 4 3.2M11 8.4a1.8 1.8 0 1 0 0-3.6M11.5 13c0-1.6-.6-2.6-1.5-3.2" /> },
-  { group: "Intelligence", href: "/smart-followers", label: "Smart Followers", glyph: <G d="M2.5 12.5c1.5-2.5 3.5-4 5.5-4s4 1.5 5.5 4M8 8.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" />, badge: "VIP" },
-  { group: "Intelligence", href: "/narratives", label: "Narratives", glyph: <G d="M3 3.5h10v7h-5l-3 2.5v-2.5H3z" /> },
-  { group: "Intelligence", href: "/deployers", label: "Deployers", glyph: <G d="M8 2.5 13 5v3.5c0 2.5-2 4-5 5.5-3-1.5-5-3-5-5.5V5z" /> },
-  { group: "Intelligence", href: "/investigation", label: "Investigation", glyph: <G d="M7 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM10.8 10.8 14 14" />, badge: "VIP" },
+  { group: "On-chain", href: "/wallets", label: "Wallet Tracker", glyph: <G d="M2.5 4.5h11v8h-11zM2.5 7h11M10.5 9.5h1.5" /> },
+  { group: "On-chain", href: "/callers", label: "Alpha Calls", glyph: <G d="M6 7a2.2 2.2 0 1 0 0-4.4A2.2 2.2 0 0 0 6 7zM2 13c0-2 1.8-3.2 4-3.2s4 1.2 4 3.2M11 8.4a1.8 1.8 0 1 0 0-3.6M11.5 13c0-1.6-.6-2.6-1.5-3.2" /> },
+  { group: "On-chain", href: "/smart-followers", label: "Smart Money", glyph: <G d="M2.5 12.5c1.5-2.5 3.5-4 5.5-4s4 1.5 5.5 4M8 8.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" />, badge: "VIP" },
+  { group: "On-chain", href: "/narratives", label: "Meta Radar", glyph: <G d="M3 3.5h10v7h-5l-3 2.5v-2.5H3z" /> },
+  { group: "On-chain", href: "/deployers", label: "Deployers", glyph: <G d="M8 2.5 13 5v3.5c0 2.5-2 4-5 5.5-3-1.5-5-3-5-5.5V5z" /> },
+  { group: "On-chain", href: "/investigation", label: "Wallet Intel", glyph: <G d="M7 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM10.8 10.8 14 14" />, badge: "VIP" },
 
-  { group: "Workspace", href: "/watchlist", label: "Watchlist", glyph: <G d="M8 2.5 9.7 6.3 14 7l-3 3 .7 4.2L8 12.4 4.3 14.2 5 10 2 7l4.3-.7z" /> },
-  { group: "Workspace", href: "/alerts", label: "Alerts", glyph: <G d="M8 2.5a3.5 3.5 0 0 1 3.5 3.5v3l1 2h-9l1-2v-3A3.5 3.5 0 0 1 8 2.5zM6.5 12.5a1.5 1.5 0 0 0 3 0" />, badge: "3" },
-  { group: "Workspace", href: "/rugs", label: "Rug database", glyph: <G d="M3 3h10v10H3zM3 6.5h10M6.5 6.5V13" /> },
-  { group: "Workspace", href: "/history", label: "History", glyph: <G d="M8 4v4l2.5 1.5M8 14a6 6 0 1 1 0-12 6 6 0 0 1 0 12z" /> },
+  { group: "My desk", href: "/watchlist", label: "Watchlist", glyph: <G d="M8 2.5 9.7 6.3 14 7l-3 3 .7 4.2L8 12.4 4.3 14.2 5 10 2 7l4.3-.7z" /> },
+  { group: "My desk", href: "/alerts", label: "Alerts", glyph: <G d="M8 2.5a3.5 3.5 0 0 1 3.5 3.5v3l1 2h-9l1-2v-3A3.5 3.5 0 0 1 8 2.5zM6.5 12.5a1.5 1.5 0 0 0 3 0" />, badge: "3" },
+  { group: "My desk", href: "/rugs", label: "Rug Archive", glyph: <G d="M3 3h10v10H3zM3 6.5h10M6.5 6.5V13" /> },
+  { group: "My desk", href: "/history", label: "Scan History", glyph: <G d="M8 4v4l2.5 1.5M8 14a6 6 0 1 1 0-12 6 6 0 0 1 0 12z" /> },
 ];
 
-const GROUPS = ["Scan", "Intelligence", "Workspace"];
+const GROUPS = ["Trade", "On-chain", "My desk"];
 
 function Mark() {
   return (
@@ -204,7 +204,9 @@ function TopStrip() {
   }, []);
 
   const crumb =
-    pathname === "/" ? "scanner" : pathname.replace(/^\//, "").split("/").slice(0, 2).join(" / ");
+    pathname === "/"
+      ? "token scan"
+      : pathname.replace(/^\//, "").split("/").slice(0, 2).join(" / ");
 
   const limit = PLAN.free.scansPerDay;
   const left = used === null ? null : Math.max(0, limit - used);

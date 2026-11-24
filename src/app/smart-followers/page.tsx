@@ -12,7 +12,7 @@ import { DEMO_TIMELINE, DEMO_WALLETS, shortAddr } from "@/lib/demo";
  * exists to answer that, in that order.
  * ==================================================================== */
 
-export const metadata = { title: "Smart Followers" };
+export const metadata = { title: "Smart Money" };
 
 const BUCKETS = [
   { label: "T−30", pct: 5 },
@@ -38,7 +38,7 @@ export default function SmartFollowersPage() {
   return (
     <div>
       <PageHead
-        title="Smart Followers"
+        title="Smart Money"
         note="who buys after a caller posts, and whether they are the exit"
         right={
           <>

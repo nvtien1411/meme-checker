@@ -11,7 +11,7 @@ import { DEMO_TOKENS, WALLET_ROLE } from "@/lib/demo";
  * something, and that only works if the address is one record everywhere.
  * ==================================================================== */
 
-export const metadata = { title: "Wallets" };
+export const metadata = { title: "Wallet Tracker" };
 
 export default function WalletsPage() {
   // Build a directory from every token's wallet list, merging by address so a
@@ -40,7 +40,7 @@ export default function WalletsPage() {
   return (
     <div>
       <PageHead
-        title="Wallets"
+        title="Wallet Tracker"
         note="every address the scanner has seen, and where it appeared"
         right={
           <>

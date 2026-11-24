@@ -14,7 +14,7 @@ import { allCallerProfiles } from "@/lib/intel2";
  * the people they told.
  * ==================================================================== */
 
-export const metadata = { title: "Callers" };
+export const metadata = { title: "Alpha Calls" };
 
 export default function CallersPage() {
   const ranked = [...DEMO_CALLERS].sort((a, b) => b.smartFollowers - a.smartFollowers);
@@ -22,7 +22,7 @@ export default function CallersPage() {
   return (
     <div>
       <PageHead
-        title="Callers"
+        title="Alpha Calls"
         note="who is talking, and what happened to the people who listened"
         right={
           <>

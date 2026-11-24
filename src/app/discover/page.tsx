@@ -7,14 +7,14 @@ import { DEMO_RUGS, DEMO_TOKENS } from "@/lib/demo";
 import { fmtAge, fmtUsd } from "@/lib/http";
 
 /* ==================================================================== *
- * DISCOVER — the token table
+ * TRENDING — the token table
  *
  * A table, not a card grid. The user is comparing rows: 6 columns, right-
  * aligned numbers, tabular mono. Cards would force them to read one at a time,
  * which is the opposite of what this page is for.
  * ==================================================================== */
 
-export const metadata = { title: "Discover" };
+export const metadata = { title: "Trending" };
 
 export default function DiscoverPage() {
   return <DiscoverInner />;
@@ -26,8 +26,8 @@ function DiscoverInner() {
   return (
     <div>
       <PageHead
-        title="Discover"
-        note="everything the scanner has seen, sorted by what is moving"
+        title="Trending"
+        note="everything a scan has seen, sorted by what is moving"
         right={
           <>
             <Demo />

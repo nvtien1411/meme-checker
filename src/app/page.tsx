@@ -18,7 +18,7 @@ import { fmtAge, fmtUsd } from "@/lib/http";
  * homepage is the top of a funnel rather than a wall.
  * ==================================================================== */
 
-export const metadata = { title: "Scanner" };
+export const metadata = { title: "Token Scan" };
 
 export default function HomePage() {
   const hot = [...DEMO_TOKENS].sort((a, b) => b.vol24 / b.liq - a.vol24 / a.liq).slice(0, 5);
@@ -32,7 +32,7 @@ export default function HomePage() {
   return (
     <div>
       <PageHead
-        title="Scanner"
+        title="Token Scan"
         note="paste a contract, or start from what is moving"
         right={
           <>
