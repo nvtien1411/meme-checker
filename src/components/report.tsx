@@ -344,8 +344,8 @@ function VerdictTab({ data, demo }: { data: AnalysisResult; demo: DemoToken | nu
 
           <p className="mt-2 border-t border-line pt-2 t-xs leading-relaxed text-fg2">{v.tldr}</p>
           <p className="mt-1.5 t-xs leading-relaxed text-fg4">
-            The band comes from how many checks failed, not from the number. One disqualifying
-            finding sets a floor the rest cannot average away
+            Failed checks set the band; the score is held inside it, so a single
+            disqualifying finding cannot be averaged away by passes
           </p>
         </section>
 
