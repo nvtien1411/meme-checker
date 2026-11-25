@@ -39,7 +39,7 @@ function ago(iso: string): string {
 export default function HomePage() {
   const tape = [...DEMO_TOKENS].sort((a, b) => b.vol24 / b.liq - a.vol24 / a.liq).slice(0, 10);
   const fresh = [...DEMO_TOKENS]
-    .filter((t) => t.ageHours <= 168)
+    .filter((t) => t.ageHours <= 72)
     .sort((a, b) => a.ageHours - b.ageHours)
     .slice(0, 5);
   const broken = DEMO_RUGS.slice(0, 5);
@@ -160,7 +160,7 @@ export default function HomePage() {
                     {shortAddr(d.addr, 6, 4)}
                   </span>
                   <span className="shrink-0 t-mono text-[10px] tabular-nums text-fg3">
-                    {d.launchCount} launches
+                    {d.launchCount} {d.launchCount === 1 ? "launch" : "launches"}
                   </span>
                   <span
                     className={`shrink-0 t-mono text-[10px] tabular-nums ${
@@ -209,6 +209,11 @@ export default function HomePage() {
                 </Link>
               }
             >
+              <div className="flex items-center gap-2 border-b border-line bg-surf2/40 px-2.5 py-1">
+                <span className="min-w-0 flex-1 t-eyebrow">token</span>
+                <span className="t-eyebrow">age</span>
+                <span className="t-eyebrow">risk</span>
+              </div>
               {fresh.map((t) => (
                 <Link
                   key={t.mint}
