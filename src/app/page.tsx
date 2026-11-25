@@ -123,7 +123,12 @@ export default function HomePage() {
                 {DEMO_TOKENS[0].score}
               </span>
               <span className="t-mono text-[9px] text-fg4">/100</span>
-              <span className="ml-auto t-xs text-fg4">3 checks failed</span>
+              <span className="ml-auto text-right">
+                <span className="block t-mono text-[9px] uppercase tracking-[0.05em] text-bad">
+                  3 failed
+                </span>
+                <span className="block text-[9px] text-fg4">band from fails, not the score</span>
+              </span>
             </div>
 
             <div className="space-y-0">
