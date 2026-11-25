@@ -188,19 +188,25 @@ export function ScanInput({ autoFocus = false }: { autoFocus?: boolean }) {
           <button
             type="button"
             onClick={paste}
-            className="mr-1 shrink-0 px-2 py-1 font-mono text-[9.5px] uppercase tracking-[0.08em] text-fg4 transition-colors hover:text-fg2"
+            aria-label="Paste from clipboard"
+            title="Paste from clipboard"
+            className="mr-0.5 grid h-6 w-6 shrink-0 place-items-center text-fg4 transition-colors hover:text-fg"
           >
-            paste
+            <svg viewBox="0 0 12 12" className="h-[11px] w-[11px]" fill="none" aria-hidden>
+              <rect x="3.2" y="1.2" width="7.6" height="9.6" rx="1.2" stroke="currentColor" strokeWidth="1.1" />
+              <path d="M1.2 3.4v6.2a1.2 1.2 0 0 0 1.2 1.2h4" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+            </svg>
           </button>
         </div>
 
-        {/* action */}
+        {/* action — nested inside the field, the only thing that looks like a
+            button in this row */}
         <button
           type="submit"
           disabled={busy}
-          className="m-1 shrink-0 bg-acid px-4 py-2 font-mono text-[10.5px] font-semibold uppercase tracking-[0.08em] text-bg transition-colors hover:bg-acid2 disabled:opacity-60"
+          className="m-[5px] shrink-0 rounded-[2px] bg-acid px-4 py-[7px] font-mono text-[10.5px] font-semibold uppercase tracking-[0.08em] text-bg transition-colors hover:bg-acid2 disabled:opacity-60"
         >
-          {busy ? "analyzing…" : "analyze"}
+          {busy ? "reading…" : "analyze"}
         </button>
       </div>
 

@@ -235,7 +235,8 @@ function TopStrip() {
 
       <div className="ml-auto flex items-center gap-2">
         <CommandPalette />
-        <QuickScan />
+        {/* the hero already carries the contract field on the home route */}
+        {pathname !== "/" && <QuickScan />}
         {pro ? (
           <Link
             href="/pricing"
@@ -277,7 +278,7 @@ function TopStrip() {
                 free
               </span>
               <span aria-hidden className="h-2.5 w-px bg-line" />
-              <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-acid">
+              <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-fg2 group-hover:text-fg">
                 upgrade
               </span>
             </Link>

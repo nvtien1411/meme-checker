@@ -1,285 +1,168 @@
 import Link from "next/link";
 import { ScanInput } from "@/components/ScanInput";
-import { Demo, Panel, RiskDot } from "@/components/ui";
-import { DEMO_CALLS, DEMO_RUGS, DEMO_TOKENS, callerByHandle, shortAddr } from "@/lib/demo";
-import { fmtAge, fmtUsd } from "@/lib/http";
-import { deployerRecord } from "@/lib/intel2";
+import { Demo } from "@/components/ui";
+import { DEMO_TOKENS } from "@/lib/demo";
 
 /* ==================================================================== *
- * HOME
+ * HOME — editorial, not a dashboard
  *
- * Reference points, taken from shipping terminals rather than from design
- * principles: GMGN's front page is a paste field above a dense table, with no
- * sentence anywhere explaining what the site does. Axiom's is a list. Neither
- * opens with a slogan, four feature cards, or a paragraph.
+ * What wagmi.trade actually does, and what this page was not doing:
  *
- * This page had all three. The slogan competed with ANALYZE for the eye, the
- * four cards restated the sidebar, and the result was a page where nothing was
- * the focus. Rewritten so there is exactly one thing to do, one row of
- * shortcuts, and then data:
+ *   it opens ONE huge centred action on an empty canvas, with the nav and
+ *   the data pushed to the margins. The first screen has one job and it is
+ *   not "look at five panels". Everything a trader wants to see is one
+ *   keystroke away, behind a search that is already focused.
  *
- *   1. paste        full width, the only bordered box that is not a table
- *   2. shortcuts    one line of text links, not four cards
- *   3. the tape     what is moving, what broke, what got called
+ * This page previously put the scan box above five competing panels, each the
+ * same weight, all above the fold. That is a dashboard. A dashboard is what you
+ * open once you already have a question; a home is where the question starts.
  *
- * No value proposition, no "or jump straight to", no ⌘K hint in the body (the
- * top strip already carries the search).
+ * Composition borrowed, surface not: wagmi is light and red, this stays dark
+ * and acid because the product is a terminal and the data is dense. What is
+ * copied is the discipline — one focal action, real negative space, type doing
+ * the hierarchy instead of borders, and a single accent used three times.
  * ==================================================================== */
 
-export const metadata = { title: "Meme Checker — token scan" };
-
-const REFERENCE = Math.max(...DEMO_CALLS.map((c) => Date.parse(c.at)));
-
-function ago(iso: string): string {
-  const ms = Date.parse(iso);
-  if (Number.isNaN(ms)) return "—";
-  return fmtAge(Math.max(0, (REFERENCE - ms) / 36e5));
-}
+export const metadata = { title: "Meme Checker — check a token" };
 
 export default function HomePage() {
-  const tape = [...DEMO_TOKENS].sort((a, b) => b.vol24 / b.liq - a.vol24 / a.liq).slice(0, 10);
-  const fresh = [...DEMO_TOKENS]
-    .filter((t) => t.ageHours <= 72)
-    .sort((a, b) => a.ageHours - b.ageHours)
-    .slice(0, 5);
-  const broken = DEMO_RUGS.slice(0, 5);
-  const deployers = [...new Set(DEMO_RUGS.map((r) => r.deployer))]
-    .map((addr) => deployerRecord(addr))
-    .filter((d): d is NonNullable<ReturnType<typeof deployerRecord>> => d !== null)
-    .sort((a, b) => b.launchCount - a.launchCount)
-    .slice(0, 9);
-  const calls = [...DEMO_CALLS].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 9);
+  const tape = [...DEMO_TOKENS]
+    .sort((a, b) => b.vol24 / b.liq - a.vol24 / a.liq)
+    .slice(0, 3);
 
   return (
-    <div className="pb-14">
-      {/*
-        ONE AXIS. The scan box was max-w-760 centred while the tables below were
-        max-w-1440, so the field sat on a different vertical line than every
-        panel under it — the single most common thing that makes a dense page
-        feel assembled rather than designed. Both now share one container, and
-        the field is constrained by its own max-width without being re-centred.
-      */}
-      <div className="mx-auto w-full max-w-[1440px] px-3 pt-5 sm:px-4">
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h1 className="t-page">Check a token</h1>
-          <span className="hidden t-xs text-fg4 sm:inline">
-            paste a contract, get every check
-          </span>
-          <span className="ml-auto">
-            <Demo />
-          </span>
+    <div className="relative flex min-h-[calc(100dvh-36px)] flex-col">
+      {/* ---------------- the one thing ---------------- */}
+      <div className="flex flex-1 items-center px-4 py-10 sm:px-8 sm:py-14">
+        <div className="mx-auto grid w-full max-w-[1180px] items-center gap-10 xl:grid-cols-[minmax(0,1fr)_minmax(0,400px)] lg:gap-14">
+        <div className="w-full max-w-[600px]">
+          {/* eyebrow: one line, one accent, says who this is for */}
+          <div className="flex items-center gap-2">
+            <span aria-hidden className="h-[5px] w-[5px] bg-acid" />
+            <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-acid">
+              for memecoin traders
+            </span>
+            <span className="ml-auto">
+              <Demo />
+            </span>
+          </div>
+
+          {/* The headline is the largest object and it says what the tool does,
+              in the reader's own vocabulary. No slogan, no value proposition
+              paragraph — a trader reads three words and knows. */}
+          <h1
+            className="mt-6 text-[36px] font-semibold leading-[0.96] tracking-[-0.04em] text-fg sm:text-[44px] xl:text-[56px]"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            Paste the contract.
+            <br />
+            <span className="text-acid">See who is inside.</span>
+          </h1>
+
+          <p className="mt-4 max-w-[420px] t-body leading-relaxed text-fg3">
+            Bundle, snipers, insiders, exits — every check measured against its own number
+          </p>
+
+          <div className="mt-8 [--field-h:52px]">
+            <ScanInput autoFocus />
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="t-xs text-fg4">try</span>
+            {tape.slice(0, 3).map((t) => (
+              <Link
+                key={t.mint}
+                href={`/token/${t.chain}/${t.mint}`}
+                className="font-mono text-[11px] uppercase tracking-[0.06em] text-fg3 underline decoration-line2 underline-offset-[3px] transition-colors hover:text-acid hover:decoration-acid"
+              >
+                {t.symbol}
+              </Link>
+            ))}
+            <span aria-hidden className="mx-1 h-3 w-px bg-line" />
+            <Link
+              href="/check"
+              className="t-xs text-fg3 underline decoration-line2 underline-offset-2 transition-colors hover:text-fg"
+            >
+              other chains
+            </Link>
+          </div>
         </div>
 
-        <div className="mt-3 max-w-[820px]">
-          <ScanInput autoFocus />
-        </div>
-      </div>
-
-      <div className="mx-auto w-full max-w-[1440px] px-3 pt-5 sm:px-4">
-        {/* ---------------- the tape ---------------- */}
-        <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
-          <div className="space-y-2.5">
-            <Panel
-              title="Moving now"
-              flush
-              right={
-                <Link href="/discover" className="text-fg3 hover:text-fg hover:underline">
-                  all →
-                </Link>
-              }
+        {/* A sample of the artifact, not a feature list. wagmi puts a device
+            mockup beside its headline so you can see the product before you
+            commit a wallet; this is the same move for a scan. It is one small
+            card, deliberately subordinate — same surface, no accent, so it reads
+            as evidence rather than as a second thing to click. */}
+        <div className="hidden xl:block">
+          <div className="mb-2 flex items-baseline gap-2">
+            <span className="t-eyebrow">what a scan returns</span>
+            <Link
+              href={`/token/${DEMO_TOKENS[0].chain}/${DEMO_TOKENS[0].mint}`}
+              className="ml-auto font-mono text-[9px] uppercase tracking-[0.05em] text-fg4 transition-colors hover:text-fg"
             >
-              <div className="grid grid-cols-[minmax(0,1fr)_60px_52px_40px] items-baseline gap-x-2 border-b border-line bg-surf2/40 px-2.5 py-1">
-                <span className="t-eyebrow">token</span>
-                <span className="t-eyebrow text-right">mcap</span>
-                <span className="t-eyebrow text-right">vol/liq</span>
-                <span className="t-eyebrow text-right">risk</span>
-              </div>
-              {tape.map((t) => {
-                const vp = t.vol24 / t.liq;
-                return (
-                  <Link
-                    key={t.mint}
-                    href={`/token/${t.chain}/${t.mint}`}
-                    className="drow grid grid-cols-[minmax(0,1fr)_60px_52px_40px] items-center gap-x-2 border-b border-line px-2.5 py-[5px] last:border-b-0"
-                  >
-                    <div className="flex min-w-0 items-baseline gap-1.5">
-                      <span className="truncate t-strong text-fg">{t.symbol}</span>
-                      <span className="shrink-0 t-xs text-fg4">· {fmtAge(t.ageHours)}</span>
-                    </div>
-                    <span className="text-right t-mono text-[10.5px] tabular-nums text-fg2">
-                      {fmtUsd(t.mcap)}
-                    </span>
-                    <span
-                      className={`text-right t-mono text-[10.5px] tabular-nums ${
-                        vp > 8 ? "text-hot" : vp > 3 ? "text-warn" : "text-fg3"
-                      }`}
-                    >
-                      {vp.toFixed(1)}×
-                    </span>
-                    <span className="flex items-center justify-end gap-1">
-                      <span className="t-mono text-[10px] tabular-nums text-fg3">{t.score}</span>
-                      <RiskDot risk={t.risk} />
-                    </span>
-                  </Link>
-                );
-              })}
-              <div className="flex items-center gap-2 px-2.5 py-1.5">
-                <span className="font-mono text-[8.5px] uppercase tracking-[0.05em] text-fg4">
-                  risk
-                </span>
-                <span className="flex items-center gap-1 t-xs text-fg4">
-                  <RiskDot risk="low" />0–34
-                  <RiskDot risk="moderate" />35–54
-                  <RiskDot risk="high" />55–69
-                  <RiskDot risk="critical" />70+
-                </span>
-              </div>
-            </Panel>
+              open one →
+            </Link>
+          </div>
 
-            {/* The left column ended ~200px before the right one, which read as an
-                unfinished page rather than a dense one. This is not padding: it is
-                the question a reader asks next after "what is moving" — who keeps
-                launching the tokens that die. */}
-            <Panel
-              title="Launch records"
-              flush
-              className="flex flex-1 flex-col"
-              right={
-                <Link href="/deployers" className="text-fg3 hover:text-fg hover:underline">
-                  all →
-                </Link>
-              }
-            >
-              {deployers.map((d) => (
-                <Link
-                  key={d.addr}
-                  href={`/deployers/${d.addr}`}
-                  className="drow flex items-center gap-2 border-b border-line px-2.5 py-[5px] last:border-b-0"
+          <div className="panel overflow-hidden">
+            <div className="flex items-center gap-2 border-b border-line px-3 py-2.5">
+              <span className="grid h-6 w-6 place-items-center border border-line bg-surf2 font-mono text-[8px] text-fg3">
+                {DEMO_TOKENS[0].symbol.slice(0, 2)}
+              </span>
+              <span className="t-strong text-fg">{DEMO_TOKENS[0].symbol}</span>
+              <span className="font-mono text-[9px] uppercase tracking-[0.05em] text-fg4">
+                {DEMO_TOKENS[0].chain}
+              </span>
+              <span className="ml-auto font-mono text-[9px] uppercase tracking-[0.05em] text-bad">
+                do not touch
+              </span>
+            </div>
+
+            <div className="flex items-baseline gap-2 border-b border-line px-3 py-2.5">
+              <span className="t-mono text-[26px] leading-none tabular-nums text-bad">
+                {DEMO_TOKENS[0].score}
+              </span>
+              <span className="t-mono text-[9px] text-fg4">/100</span>
+              <span className="ml-auto t-xs text-fg4">3 checks failed</span>
+            </div>
+
+            <div className="space-y-0">
+              {[
+                ["bundle share", `${DEMO_TOKENS[0].bundlePct.toFixed(1)}%`, "bad"],
+                ["sniper wallets", `${DEMO_TOKENS[0].sniperCount}`, "hot"],
+                ["insider supply", `${DEMO_TOKENS[0].insiderPct.toFixed(1)}%`, "hot"],
+                ["holders", DEMO_TOKENS[0].holders.toLocaleString("en-US"), "fg"],
+                ["exit window", `${DEMO_TOKENS[0].exitWindowSec}s`, "bad"],
+              ].map(([label, value, tone]) => (
+                <div
+                  key={label}
+                  className="flex items-baseline gap-2 border-b border-line px-3 py-[5px] last:border-b-0"
                 >
-                  <span className="min-w-0 flex-1 truncate t-mono text-[10.5px] text-fg2">
-                    {shortAddr(d.addr, 6, 4)}
-                  </span>
-                  <span className="shrink-0 t-mono text-[10px] tabular-nums text-fg3">
-                    {d.launchCount} {d.launchCount === 1 ? "launch" : "launches"}
-                  </span>
+                  <span className="min-w-0 flex-1 truncate t-xs text-fg3">{label}</span>
                   <span
-                    className={`shrink-0 t-mono text-[10px] tabular-nums ${
-                      d.rugCount > 0 ? "text-bad" : "text-good"
+                    className={`t-mono text-[10.5px] tabular-nums ${
+                      tone === "bad" ? "text-bad" : tone === "hot" ? "text-hot" : "text-fg2"
                     }`}
                   >
-                    {d.rugCount > 0 ? `${d.rugCount} dead` : "clean"}
+                    {value}
                   </span>
-                </Link>
+                </div>
               ))}
-            </Panel>
-          </div>
+            </div>
 
-
-
-          <div className="space-y-2.5">
-          <Panel
-          title="Just broke"
-          flush
-          right={
-          <Link href="/rugs" className="text-fg3 hover:text-fg hover:underline">
-          archive →
-          </Link>
-          }
-          >
-          {broken.map((r) => (
-          <Link
-          key={r.mint}
-          href={`/token/${r.chain}/${r.mint}`}
-          className="drow flex items-center gap-2 border-b border-line px-2.5 py-[5px] last:border-b-0"
-          >
-          <span className="min-w-0 flex-1 truncate t-strong text-fg">{r.symbol}</span>
-          <span className="shrink-0 t-xs text-fg4">{r.at.slice(5)}</span>
-          <span className="shrink-0 t-mono text-[10px] tabular-nums text-bad">
-          −{r.drawdownPct.toFixed(0)}%
-          </span>
-          </Link>
-          ))}
-          </Panel>
-            <Panel
-              title="Just launched"
-              flush
-              right={
-                <Link href="/discover" className="text-fg3 hover:text-fg hover:underline">
-                  more →
-                </Link>
-              }
-            >
-              <div className="flex items-center gap-2 border-b border-line bg-surf2/40 px-2.5 py-1">
-                <span className="min-w-0 flex-1 t-eyebrow">token</span>
-                <span className="t-eyebrow">age</span>
-                <span className="t-eyebrow">risk</span>
-              </div>
-              {fresh.map((t) => (
-                <Link
-                  key={t.mint}
-                  href={`/token/${t.chain}/${t.mint}`}
-                  className="drow flex items-center gap-2 border-b border-line px-2.5 py-[5px] last:border-b-0"
-                >
-                  <span className="min-w-0 flex-1 truncate t-strong text-fg">{t.symbol}</span>
-                  <span className="shrink-0 t-mono text-[9.5px] tabular-nums text-fg4">
-                    {fmtAge(t.ageHours)}
-                  </span>
-                  <span className="shrink-0 t-mono text-[9.5px] tabular-nums text-fg3">
-                    {t.score}
-                  </span>
-                  <RiskDot risk={t.risk} />
-                </Link>
-              ))}
-            </Panel>
-
-            <Panel
-              title="Latest calls"
-              flush
-              right={
-                <Link href="/callers" className="text-fg3 hover:text-fg hover:underline">
-                  all →
-                </Link>
-              }
-            >
-              {calls.map((c) => {
-                const caller = callerByHandle(c.handle);
-                return (
-                  <Link
-                    key={`${c.handle}-${c.mint}-${c.at}`}
-                    href={`/callers/${c.handle}`}
-                    className="drow flex items-baseline gap-1.5 border-b border-line px-2.5 py-[5px] last:border-b-0"
-                  >
-                    <span className="w-7 shrink-0 t-mono text-[9px] text-fg4">{ago(c.at)}</span>
-                    <span className="min-w-0 flex-1 truncate t-xs text-fg2">
-                      {c.symbol}
-                      <span className="text-fg4"> @</span>
-                      {c.handle}
-                      {caller && caller.exitVsCall > 1 && c.hoursToPeak === null && (
-                        <span
-                          className="ml-1.5 font-mono text-[8.5px] uppercase text-bad"
-                          title="Their exit landed above the call price and the call never recovered"
-                        >
-                          exit on call
-                        </span>
-                      )}
-                    </span>
-                    <span
-                      className={`shrink-0 text-right t-mono text-[10px] tabular-nums ${
-                        c.hoursToPeak === null ? "text-bad" : "text-good"
-                      }`}
-                    >
-                      {c.hoursToPeak === null ? "dead" : `${(c.peakMc / c.mcAtCall).toFixed(1)}×`}
-                    </span>
-                  </Link>
-                );
-              })}
-            </Panel>
+            <div className="px-3 py-2">
+              <p className="t-xs leading-relaxed text-fg4">
+                Five of the eight checks, each with the number behind it
+              </p>
+            </div>
           </div>
         </div>
-        <p className="mt-3 text-[10px] leading-relaxed text-fg4/70">
-          Not advice. Scores describe what the pipeline could measure
-        </p>
+        </div>
       </div>
+
+      <p className="border-t border-line px-4 py-2 text-center text-[10px] text-fg4/60">
+        Not advice. Scores describe what the pipeline could measure
+      </p>
     </div>
   );
 }
