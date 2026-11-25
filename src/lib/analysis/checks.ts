@@ -291,6 +291,19 @@ export function buildVerdict(checks: Check[]): Verdict {
   else if (warns.length >= 2 || unknowns.length >= 2) band = "watch";
   else band = "clean";
 
+  // A band is a claim and the number has to agree with it. Without this floor a
+  // high-risk token could print 51/100, which reads as "roughly half dangerous"
+  // — the exact opposite of what the band word says. The floor is the bottom of
+  // the band, so the number can still rise inside its band but can never sit
+  // below it.
+  const BAND_FLOOR: Record<Verdict["band"], number> = {
+    avoid: 75,
+    risky: 45,
+    watch: 22,
+    clean: 0,
+  };
+  score = Math.max(score, BAND_FLOOR[band]);
+
   const headline =
     band === "avoid" ? "AVOID" : band === "risky" ? "HIGH RISK" : band === "watch" ? "WATCH" : "NO RED FLAGS";
 

@@ -42,10 +42,10 @@ import {
  * ==================================================================== */
 
 const BAND = {
-  avoid: { word: "Critical", cls: "text-bad", wash: "rgba(255,77,94,0.22)", dot: "bg-bad" },
-  risky: { word: "High risk", cls: "text-hot", wash: "rgba(255,138,61,0.20)", dot: "bg-hot" },
-  watch: { word: "Moderate", cls: "text-warn", wash: "rgba(247,193,74,0.18)", dot: "bg-warn" },
-  clean: { word: "Low risk", cls: "text-good", wash: "rgba(52,224,161,0.16)", dot: "bg-good" },
+  avoid: { word: "Critical", range: "75–100", cls: "text-bad", wash: "rgba(255,77,94,0.22)", dot: "bg-bad" },
+  risky: { word: "High risk", range: "45–74", cls: "text-hot", wash: "rgba(255,138,61,0.20)", dot: "bg-hot" },
+  watch: { word: "Moderate", range: "22–44", cls: "text-warn", wash: "rgba(247,193,74,0.18)", dot: "bg-warn" },
+  clean: { word: "Low risk", range: "0–21", cls: "text-good", wash: "rgba(52,224,161,0.16)", dot: "bg-good" },
 } as const;
 
 const GLYPH: Record<CheckState, string> = { pass: "✓", fail: "✕", warn: "!", unknown: "?" };
@@ -184,11 +184,11 @@ export function IdentityBar({ data, demo }: { data: AnalysisResult; demo: DemoTo
         </div>
       </div>
 
-      <div className="grid grid-cols-2 border-t border-line sm:grid-cols-4 lg:grid-cols-7">
-        {cells.map((c, i) => (
+      <div className="grid grid-cols-2 gap-1.5 border-t border-line p-2 sm:grid-cols-4 lg:grid-cols-8">
+        {cells.map((c) => (
           <div
             key={c.label}
-            className={`px-2.5 py-1.5 ${i > 0 ? "border-line sm:border-l" : ""} ${i >= 4 ? "border-t border-line sm:border-t-0" : ""}`}
+            className="rounded-[3px] border border-line/70 bg-surf2/60 px-2 py-1.5 transition-colors hover:border-line2 hover:bg-surf2"
           >
             <Stat
               label={c.label}
@@ -287,9 +287,9 @@ function VerdictTab({ data, demo }: { data: AnalysisResult; demo: DemoToken | nu
   return (
     <>
       {/* the score, then the reasons, side by side */}
-      <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-[240px_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-[268px_minmax(0,1fr)]">
         <section
-          className="score-wash border border-line bg-surf p-3"
+          className="score-wash flex flex-col border border-line bg-surf p-4"
           style={{ "--wash": band.wash } as React.CSSProperties}
         >
           <div className="flex items-center justify-between">
@@ -303,18 +303,27 @@ function VerdictTab({ data, demo }: { data: AnalysisResult; demo: DemoToken | nu
               do-not-touch. A degen scanning for three seconds reads the largest
               word first, so the largest word has to be the verdict. */}
           <div
-            className={`mt-1.5 text-[30px] font-semibold leading-[1.05] tracking-[-0.03em] ${band.cls}`}
+            className={`mt-2 text-[30px] font-semibold leading-[1.02] tracking-[-0.035em] ${band.cls}`}
             style={{ fontFamily: "var(--font-display)" }}
           >
             {verdictWord(v)}
           </div>
 
-          <div className="mt-1.5 flex items-baseline gap-1.5">
-            <span className={`t-mono text-[12px] tabular-nums ${band.cls} opacity-80`}>{v.score}</span>
-            <span className="t-mono text-[9.5px] text-fg4">/100 risk score</span>
+          <div className="mt-2 flex items-baseline gap-1">
+            <span
+              className={`t-mono text-[24px] leading-none tabular-nums tracking-[-0.03em] ${band.cls}`}
+            >
+              {v.score}
+            </span>
+            <span className="t-mono text-[10px] text-fg4">/100</span>
+            <span className="ml-1 t-mono text-[8.5px] uppercase leading-tight tracking-[0.04em] text-fg4">
+              risk score
+              <br />
+              <span className={band.cls}>{band.range} = {band.word.toLowerCase()}</span>
+            </span>
           </div>
 
-          <div className="mt-2.5 grid grid-cols-4 border-y border-line">
+          <div className="mt-auto grid grid-cols-4 border-t border-line pt-2">
             {(
               [
                 [v.fails, "fail", "text-bad"],

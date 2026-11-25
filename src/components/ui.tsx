@@ -103,13 +103,13 @@ export function Stat({
               ? "text-fg3"
               : "text-fg";
 
-  const sizeCls = size === "lg" ? "text-[26px]" : size === "sm" ? "text-[13px]" : "text-[18px]";
+  const sizeCls = size === "lg" ? "text-[28px]" : size === "sm" ? "text-[16px]" : "text-[20px]";
 
   return (
     <div className="min-w-0">
-      <div className="t-eyebrow">{label}</div>
+      <div className="t-eyebrow leading-none">{label}</div>
       <div
-        className={`mt-1 ${mono ? "t-mono tabular-nums" : ""} ${sizeCls} leading-none tracking-[-0.02em] ${color}`}
+        className={`mt-[5px] ${mono ? "t-mono tabular-nums" : ""} ${sizeCls} leading-none tracking-[-0.03em] ${color}`}
       >
         {value}
       </div>
