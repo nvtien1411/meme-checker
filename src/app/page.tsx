@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { ScanInput } from "@/components/ScanInput";
 import { Demo, Panel, RiskDot } from "@/components/ui";
-import { DEMO_CALLS, DEMO_RUGS, DEMO_TOKENS, callerByHandle } from "@/lib/demo";
+import { DEMO_CALLS, DEMO_RUGS, DEMO_TOKENS, callerByHandle, shortAddr } from "@/lib/demo";
 import { fmtAge, fmtUsd } from "@/lib/http";
+import { deployerRecord } from "@/lib/intel2";
 
 /* ==================================================================== *
  * HOME
@@ -42,111 +43,163 @@ export default function HomePage() {
     .sort((a, b) => a.ageHours - b.ageHours)
     .slice(0, 5);
   const broken = DEMO_RUGS.slice(0, 5);
-  const calls = [...DEMO_CALLS].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 6);
+  const deployers = [...new Set(DEMO_RUGS.map((r) => r.deployer))]
+    .map((addr) => deployerRecord(addr))
+    .filter((d): d is NonNullable<ReturnType<typeof deployerRecord>> => d !== null)
+    .sort((a, b) => b.launchCount - a.launchCount)
+    .slice(0, 9);
+  const calls = [...DEMO_CALLS].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 9);
 
   return (
     <div className="pb-14">
-      {/* ---------------- the only thing to do ---------------- */}
-      <div className="border-b border-line px-3 py-4 sm:px-4">
-        <div className="mx-auto w-full max-w-[760px]">
-          <div className="mb-2 flex items-center gap-2">
-            <h1 className="text-[15px] font-semibold leading-none tracking-[-0.01em] text-fg2">
-              Check a token
-            </h1>
-            <span className="ml-auto flex items-center gap-1.5">
-              <Demo />
-            </span>
-          </div>
+      {/*
+        ONE AXIS. The scan box was max-w-760 centred while the tables below were
+        max-w-1440, so the field sat on a different vertical line than every
+        panel under it — the single most common thing that makes a dense page
+        feel assembled rather than designed. Both now share one container, and
+        the field is constrained by its own max-width without being re-centred.
+      */}
+      <div className="mx-auto w-full max-w-[1440px] px-3 pt-5 sm:px-4">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h1 className="t-page">Check a token</h1>
+          <span className="hidden t-xs text-fg4 sm:inline">
+            paste a contract, get every check
+          </span>
+          <span className="ml-auto">
+            <Demo />
+          </span>
+        </div>
+
+        <div className="mt-3 max-w-[820px]">
           <ScanInput autoFocus />
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-[1440px] px-3 pt-3 sm:px-4">
+      <div className="mx-auto w-full max-w-[1440px] px-3 pt-5 sm:px-4">
         {/* ---------------- the tape ---------------- */}
-        <div className="grid grid-cols-1 items-start gap-2.5 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
-          <Panel
-            title="Moving now"
-            flush
-            right={
-              <Link href="/discover" className="text-fg3 hover:text-fg hover:underline">
-                all →
-              </Link>
-            }
-          >
-            <div className="grid grid-cols-[minmax(0,1fr)_60px_52px_40px] items-baseline gap-x-2 border-b border-line bg-surf2/40 px-2.5 py-1">
-              <span className="t-eyebrow">token</span>
-              <span className="t-eyebrow text-right">mcap</span>
-              <span className="t-eyebrow text-right">vol/liq</span>
-              <span className="t-eyebrow text-right">risk</span>
-            </div>
-            {tape.map((t) => {
-              const vp = t.vol24 / t.liq;
-              return (
-                <Link
-                  key={t.mint}
-                  href={`/token/${t.chain}/${t.mint}`}
-                  className="drow grid grid-cols-[minmax(0,1fr)_60px_52px_40px] items-center gap-x-2 border-b border-line px-2.5 py-[5px] last:border-b-0"
-                >
-                  <div className="flex min-w-0 items-baseline gap-1.5">
-                    <span className="truncate t-strong text-fg">{t.symbol}</span>
-                    <span className="shrink-0 t-xs text-fg4">· {fmtAge(t.ageHours)}</span>
-                  </div>
-                  <span className="text-right t-mono text-[10.5px] tabular-nums text-fg2">
-                    {fmtUsd(t.mcap)}
-                  </span>
-                  <span
-                    className={`text-right t-mono text-[10.5px] tabular-nums ${
-                      vp > 8 ? "text-hot" : vp > 3 ? "text-warn" : "text-fg3"
-                    }`}
-                  >
-                    {vp.toFixed(1)}×
-                  </span>
-                  <span className="flex items-center justify-end gap-1">
-                    <span className="t-mono text-[10px] tabular-nums text-fg3">{t.score}</span>
-                    <RiskDot risk={t.risk} />
-                  </span>
-                </Link>
-              );
-            })}
-            <div className="flex items-center gap-2 px-2.5 py-1.5">
-              <span className="font-mono text-[8.5px] uppercase tracking-[0.05em] text-fg4">
-                risk
-              </span>
-              <span className="flex items-center gap-1 t-xs text-fg4">
-                <RiskDot risk="low" />0–34
-                <RiskDot risk="moderate" />35–54
-                <RiskDot risk="high" />55–69
-                <RiskDot risk="critical" />70+
-              </span>
-            </div>
-          </Panel>
-
-          <Panel
-            title="Just broke"
+        <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
+          <div className="space-y-2.5">
+            <Panel
+              title="Moving now"
               flush
               right={
-                <Link href="/rugs" className="text-fg3 hover:text-fg hover:underline">
-                  archive →
+                <Link href="/discover" className="text-fg3 hover:text-fg hover:underline">
+                  all →
                 </Link>
               }
             >
-              {broken.map((r) => (
+              <div className="grid grid-cols-[minmax(0,1fr)_60px_52px_40px] items-baseline gap-x-2 border-b border-line bg-surf2/40 px-2.5 py-1">
+                <span className="t-eyebrow">token</span>
+                <span className="t-eyebrow text-right">mcap</span>
+                <span className="t-eyebrow text-right">vol/liq</span>
+                <span className="t-eyebrow text-right">risk</span>
+              </div>
+              {tape.map((t) => {
+                const vp = t.vol24 / t.liq;
+                return (
+                  <Link
+                    key={t.mint}
+                    href={`/token/${t.chain}/${t.mint}`}
+                    className="drow grid grid-cols-[minmax(0,1fr)_60px_52px_40px] items-center gap-x-2 border-b border-line px-2.5 py-[5px] last:border-b-0"
+                  >
+                    <div className="flex min-w-0 items-baseline gap-1.5">
+                      <span className="truncate t-strong text-fg">{t.symbol}</span>
+                      <span className="shrink-0 t-xs text-fg4">· {fmtAge(t.ageHours)}</span>
+                    </div>
+                    <span className="text-right t-mono text-[10.5px] tabular-nums text-fg2">
+                      {fmtUsd(t.mcap)}
+                    </span>
+                    <span
+                      className={`text-right t-mono text-[10.5px] tabular-nums ${
+                        vp > 8 ? "text-hot" : vp > 3 ? "text-warn" : "text-fg3"
+                      }`}
+                    >
+                      {vp.toFixed(1)}×
+                    </span>
+                    <span className="flex items-center justify-end gap-1">
+                      <span className="t-mono text-[10px] tabular-nums text-fg3">{t.score}</span>
+                      <RiskDot risk={t.risk} />
+                    </span>
+                  </Link>
+                );
+              })}
+              <div className="flex items-center gap-2 px-2.5 py-1.5">
+                <span className="font-mono text-[8.5px] uppercase tracking-[0.05em] text-fg4">
+                  risk
+                </span>
+                <span className="flex items-center gap-1 t-xs text-fg4">
+                  <RiskDot risk="low" />0–34
+                  <RiskDot risk="moderate" />35–54
+                  <RiskDot risk="high" />55–69
+                  <RiskDot risk="critical" />70+
+                </span>
+              </div>
+            </Panel>
+
+            {/* The left column ended ~200px before the right one, which read as an
+                unfinished page rather than a dense one. This is not padding: it is
+                the question a reader asks next after "what is moving" — who keeps
+                launching the tokens that die. */}
+            <Panel
+              title="Launch records"
+              flush
+              className="flex flex-1 flex-col"
+              right={
+                <Link href="/deployers" className="text-fg3 hover:text-fg hover:underline">
+                  all →
+                </Link>
+              }
+            >
+              {deployers.map((d) => (
                 <Link
-                  key={r.mint}
-                  href={`/token/${r.chain}/${r.mint}`}
+                  key={d.addr}
+                  href={`/deployers/${d.addr}`}
                   className="drow flex items-center gap-2 border-b border-line px-2.5 py-[5px] last:border-b-0"
                 >
-                  <span className="min-w-0 flex-1 truncate t-strong text-fg">{r.symbol}</span>
-                  <span className="shrink-0 t-xs text-fg4">{r.at.slice(5)}</span>
-                  <span className="shrink-0 t-mono text-[10px] tabular-nums text-bad">
-                    −{r.drawdownPct.toFixed(0)}%
+                  <span className="min-w-0 flex-1 truncate t-mono text-[10.5px] text-fg2">
+                    {shortAddr(d.addr, 6, 4)}
+                  </span>
+                  <span className="shrink-0 t-mono text-[10px] tabular-nums text-fg3">
+                    {d.launchCount} launches
+                  </span>
+                  <span
+                    className={`shrink-0 t-mono text-[10px] tabular-nums ${
+                      d.rugCount > 0 ? "text-bad" : "text-good"
+                    }`}
+                  >
+                    {d.rugCount > 0 ? `${d.rugCount} dead` : "clean"}
                   </span>
                 </Link>
               ))}
             </Panel>
+          </div>
+
 
 
           <div className="space-y-2.5">
+          <Panel
+          title="Just broke"
+          flush
+          right={
+          <Link href="/rugs" className="text-fg3 hover:text-fg hover:underline">
+          archive →
+          </Link>
+          }
+          >
+          {broken.map((r) => (
+          <Link
+          key={r.mint}
+          href={`/token/${r.chain}/${r.mint}`}
+          className="drow flex items-center gap-2 border-b border-line px-2.5 py-[5px] last:border-b-0"
+          >
+          <span className="min-w-0 flex-1 truncate t-strong text-fg">{r.symbol}</span>
+          <span className="shrink-0 t-xs text-fg4">{r.at.slice(5)}</span>
+          <span className="shrink-0 t-mono text-[10px] tabular-nums text-bad">
+          −{r.drawdownPct.toFixed(0)}%
+          </span>
+          </Link>
+          ))}
+          </Panel>
             <Panel
               title="Just launched"
               flush

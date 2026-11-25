@@ -536,12 +536,7 @@ export function PageHead({
             size as section headings inside it, so nothing on a page announced
             itself first. A terminal still needs one element a reader's eye
             lands on before the data. */}
-        <h1
-          className="text-[19px] font-semibold leading-none tracking-[-0.02em] text-fg"
-          style={{ fontFamily: "var(--font-display)" }}
-        >
-          {title}
-        </h1>
+        <h1 className="t-page">{title}</h1>
         {note && (
           <span className="hidden min-w-0 truncate text-[11.5px] text-fg4 sm:inline">{note}</span>
         )}

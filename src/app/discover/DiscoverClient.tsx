@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Demo, Panel, RiskDot, Tag } from "@/components/ui";
 import { ScanInput } from "@/components/ScanInput";
+import { Table, Flag } from "@/components/Table";
 import { NextSteps } from "@/components/NextSteps";
 import { DEMO_RUGS, DEMO_TOKENS } from "@/lib/demo";
 import { fmtAge, fmtUsd } from "@/lib/http";
@@ -165,74 +166,99 @@ export function DiscoverClient() {
 
         {/* ---------------- table ---------------- */}
         <Panel flush>
-          <div className="grid grid-cols-[minmax(0,1fr)_58px_54px_48px_40px] items-baseline gap-x-2 border-b border-line bg-surf2/40 px-2.5 py-1.5 sm:grid-cols-[minmax(0,1fr)_62px_58px_54px_50px_42px]">
-            <span className="t-eyebrow">token</span>
-            <span className="t-eyebrow text-right">mcap</span>
-            <span className="t-eyebrow text-right sm:hidden">vol/liq</span>
-            <span className="t-eyebrow hidden text-right sm:block">liq</span>
-            <span className="t-eyebrow hidden text-right sm:block">vol/liq</span>
-            <span className="t-eyebrow text-right">age</span>
-            <span className="t-eyebrow text-right">risk</span>
-          </div>
-
-          {empty && (
-            <div className="px-3 py-4">
-              <p className="t-xs text-fg3">
-                Nothing in the tracked set matches {chain === "all" ? "these filters" : `chain = ${chain}`}
-              </p>
-              <p className="mt-1 t-xs leading-relaxed text-fg4">
-                The demo set holds {DEMO_TOKENS.length} tokens across{" "}
-                {[...new Set(DEMO_TOKENS.map((t) => t.chain))].join(", ")}. A live feed would return
-                hundreds; this is the shape of the table, not its size
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setChain("all");
-                  setSort("default");
-                }}
-                className="mt-2 border border-line px-1.5 py-[2px] font-mono text-[9px] uppercase text-fg3 hover:border-fg4 hover:text-fg2"
-              >
-                clear filters
-              </button>
-            </div>
-          )}
-
-          {rows.map((t) => {
-            const vp = t.vol24 / t.liq;
-            return (
-              <Link
-                key={t.mint}
-                href={`/token/${t.chain}/${t.mint}`}
-                className="drow grid grid-cols-[minmax(0,1fr)_58px_54px_48px_40px] items-center gap-x-2 border-b border-line px-2.5 py-[5px] last:border-b-0 sm:grid-cols-[minmax(0,1fr)_62px_58px_54px_50px_42px]"
-              >
-                <div className="flex min-w-0 items-baseline gap-1.5">
-                  <span className="truncate t-strong text-fg">{t.symbol}</span>
-                  <span className="shrink-0 t-xs text-fg4">{t.chain}</span>
-                  {t.bundlePct > 15 && (
-                    <span className="shrink-0 font-mono text-[8.5px] uppercase text-bad">bundle</span>
-                  )}
-                </div>
-                <span className="text-right t-mono text-[11px] text-fg2">{fmtUsd(t.mcap)}</span>
-                <span className="text-right t-mono text-[10.5px] text-fg4 sm:hidden">{vp.toFixed(1)}×</span>
-                <span className="hidden text-right t-mono text-[10.5px] text-fg3 sm:block">
-                  {fmtUsd(t.liq)}
-                </span>
-                <span
-                  className={`hidden text-right t-mono text-[10.5px] sm:block ${
-                    vp > 8 ? "text-hot" : vp > 3 ? "text-warn" : "text-fg3"
-                  }`}
-                >
-                  {vp.toFixed(1)}×
-                </span>
-                <span className="text-right t-mono text-[10px] text-fg4">{fmtAge(t.ageHours)}</span>
-                <span className="flex items-center justify-end gap-1">
-                  <span className="t-mono text-[10px] tabular-nums text-fg3">{t.score}</span>
-                  <RiskDot risk={t.risk} />
-                </span>
-              </Link>
-            );
-          })}
+          <Table
+            cols={[
+              {
+                head: "token",
+                width: "minmax(0,1fr)",
+                render: (t) => (
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="truncate t-strong text-fg">{t.symbol}</span>
+                    <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.04em] text-fg4">
+                      {t.chain}
+                    </span>
+                    {t.bundlePct > 15 && <Flag tone="bad">bundle</Flag>}
+                    {t.insiderPct > 8 && <Flag tone="hot">insider</Flag>}
+                  </span>
+                ),
+              },
+              {
+                head: "mcap",
+                sortKey: "mcap",
+                width: "74px",
+                align: "right",
+                hint: "circulating supply × price",
+                render: (t) => (
+                  <span className="t-mono text-[11.5px] tabular-nums text-fg2">{fmtUsd(t.mcap)}</span>
+                ),
+              },
+              {
+                head: "liq",
+                sortKey: "liq",
+                width: "70px",
+                align: "right",
+                hint: "pool depth — how much can be sold without moving the price",
+                render: (t) => (
+                  <span className="t-mono text-[11px] tabular-nums text-fg3">{fmtUsd(t.liq)}</span>
+                ),
+              },
+              {
+                head: "vol/liq",
+                sortKey: "vol",
+                width: "62px",
+                align: "right",
+                hint: "turnover against pool depth; high means churn, not conviction",
+                render: (t) => {
+                  const vp = t.vol24 / t.liq;
+                  return (
+                    <span
+                      className={`t-mono text-[11px] tabular-nums ${
+                        vp > 8 ? "text-hot" : vp > 3 ? "text-warn" : "text-fg3"
+                      }`}
+                    >
+                      {vp.toFixed(1)}×
+                    </span>
+                  );
+                },
+              },
+              {
+                head: "age",
+                sortKey: "age",
+                width: "54px",
+                align: "right",
+                render: (t) => (
+                  <span className="t-mono text-[10.5px] tabular-nums text-fg4">{fmtAge(t.ageHours)}</span>
+                ),
+              },
+              {
+                head: "risk",
+                sortKey: "risk",
+                width: "58px",
+                align: "right",
+                hint: "0 clean to 100 critical — higher is worse",
+                render: (t) => (
+                  <span className="flex items-center justify-end gap-1.5">
+                    <span className="t-mono text-[11px] tabular-nums text-fg3">{t.score}</span>
+                    <RiskDot risk={t.risk} />
+                  </span>
+                ),
+              },
+            ]}
+            rows={rows}
+            sort={sort}
+            onSort={(k) => setSort(k as Sort)}
+            rowKey={(t) => t.mint}
+            href={(t) => `/token/${t.chain}/${t.mint}`}
+            empty={
+              empty
+                ? `Nothing in the tracked set matches ${
+                    chain === "all" ? "these filters" : `chain = ${chain}`
+                  } — the demo set holds ${DEMO_TOKENS.length} tokens across ${[
+                    ...new Set(DEMO_TOKENS.map((t) => t.chain)),
+                  ].join(", ")}`
+                : undefined
+            }
+          />
         </Panel>
 
         {/* ---------------- what broke ---------------- */}

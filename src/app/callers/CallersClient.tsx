@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Demo, Panel, ProReveal, Tag } from "@/components/ui";
 import { callerHeader, callerRow } from "@/components/ProRows";
+import { Table, Flag } from "@/components/Table";
 import { DEMO_CALLS, DEMO_CALLERS } from "@/lib/demo";
 import { allCallerProfiles } from "@/lib/intel2";
 import { fmtUsd } from "@/lib/http";
@@ -58,7 +58,6 @@ export function CallersClient() {
   }, [sort, flaggedOnly]);
 
   const flagged = DEMO_CALLERS.filter((c) => c.exitVsCall > 1).length;
-  const active = SORTS.find((s) => s.id === sort)!;
 
   return (
     <div>
@@ -138,54 +137,84 @@ export function CallersClient() {
             </div>
           )}
 
-          {rows.map((c) => {
-            const winRate = (c.wins / c.calls) * 100;
-            const sellsAbove = c.exitVsCall > 1;
-            return (
-              <Link
-                key={c.handle}
-                href={`/callers/${c.handle}`}
-                className="drow grid grid-cols-[minmax(0,1fr)_58px_54px_52px] items-center gap-x-2 border-b border-line px-2.5 py-[6px] last:border-b-0 sm:grid-cols-[minmax(0,1fr)_62px_56px_58px_56px]"
-              >
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-baseline gap-1.5">
-                    <span className="truncate t-xs font-semibold text-fg">@{c.handle}</span>
-                    {sellsAbove && <Tag tone="bad">sells above call</Tag>}
-                    {c.lead < 0 && <Tag tone="warn">posts before buying</Tag>}
-                  </div>
-                  <div className="mt-0.5 flex items-center gap-1.5">
-                    <span className="truncate text-[9.5px] text-fg4">{c.name}</span>
-                    <span className="t-xs text-fg4">·</span>
-                    <span className="t-xs text-fg4">{c.bots}% bot replies</span>
-                  </div>
-                </div>
-                <span className="text-right t-mono text-[10.5px] tabular-nums text-fg3">{c.calls}</span>
-                <span
-                  className={`hidden text-right t-mono text-[10.5px] tabular-nums sm:block ${
-                    winRate > 50 ? "text-good" : winRate > 35 ? "text-warn" : "text-bad"
-                  }`}
-                >
-                  {winRate.toFixed(0)}%
-                </span>
-                <span className="text-right t-mono text-[10.5px] tabular-nums text-fg3">
-                  {c.median.toFixed(1)}×
-                </span>
-                <span
-                  className={`text-right t-mono text-[10.5px] tabular-nums ${
-                    sellsAbove ? "text-bad" : "text-good"
-                  }`}
-                >
-                  {c.exitVsCall.toFixed(2)}×
-                </span>
-              </Link>
-            );
-          })}
-
-          <div className="border-t border-line px-2.5 py-1.5">
-            <p className="t-xs leading-relaxed text-fg4">
-              Sorted by <span className="text-fg3">{active.label}</span> — {active.hint}
-            </p>
-          </div>
+          <Table
+            cols={[
+              {
+                head: "caller",
+                width: "minmax(0,1fr)",
+                render: (c) => (
+                  <span className="flex min-w-0 items-baseline gap-2">
+                    <span className="truncate t-strong text-fg">@{c.handle}</span>
+                    {c.exitVsCall > 1 && <Flag tone="bad">sells above call</Flag>}
+                    {c.lead < 0 && <Flag tone="warn">posts first</Flag>}
+                  </span>
+                ),
+              },
+              {
+                head: "calls",
+                width: "62px",
+                align: "right",
+                sortKey: "calls",
+                hint: "calls on record",
+                render: (c) => (
+                  <span className="t-mono text-[11px] tabular-nums text-fg3">{c.calls}</span>
+                ),
+              },
+              {
+                head: "win",
+                width: "62px",
+                align: "right",
+                sortKey: "win",
+                hint: "share of calls that ever touched 2×",
+                render: (c) => {
+                  const w = (c.wins / c.calls) * 100;
+                  return (
+                    <span
+                      className={`t-mono text-[11px] tabular-nums ${
+                        w > 50 ? "text-good" : w > 35 ? "text-warn" : "text-bad"
+                      }`}
+                    >
+                      {w.toFixed(0)}%
+                    </span>
+                  );
+                },
+              },
+              {
+                head: "median",
+                width: "66px",
+                align: "right",
+                sortKey: "median",
+                hint: "middle multiple across every call, dead ones included",
+                render: (c) => (
+                  <span className="t-mono text-[11px] tabular-nums text-fg3">
+                    {c.median.toFixed(1)}×
+                  </span>
+                ),
+              },
+              {
+                head: "exit/call",
+                width: "76px",
+                align: "right",
+                sortKey: "exit",
+                hint: "their exit ÷ the price at their post — above 1.0 is selling into their audience",
+                render: (c) => (
+                  <span
+                    className={`t-mono text-[11px] tabular-nums ${
+                      c.exitVsCall > 1 ? "text-bad" : "text-good"
+                    }`}
+                  >
+                    {c.exitVsCall.toFixed(2)}×
+                  </span>
+                ),
+              },
+            ]}
+            rows={rows}
+            sort={sort}
+            onSort={(k) => setSort(k as Sort)}
+            rowKey={(c) => c.handle}
+            href={(c) => `/callers/${c.handle}`}
+            empty={flaggedOnly ? "No caller matches that filter" : undefined}
+          />
         </Panel>
 
         {/* ---------------- the pro layer, with real rows ---------------- */}
@@ -220,28 +249,63 @@ export function CallersClient() {
           note={`the ${Math.min(8, DEMO_CALLS.length)} most recent across every tracked account`}
           flush
         >
-          {[...DEMO_CALLS]
-            .sort((a, b) => b.at.localeCompare(a.at))
-            .slice(0, 8)
-            .map((c) => (
-              <Link
-                key={`${c.handle}-${c.mint}-${c.at}`}
-                href={`/callers/${c.handle}`}
-                className="drow flex items-baseline gap-2 border-b border-line px-2.5 py-[5px] last:border-b-0"
-              >
-                <span className="t-mono text-[9.5px] text-fg4">{c.at.slice(5, 10)}</span>
-                <span className="min-w-0 flex-1 truncate t-xs text-fg3">@{c.handle}</span>
-                <span className="t-xs font-semibold text-fg">{c.symbol}</span>
-                <span className="t-mono text-[9.5px] tabular-nums text-fg4">{fmtUsd(c.mcAtCall)}</span>
-                <span
-                  className={`w-10 text-right t-mono text-[10px] tabular-nums ${
-                    c.outcome === "won" ? "text-good" : c.outcome === "lost" ? "text-bad" : "text-fg4"
-                  }`}
-                >
-                  {c.hoursToPeak !== null ? `${(c.peakMc / c.mcAtCall).toFixed(1)}×` : "—"}
-                </span>
-              </Link>
-            ))}
+          <Table
+            dense
+            cols={[
+              {
+                head: "when",
+                width: "56px",
+                render: (c) => (
+                  <span className="t-mono text-[10px] tabular-nums text-fg4">{c.at.slice(5, 10)}</span>
+                ),
+              },
+              {
+                head: "token",
+                width: "76px",
+                render: (c) => <span className="t-strong text-fg">{c.symbol}</span>,
+              },
+              {
+                head: "caller",
+                width: "minmax(0,1fr)",
+                render: (c) => (
+                  <span className="truncate t-xs text-fg3">@{c.handle}</span>
+                ),
+              },
+              {
+                head: "at call",
+                width: "76px",
+                align: "right",
+                hint: "market cap when they posted",
+                render: (c) => (
+                  <span className="t-mono text-[10px] tabular-nums text-fg4">
+                    {fmtUsd(c.mcAtCall)}
+                  </span>
+                ),
+              },
+              {
+                head: "peak",
+                width: "60px",
+                align: "right",
+                hint: "peak market cap ÷ market cap at the call",
+                render: (c) => (
+                  <span
+                    className={`t-mono text-[10.5px] tabular-nums ${
+                      c.outcome === "won"
+                        ? "text-good"
+                        : c.outcome === "lost"
+                          ? "text-bad"
+                          : "text-fg4"
+                    }`}
+                  >
+                    {c.hoursToPeak !== null ? `${(c.peakMc / c.mcAtCall).toFixed(1)}×` : "dead"}
+                  </span>
+                ),
+              },
+            ]}
+            rows={[...DEMO_CALLS].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 8)}
+            rowKey={(c) => `${c.handle}-${c.mint}-${c.at}`}
+            href={(c) => `/callers/${c.handle}`}
+          />
         </Panel>
       </div>
     </div>

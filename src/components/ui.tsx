@@ -45,11 +45,23 @@ export function Panel({
   id?: string;
 }) {
   return (
-    <section id={id} className={`panel scroll-mt-16 ${className}`}>
+    <section
+      id={id}
+      className={`panel scroll-mt-16 ${flush ? "panel-tight" : ""} ${className}`}
+    >
       {(title || right) && (
         <header className="panel-head">
-          {title && <h2 className="t-section text-fg">{title}</h2>}
-          {note && <span className="min-w-0 truncate t-xs text-fg4">{note}</span>}
+          {title && (
+            /* Uppercase micro-caps for the panel name, at the same weight as the
+               column headers inside it. Panels and their own columns now read as
+               one instrument instead of a heading with a table dropped into it. */
+            <h2 className="t-head">{title}</h2>
+          )}
+          {note && (
+            <span className="hidden min-w-0 truncate t-xs text-fg4 sm:inline" title={note}>
+              {note}
+            </span>
+          )}
           {right && <div className="ml-auto shrink-0 t-xs text-fg4">{right}</div>}
         </header>
       )}
