@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
+import { connection } from "next/server";
 import { PageHead } from "@/components/Shell";
 import { Demo, Gauge, Panel, ProReveal, Split, Stat, Tag } from "@/components/ui";
 import { DEMO_TOKENS, DEMO_WALLETS, WALLET_ROLE, shortAddr } from "@/lib/demo";
@@ -27,8 +29,28 @@ export async function generateMetadata({ params }: { params: Promise<{ addr: str
   return { title: shortAddr(addr, 6, 4) };
 }
 
-export default async function WalletPage({ params }: { params: Promise<{ addr: string }> }) {
+export default function WalletPage({ params }: { params: Promise<{ addr: string }> }) {
+  return (
+    <Suspense
+      fallback={
+        <div>
+          <PageHead title="Wallet record" note="Loading wallet evidence" />
+          <div className="p-3 sm:p-4">
+            <Panel>
+              <p className="t-xs text-fg4">Resolving this wallet’s record…</p>
+            </Panel>
+          </div>
+        </div>
+      }
+    >
+      <WalletPageContent params={params} />
+    </Suspense>
+  );
+}
+
+async function WalletPageContent({ params }: { params: Promise<{ addr: string }> }) {
   const { addr } = await params;
+  await connection();
   const decoded = decodeURIComponent(addr);
 
   // assemble every appearance of this address across the dataset
@@ -64,7 +86,7 @@ export default async function WalletPage({ params }: { params: Promise<{ addr: s
     <div>
       <PageHead
         title={shortAddr(decoded, 8, 6)}
-        note={role}
+        note={`Wallet receipts · ${role} · demo data`}
         right={
           <>
             <WatchToggle
@@ -132,7 +154,7 @@ export default async function WalletPage({ params }: { params: Promise<{ addr: s
         </div>
 
         {/* the verdict on this wallet */}
-        <Panel title="What this address is" note="read this before acting on its position anywhere">
+        <Panel title="The wallet’s track record" note="Check the launches and exits before you follow this address.">
           <p className="t-xs leading-relaxed text-fg3">{describeWallet(role, priorLaunches, priorRugs, appearances.length)}</p>
 
           {priorLaunches > 0 && (
@@ -153,8 +175,8 @@ export default async function WalletPage({ params }: { params: Promise<{ addr: s
         {/* the behaviour, measured rather than tagged */}
         {profile && dna && (
           <Panel
-            title="Wallet DNA"
-            note={`derived from ${profile.launchCount} launches — the label carries the rows that produced it`}
+            title="Receipts across launches"
+                        note={`${profile.launchCount} launches · ${profile.rugCount} collapsed · every label links back to its evidence`}
             flush
           >
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-line px-3 py-2">

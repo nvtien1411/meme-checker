@@ -52,7 +52,7 @@ export default function InvestigationPage() {
     <div>
       <PageHead
         title="Wallet Intel"
-        note="one token, everything connected to it"
+        note="Follow the funding trail. Click a node; check the receipts."
         right={
           <>
             <Demo />
@@ -62,10 +62,9 @@ export default function InvestigationPage() {
       />
 
       <div className="space-y-2.5 p-3 sm:p-4">
-
-                <Panel
-          title="RATS — connected entities"
-          note="select a node to isolate its relationships; the graph redraws from the record"
+        <Panel
+          title="RATS · who touched the launch"
+          note="Click a node to trace its links. Shared timing is not proof of shared control."
           flush
         >
           <div className="p-2.5">
@@ -74,7 +73,7 @@ export default function InvestigationPage() {
 
           {/* the legend is the edge list, not a colour key */}
           <div className="border-t border-line px-3 py-2">
-            <span className="t-eyebrow">relationships drawn</span>
+            <span className="t-eyebrow">links in this demo · not proof of common ownership</span>
             <div className="mt-1 flex flex-wrap gap-1">
               {GRAPH_EDGES.map((e) => {
                 const a = GRAPH_NODES.find((n) => n.id === e.from);
@@ -94,14 +93,11 @@ export default function InvestigationPage() {
           </div>
         </Panel>
 
-        <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-3">
-                                      </div>
-
         <div>
           <div className="mb-1.5 flex flex-wrap items-baseline gap-2">
             <h2 className="t-section text-fg">Who keeps showing up</h2>
             <span className="t-xs text-fg4">
-              the wallet network derived from every recorded launch, and who exits first
+              Repeat wallets, funding paths, and who sold first.
             </span>
           </div>
           {/* The workspace is the page, not a preview of it. It used to sit

@@ -65,7 +65,7 @@ export function Panel({
           {right && <div className="ml-auto shrink-0 t-xs text-fg4">{right}</div>}
         </header>
       )}
-      <div className={flush ? "" : "p-3"}>{children}</div>
+      <div className={flush ? "" : "p-3.5"}>{children}</div>
     </section>
   );
 }
@@ -189,7 +189,7 @@ export function Tag({
   return (
     <span
       title={title}
-      className={`inline-flex shrink-0 items-center border px-1.5 py-[1px] font-mono text-[9px] uppercase leading-[1.5] tracking-[0.07em] ${TAG[tone] ?? TAG.neutral} ${className}`}
+      className={`inline-flex shrink-0 items-center rounded-[4px] border px-1.5 py-[2px] font-mono text-[10px] uppercase leading-[1.4] tracking-[0.06em] ${TAG[tone] ?? TAG.neutral} ${className}`}
     >
       {children}
     </span>
@@ -569,8 +569,8 @@ export function Button({
   "aria-label"?: string;
 }) {
   const base =
-    "inline-flex items-center justify-center gap-1.5 font-mono uppercase tracking-[0.06em] transition-colors disabled:opacity-40 disabled:pointer-events-none";
-  const h = size === "md" ? "h-8 px-3 text-[10.5px]" : "h-6 px-2 text-[9.5px]";
+    "mc-button inline-flex items-center justify-center gap-1.5 font-mono uppercase tracking-[0.06em] transition-colors disabled:opacity-40 disabled:pointer-events-none";
+  const h = size === "md" ? "h-9 px-3 text-[11px]" : "h-7 px-2.5 text-[10px]";
   const skin =
     variant === "solid"
       ? "bg-acid text-bg font-semibold hover:bg-acid2"

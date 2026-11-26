@@ -35,7 +35,7 @@ const EXAMPLES = [
   { label: "CAKE", addr: "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82", chain: "bsc" as const },
 ];
 
-export function ScanInput({ autoFocus = false }: { autoFocus?: boolean }) {
+export function ScanInput({ autoFocus = false, hero = false }: { autoFocus?: boolean; hero?: boolean }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState("");
@@ -135,8 +135,8 @@ export function ScanInput({ autoFocus = false }: { autoFocus?: boolean }) {
         </div>
       )}
       <div
-        className={`flex flex-col border bg-surf transition-colors sm:flex-row sm:items-stretch ${
-          err ? "border-bad/50" : valid ? "border-line2" : "border-line"
+        className={`flex ${hero ? "flex-row items-stretch" : "flex-col sm:flex-row sm:items-stretch"} rounded-[10px] border bg-surf transition-colors focus-within:ring-1 ${
+          err ? "border-bad/50 focus-within:ring-bad/25" : valid ? "border-line2 focus-within:ring-acid/25" : "border-line focus-within:border-line2 focus-within:ring-acid/25"
         }`}
       >
         {/* chain — an icon, not a field. The address shape decides it, and
@@ -144,7 +144,9 @@ export function ScanInput({ autoFocus = false }: { autoFocus?: boolean }) {
             a labelled select here made the one action look like a form. */}
         {detected && (
           <div
-            className="flex items-center border-b border-line px-2.5 py-2 sm:border-b-0 sm:border-r"
+            className={`flex items-center border-line px-2.5 py-2 ${
+              hero ? "border-r" : "border-b sm:border-b-0 sm:border-r"
+            }`}
             title={`Reading this as ${detected}`}
           >
             <span className="font-mono text-[9.5px] uppercase tracking-[0.06em] text-fg4">
@@ -169,7 +171,11 @@ export function ScanInput({ autoFocus = false }: { autoFocus?: boolean }) {
             placeholder="Paste a contract address"
             aria-label="Contract address"
             aria-invalid={Boolean(err)}
-            className="min-w-0 flex-1 bg-transparent px-3 py-2.5 font-mono text-[12.5px] text-fg outline-none placeholder:font-sans placeholder:text-[12.5px] placeholder:text-fg4"
+            className={`min-w-0 flex-1 bg-transparent text-fg outline-none placeholder:font-sans placeholder:text-fg4 ${
+              hero
+                ? "px-4 py-3 font-mono text-[14px] placeholder:text-[14px] sm:text-[15px]"
+                : "px-3 py-2.5 font-mono text-[12.5px] placeholder:text-[12.5px]"
+            }`}
           />
           {value && (
             <button
@@ -180,7 +186,7 @@ export function ScanInput({ autoFocus = false }: { autoFocus?: boolean }) {
                 inputRef.current?.focus();
               }}
               aria-label="Clear"
-              className="grid h-6 w-6 shrink-0 place-items-center text-fg4 transition-colors hover:text-fg"
+              className={`grid shrink-0 place-items-center text-fg4 transition-colors hover:text-fg ${hero ? "h-11 w-11" : "h-11 w-11 sm:h-8 sm:w-8"}`}
             >
               ✕
             </button>
@@ -190,7 +196,7 @@ export function ScanInput({ autoFocus = false }: { autoFocus?: boolean }) {
             onClick={paste}
             aria-label="Paste from clipboard"
             title="Paste from clipboard"
-            className="mr-0.5 grid h-6 w-6 shrink-0 place-items-center text-fg4 transition-colors hover:text-fg"
+            className={`mr-0.5 grid shrink-0 place-items-center text-fg4 transition-colors hover:text-fg ${hero ? "h-11 w-11" : "h-11 w-11 sm:h-8 sm:w-8"}`}
           >
             <svg viewBox="0 0 12 12" className="h-[11px] w-[11px]" fill="none" aria-hidden>
               <rect x="3.2" y="1.2" width="7.6" height="9.6" rx="1.2" stroke="currentColor" strokeWidth="1.1" />
@@ -204,9 +210,13 @@ export function ScanInput({ autoFocus = false }: { autoFocus?: boolean }) {
         <button
           type="submit"
           disabled={busy}
-          className="m-[5px] shrink-0 rounded-[2px] bg-acid px-4 py-[7px] font-mono text-[10.5px] font-semibold uppercase tracking-[0.08em] text-bg transition-colors hover:bg-acid2 disabled:opacity-60"
+          className={`m-[5px] shrink-0 rounded-[6px] bg-acid font-semibold text-bg transition-colors hover:bg-acid2 disabled:opacity-60 ${
+            hero
+              ? "min-h-11 rounded-full px-5 font-sans text-[14px] tracking-normal normal-case"
+              : "min-h-8 px-4 py-[7px] font-mono text-[10.5px] uppercase tracking-[0.08em]"
+          }`}
         >
-          {busy ? "reading…" : "analyze"}
+          {hero ? (busy ? "Reading…" : "Analyze") : busy ? "reading…" : "analyze"}
         </button>
       </div>
 
@@ -237,7 +247,9 @@ export function ScanInput({ autoFocus = false }: { autoFocus?: boolean }) {
                   setErr(null);
                   inputRef.current?.focus();
                 }}
-                className="border border-line px-1.5 py-[1px] font-mono text-[9.5px] uppercase tracking-[0.05em] text-fg4 transition-colors hover:border-line2 hover:text-fg2"
+                className={`border border-line font-mono uppercase tracking-[0.05em] text-fg4 transition-colors hover:border-line2 hover:text-fg2 ${
+                  hero ? "min-h-11 sm:min-h-8 px-2 py-1 text-[10px]" : "px-1.5 py-[1px] text-[9.5px]"
+                }`}
               >
                 {e.label}
               </button>

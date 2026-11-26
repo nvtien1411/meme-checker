@@ -37,7 +37,7 @@ export default function RugsPage() {
     <div>
       <PageHead
         title="Rug Archive"
-        note="collapses on record, with the signal that fired before it"
+        note="Rugs happen. Check the receipts before you ape."
         right={
           <>
             <Demo />

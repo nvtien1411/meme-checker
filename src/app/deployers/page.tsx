@@ -1,269 +1,34 @@
 import Link from "next/link";
 import { PageHead } from "@/components/Shell";
-import { Demo, Gauge, Panel, ProReveal, RiskDot, Split, Stat, Tag } from "@/components/ui";
-import { DEMO_RUGS, DEMO_TOKENS, DEMO_WALLETS } from "@/lib/demo";
-import { fmtUsd } from "@/lib/http";
+import { Demo, Panel, ProReveal, Tag } from "@/components/ui";
+import { DEMO_RUGS, DEMO_TOKENS, DEMO_WALLETS, shortAddr } from "@/lib/demo";
 import { deployerRecord } from "@/lib/intel2";
 import { DeployerProRows } from "@/components/ProRows";
 import { PeekButton } from "@/components/report";
 import { NextSteps } from "@/components/NextSteps";
 
-/* ==================================================================== *
- * DEPLOYERS
- *
- * Reputation, not a profile page. The only question is whether this wallet
- * has done this before, and how those went — so the launch record is the page,
- * sorted worst first.
- * ==================================================================== */
-
 export const metadata = { title: "Deployers" };
-
+type Launch = { symbol: string; mint: string; chain: string; at: string; drawdown: number | null; live: boolean };
+const liveDeployer = DEMO_WALLETS.dev;
+function launchesFor(addr: string): Launch[] {
+  const rugs = DEMO_RUGS.filter((r) => r.deployer === addr).map((r) => ({ symbol: r.symbol, mint: r.mint, chain: r.chain, at: r.at, drawdown: r.drawdownPct, live: false }));
+  const live = addr === liveDeployer ? [{ symbol: DEMO_TOKENS[0].symbol, mint: DEMO_TOKENS[0].mint, chain: DEMO_TOKENS[0].chain, at: "Tracked live", drawdown: null, live: true }] : [];
+  return [...live, ...rugs];
+}
 export default function DeployersPage() {
-  // These four numbers were typed into the JSX. They are derived here so the
-  // header cannot disagree with the table beneath it.
-  // Pick the deployer with the longest record rather than a hard index: [2] is
-  // the bundle1 wallet with a single launch, which made the header say "one
-  // wallet, four launches" above a table showing 1.
-  const leadAddr =
-    [...new Set(DEMO_RUGS.map((r) => r.deployer))]
-      .map((a) => ({ a, r: deployerRecord(a) }))
-      .filter((x): x is { a: string; r: NonNullable<ReturnType<typeof deployerRecord>> } => x.r !== null)
-      .sort((x, y) => y.r.launchCount - x.r.launchCount)[0]?.a ?? DEMO_RUGS[0].deployer;
-  const lead = deployerRecord(leadAddr);
-  const leadLaunches = lead?.launchCount ?? 0;
-  const leadRugged = lead?.rugCount ?? 0;
-  const leadRugPct = leadLaunches > 0 ? Math.round((leadRugged / leadLaunches) * 100) : 0;
-  const record = [
-    { symbol: "RATS", mint: DEMO_TOKENS[0].mint, chain: "solana", at: "2026-11-18", peak: 612900, now: 43823, status: "live" as const },
-    { symbol: "PEACH", mint: DEMO_RUGS[0].mint, chain: "solana", at: "2026-11-23", peak: 612900, now: null, status: "rugged" as const },
-    { symbol: "JELLY", mint: DEMO_RUGS[4].mint, chain: "solana", at: "2026-11-09", peak: 420000, now: null, status: "rugged" as const },
-    { symbol: "MOGX", mint: DEMO_RUGS[1].mint, chain: "solana", at: "2026-11-18", peak: 340000, now: null, status: "rugged" as const },
-  ];
-
-  return (
-    <div>
-      <PageHead
-        title="Deployers"
-        note="the wallet behind the launch, and everything it launched before"
-        right={
-          <>
-            <Demo />
-            <Tag tone="neutral">3 tracked</Tag>
-          </>
-        }
-      />
-
-      <div className="space-y-2.5 p-3 sm:p-4">
-
-        <Panel
-          title="Deployer"
-          note={`${leadLaunches} launches on record, ${leadRugged} collapsed`}
-          flush
-        >
-          <div className="grid grid-cols-2 divide-x divide-line border-b border-line sm:grid-cols-4">
-            {[
-              { label: "launches", value: String(leadLaunches), sub: "on this chain" },
-              {
-                label: "rugged",
-                value: String(leadRugged),
-                sub: leadLaunches > 0 ? `${leadRugPct}% of launches` : "no launches on record",
-                tone: "bad",
-              },
-              {
-                label: "median drawdown",
-                value: lead?.medianDrawdown == null ? "—" : `${Math.round(lead.medianDrawdown)}%`,
-                sub: "across its launches",
-              },
-              {
-                label: "active span",
-                value: lead?.activeDays == null ? "—" : `${lead.activeDays}d`,
-                sub: "first to latest launch",
-                tone: "hot",
-              },
-            ].map((s) => (
-              <div key={s.label} className="px-3 py-2">
-                <Stat
-                  label={s.label}
-                  value={s.value}
-                  sub={s.sub}
-                  size="md"
-                  tone={s.tone === "bad" ? "bad" : s.tone === "hot" ? "hot" : "default"}
-                />
-              </div>
-            ))}
-          </div>
-
-          <div className="px-3 py-2">
-            <div className="flex flex-wrap items-baseline gap-1.5">
-              <PeekButton addr={leadAddr} />
-              <Tag tone={lead?.verdict === "serial rugger" ? "bad" : "warn"}>{lead?.verdict ?? "no record"}</Tag>
-              <Tag tone="neutral">
-                {lead?.activeDays == null ? "span unknown" : `${lead.activeDays}d active`}
-              </Tag>
-              <Link
-                href={`/deployers/${leadAddr}`}
-                className="ml-auto font-mono text-[9px] uppercase tracking-[0.05em] text-fg4 hover:text-acid"
-              >
-                full record →
-              </Link>
-            </div>
-            <p className="mt-1.5 t-xs leading-relaxed text-fg3">
-              {lead && lead.launchCount > 0 ? (
-                <>
-                  {lead.launchCount} launches on record, {lead.rugCount} collapsed
-                  {lead.medianDrawdown != null && ` — the median one lost ${Math.round(lead.medianDrawdown)}% of its peak`}.
-                  {lead.evidence[0] ? ` ${lead.evidence[0]}` : ""}
-                </>
-              ) : (
-                <>No launches on record for this wallet</>
-              )}
-            </p>
-          </div>
-        </Panel>
-
-        <Panel title="Launch record" note="worst first — the newest one is not the interesting one" flush>
-          <div className="grid grid-cols-[minmax(0,1fr)_60px_56px_64px] items-baseline gap-x-2.5 border-b border-line bg-surf2/40 px-3 py-1.5 sm:grid-cols-[minmax(0,1fr)_60px_64px_64px_60px]">
-            <span className="t-eyebrow">token</span>
-            <span className="t-eyebrow text-right">date</span>
-            <span className="hidden text-right t-eyebrow sm:block">peak</span>
-            <span className="t-eyebrow text-right">now</span>
-            <span className="t-eyebrow text-right">status</span>
-          </div>
-          {record
-            .sort((a, b) => (a.status === "rugged" ? -1 : 1) - (b.status === "rugged" ? -1 : 1))
-            .map((r) => (
-              <Link
-                key={r.mint}
-                href={`/token/${r.chain}/${r.mint}`}
-                className="drow grid grid-cols-[minmax(0,1fr)_60px_56px_64px] items-center gap-x-2.5 border-b border-line px-3 py-1.5 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_60px_64px_64px_60px]"
-              >
-                <div className="flex min-w-0 items-baseline gap-1.5">
-                  <span className="truncate t-xs font-semibold text-fg">{r.symbol}</span>
-                  <Tag tone={r.status === "rugged" ? "bad" : "neutral"}>{r.status}</Tag>
-                </div>
-                <span className="text-right t-mono text-[10px] text-fg4">{r.at.slice(5)}</span>
-                <span className="hidden text-right t-mono text-[10.5px] text-fg3 sm:block">
-                  {fmtUsd(r.peak)}
-                </span>
-                <span className={`text-right t-mono text-[10.5px] ${r.now === null ? "text-bad" : "text-fg2"}`}>
-                  {r.now === null ? "−99%" : fmtUsd(r.now)}
-                </span>
-                <span className="text-right">
-                  <RiskDot risk={r.status === "rugged" ? "critical" : "high"} />
-                </span>
-              </Link>
-            ))}
-        </Panel>
-
-        <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
-          <Panel title="Same hands, different tokens" note="wallets that appear on more than one of these launches">
-            {[
-              { addr: DEMO_WALLETS.funder, role: "funded every launch", count: 4 },
-              { addr: DEMO_WALLETS.bundle1, role: "bought launch block", count: 3 },
-              { addr: DEMO_WALLETS.bundle2, role: "bought launch block", count: 4 },
-              { addr: DEMO_WALLETS.bundle3, role: "bought launch block", count: 3 },
-              { addr: DEMO_WALLETS.insider1, role: "received supply", count: 2 },
-            ].map((w) => (
-              <div key={w.addr} className="border-b border-line py-1.5 last:border-b-0">
-                <div className="flex items-baseline gap-2">
-                  <span className="font-mono text-[10.5px] text-fg2">
-                    {w.addr.slice(0, 6)}…{w.addr.slice(-4)}
-                  </span>
-                  <span className="ml-auto t-mono text-[10px] text-warn">{w.count}/4</span>
-                </div>
-                <div className="mt-0.5 t-xs text-fg4">{w.role}</div>
-                <div className="mt-1">
-                  <Gauge pct={(w.count / 4) * 100} tone={w.count >= 3 ? "bad" : "warn"} height={3} />
-                </div>
-              </div>
-            ))}
-            <p className="mt-2 t-xs leading-relaxed text-fg4">
-              The same five wallets appear on three or more of this deployer&apos;s launches. Common
-              participation is evidence of a relationship, not proof of one owner — the funding
-              trace under Wallets is what closes that gap
-            </p>
-          </Panel>
-
-          <Panel title="What separates the one that lived" note="RATS is still trading — why">
-            <div className="space-y-1.5">
-              <Split label="launch block buyers" tone="warn">
-                22.4%
-              </Split>
-              <Split label="on the dead launches" tone="bad">
-                41%+
-              </Split>
-              <Split label="sell synchrony here" tone="warn">
-                71%
-              </Split>
-              <Split label="on the dead launches" tone="bad">
-                93%
-              </Split>
-              <Split label="organic attention" tone="good">
-                38/100
-              </Split>
-              <Split label="on the dead launches" tone="bad">
-                under 20
-              </Split>
-            </div>
-            <p className="mt-2 t-xs leading-relaxed text-fg3">
-              The launch that survived still has a quarter of its supply in one group and a 42-second
-              exit window. It survived because it found a narrative, not because it was clean — which
-              is the difference between a token that is safe and a token that is still alive
-            </p>
-          </Panel>
-        </div>
-
-        <ProReveal
-          title="Every launch by this wallet"
-          value={(() => {
-            const d = deployerRecord(DEMO_RUGS[2].deployer);
-            return d
-              ? `${d.launchCount} launches on record, ${d.rugCount} collapsed, median drawdown ${d.medianDrawdown?.toFixed(0)}%`
-              : "No launch record for this address";
-          })()}
-          clip={5}
-          shown={3}
-          rows={[<DeployerProRows key="dp" />]}
-          more={[
-            "Which launches used the same configuration and funding source",
-            "Wallets that received supply before the public launch on each one",
-            "Whether any of those wallets also deploy tokens of their own",
-            "The full funding tree: CEX hot wallet to intermediate to deployer",
-            "Cross-chain: the same operator under a different address",
-            "Every token this wallet deployed, including ones outside this database",
-          ]}
-          note="These are the real launch records for this deployer, worst first - the free view shows the two at the top"
-        />
-
-        <NextSteps
-          title="From a deployer record"
-          steps={[
-            {
-              from: "This wallet launched again recently",
-              to: "The newest token, checked",
-              href: "/check",
-              tone: "acid",
-            },
-            {
-              from: "Its launches share wallets",
-              to: "The graph of who bought together",
-              href: "/investigation",
-            },
-            {
-              from: "Someone called one of its tokens",
-              to: "Whether the caller exited first",
-              href: "/callers",
-              tone: "warn",
-            },
-            {
-              from: "You want the other collapses it caused",
-              to: "The rug archive",
-              href: "/rugs",
-              tone: "bad",
-            },
-          ]}
-        />
+  const addresses = [...new Set([...DEMO_RUGS.map((r) => r.deployer), liveDeployer])];
+  const records = addresses.map((addr) => ({ addr, launches: launchesFor(addr), record: deployerRecord(addr) })).filter((row) => row.launches.length > 0).sort((a, b) => (b.record?.rugCount ?? 0) - (a.record?.rugCount ?? 0) || b.launches.length - a.launches.length);
+  const launches = records.flatMap((row) => row.launches);
+  const collapsed = launches.filter((launch) => launch.drawdown !== null && launch.drawdown >= 90).length;
+  return <div><PageHead title="Deployers" note="One wallet. Every launch on record." right={<Demo />} /><div className="space-y-4 p-3 sm:p-4">
+    <section className="grid grid-cols-2 gap-3 sm:grid-cols-3" aria-label="Deployer overview">{[{ label: "Wallets tracked", value: records.length }, { label: "Launches on record", value: launches.length }, { label: "Fell 90%+", value: collapsed }].map((item) => <div key={item.label} className="panel p-4"><div className="t-eyebrow">{item.label}</div><div className="mt-1 font-mono text-3xl tabular-nums text-fg">{item.value}</div><div className="mt-1 text-xs text-fg4">Demo dataset</div></div>)}</section>
+    <section aria-label="Tracked deployers" className="space-y-3">{records.map(({ addr, launches: history, record }) => <Panel key={addr} flush className="overflow-hidden">
+      <header className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-3"><div className="min-w-0 flex-1"><div className="t-eyebrow">{record?.verdict ?? "launch history"} · {history.length} launches</div><h2 className="mt-1 font-mono text-lg text-fg">{shortAddr(addr, 8, 6)}</h2></div><PeekButton addr={addr} /><Link href={`/deployers/${addr}`} className="inline-flex min-h-11 items-center rounded border border-line px-3 text-sm font-semibold text-fg hover:border-acid hover:text-acid">Full record →</Link></header>
+      <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)]"><div><div className="t-eyebrow">Launch outcomes</div><div className="mt-2 grid grid-cols-2 gap-3">{[{ label: "Launches", value: history.length }, { label: "Collapsed ≥90%", value: record?.rugCount ?? 0 }, { label: "Worst drawdown", value: record?.worstDrawdown == null ? "Not measured" : `${record.worstDrawdown.toFixed(1)}%` }, { label: "Median drawdown", value: record?.medianDrawdown == null ? "Not measured" : `${record.medianDrawdown.toFixed(1)}%` }].map((item) => <div key={item.label} className="border-b border-line py-2"><div className="t-eyebrow">{item.label}</div><div className="mt-1 font-mono text-lg tabular-nums text-fg">{item.value}</div></div>)}</div>{record?.evidence[0] && <p className="mt-3 text-sm leading-relaxed text-fg3">{record.evidence[0]}</p>}<p className="mt-2 text-xs text-fg4">Drawdown describes recorded launch outcomes; wallet attribution is not proof of common ownership.</p></div>
+        <div><div className="flex items-baseline justify-between"><h3 className="t-eyebrow">Every launch on record</h3><span className="text-xs text-fg4">worst drawdown first</span></div><div className="mt-2 divide-y divide-line border-y border-line">{[...history].sort((a, b) => (b.drawdown ?? -1) - (a.drawdown ?? -1)).map((launch) => <Link key={launch.mint} href={`/token/${launch.chain}/${launch.mint}`} className="flex min-h-12 flex-wrap items-center gap-x-3 gap-y-1 py-2 hover:bg-surf2/50"><span className="font-semibold text-fg">{launch.symbol}</span><Tag tone={launch.live ? "neutral" : launch.drawdown !== null && launch.drawdown >= 90 ? "bad" : "warn"}>{launch.live ? "tracked" : launch.drawdown !== null && launch.drawdown >= 90 ? "collapsed" : "drawdown"}</Tag><span className="text-xs text-fg4">{launch.at}</span><span className="ml-auto t-mono text-sm text-fg3">{launch.drawdown === null ? "No completed drawdown" : `−${launch.drawdown.toFixed(1)}%`}</span></Link>)}</div></div>
       </div>
-    </div>
-  );
+    </Panel>)}</section>
+    <ProReveal title="Deployer links & funding context" shown={3} rows={[<DeployerProRows key="dp" />]} more={["Which launches used the same configuration and funding source", "Wallets that received supply before the public launch on each one", "Whether any of those wallets also deploy tokens of their own", "The full funding tree: CEX hot wallet to intermediate to deployer", "Cross-chain: the same operator under a different address", "Every token this wallet deployed, including ones outside this database"]} note="Explore relationships as evidence, not proof of common ownership."><p className="text-sm text-fg3">Deployer relationships and funding paths are recorded demo evidence; connections alone don’t establish who controls a wallet.</p></ProReveal>
+    <NextSteps title="From a deployer record" steps={[{ from: "This wallet launched again recently", to: "Check the newest token", href: "/check", tone: "acid" }, { from: "Its launches share wallets", to: "Inspect who bought together", href: "/investigation" }, { from: "A caller promoted one", to: "Review their own exits", href: "/callers", tone: "warn" }, { from: "Find other collapsed launches", to: "Open the rug archive", href: "/rugs", tone: "bad" }]} />
+  </div></div>;
 }

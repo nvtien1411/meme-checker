@@ -84,10 +84,10 @@ export function CompareClient() {
 
   return (
     <div>
-      <div className="border-b border-line px-3 py-2.5 sm:px-4">
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h1 className="t-section text-fg">Compare</h1>
-          <span className="t-xs text-fg4">same questions, side by side</span>
+      <div className="mc-page-head">
+        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-2">
+          <h1 className="t-page">Token face-off</h1>
+          <span className="text-[13px] text-fg3">Same checks. No shilling.</span>
           <div className="ml-auto flex items-center gap-1.5">
             <Demo />
             <Tag tone="neutral">{chosen.length} selected</Tag>
@@ -98,8 +98,8 @@ export function CompareClient() {
       <div className="space-y-2.5 p-3 sm:p-4">
         {/* ---------------- pickers ---------------- */}
         <div className="panel px-2.5 py-2">
-          <div className="mb-1.5 flex items-center gap-2">
-            <span className="t-eyebrow">pick up to three</span>
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <span className="t-eyebrow">Pick your matchups · up to three</span>
             <span className="t-xs text-fg4">
               {DEMO_TOKENS.length} tokens in the tracked set
             </span>
@@ -114,7 +114,7 @@ export function CompareClient() {
                     value={mint}
                     onChange={(e) => setSlot(i, e.target.value)}
                     aria-label={`Token ${i + 1}`}
-                    className="min-w-0 flex-1 border border-line bg-surf px-1.5 py-[3px] font-mono text-[10.5px] text-fg2 outline-none focus:border-acid"
+                    className="min-h-10 min-w-0 flex-1 border border-line bg-surf px-2 py-2 font-mono text-xs text-fg2 outline-none focus:border-acid"
                   >
                     {available(i).map((o) => (
                       <option key={o.mint} value={o.mint}>
@@ -151,7 +151,7 @@ export function CompareClient() {
               className="grid items-baseline gap-x-3 border-b border-line bg-surf2/40 px-3 py-1.5"
               style={{ gridTemplateColumns: `minmax(0,110px) repeat(${chosen.length}, minmax(0,1fr))` }}
             >
-              <span className="t-eyebrow">metric</span>
+              <span className="t-eyebrow">check</span>
               {chosen.map((t) => (
                 <Link
                   key={t.mint}

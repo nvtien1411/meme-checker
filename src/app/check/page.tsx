@@ -1,76 +1,56 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Demo, Panel, Tag } from "@/components/ui";
+import { Demo } from "@/components/ui";
 import { DEMO_TOKENS } from "@/lib/demo";
 import { fmtUsd } from "@/lib/http";
 import { CheckForm } from "./CheckForm";
 
-/* ==================================================================== *
- * SCAN A CONTRACT
- *
- * This route was linked from the failed-lookup screen as "/check" and did not
- * exist — the one path a user takes when their paste was wrong ended in a 404.
- * A dead end reached at the moment of confusion is the worst place to put one.
- *
- * The page is deliberately almost empty: one input, one button, and the last
- * few things this browser scanned. No explanation of what the tool does,
- * because someone who typed a bad address already knows what they wanted.
- * ==================================================================== */
-
 export const metadata: Metadata = {
-  title: "Scan a contract — Meme Checker",
-  description: "Paste a token contract to get a risk report",
+  title: "Scan a contract",
+  description: "Inspect a token's risk evidence, holders and estimated exit depth by contract address.",
 };
 
 export default function CheckPage() {
+  const [sample, ...examples] = DEMO_TOKENS.slice(0, 6);
   return (
-    <div className="mx-auto w-full max-w-[620px] px-4 py-10">
-      <div className="flex flex-wrap items-baseline gap-2">
-        <h1 className="t-section text-fg">Scan a contract</h1>
-        <div className="ml-auto flex items-center gap-1.5">
-          <Demo />
-          <Tag tone="neutral">Solana · EVM</Tag>
-        </div>
-      </div>
-
-      <p className="mt-1.5 t-xs leading-relaxed text-fg3">
-        Paste a token address. The chain is read from the address shape, so there is nothing else
-        to pick
-      </p>
-
-      {/* The real input lives in the header on every other page. Here it is the
-          only thing on screen, which is the point of the route. */}
-      <div className="mt-4">
-        <Panel flush>
-          <CheckForm />
-        </Panel>
-      </div>
-
-      <Panel title="Or open one already in this dataset" note="so you can see the shape of a report first" flush>
-        {DEMO_TOKENS.slice(0, 6).map((t) => (
-          <Link
-            key={t.mint}
-            href={`/token/${t.chain}/${t.mint}`}
-            className="drow flex items-baseline gap-2 border-b border-line px-3 py-[7px] last:border-b-0"
-          >
-            <span className="t-xs font-semibold text-fg">{t.symbol}</span>
-            <span className="min-w-0 flex-1 truncate t-xs text-fg4">{t.name}</span>
-            <span className="t-mono text-[10px] tabular-nums text-fg3">{fmtUsd(t.mcap)}</span>
-            <span
-              className={`w-8 text-right t-mono text-[10px] tabular-nums ${
-                t.score < 30 ? "text-good" : t.score < 60 ? "text-warn" : "text-bad"
-              }`}
-            >
-              {t.score}
-            </span>
-          </Link>
-        ))}
-      </Panel>
-
-      <p className="mt-3 t-xs leading-relaxed text-fg4">
-        A failed lookup is not a verdict. If a contract cannot be read, that means nothing about
-        whether it is safe — it means the data source did not answer
-      </p>
+    <div className="mx-auto w-full max-w-[760px] px-4 pb-16 pt-10 sm:px-6 sm:pt-16">
+      <header className="mb-6">
+        <p className="t-eyebrow text-fg3">Token scanner</p>
+        <h1 className="mt-2 text-4xl font-semibold tracking-tight text-fg sm:text-5xl">Scan a contract</h1>
+        <p className="mt-3 max-w-[55ch] t-body text-fg2">See which checks failed, what could not be verified, and how a planned sell compares with estimated pool depth.</p>
+      </header>
+      <CheckForm />
+      {sample && (
+        <section aria-labelledby="scan-example" className="mt-8 border-t border-line pt-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 id="scan-example" className="text-sm font-semibold text-fg">Example report</h2>
+            <Demo what="demo preview" />
+          </div>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4">
+            <dl className="flex flex-wrap gap-x-6 gap-y-2">
+              <div><dt className="t-xs text-fg3">Token</dt><dd className="t-mono text-sm text-fg">{sample.symbol}</dd></div>
+              <div><dt className="t-xs text-fg3">Risk score</dt><dd className="t-mono text-sm text-fg">{sample.score}/100</dd></div>
+              <div><dt className="t-xs text-fg3">Market cap</dt><dd className="t-mono text-sm text-fg">{fmtUsd(sample.mcap)}</dd></div>
+            </dl>
+            <Link href={`/token/${sample.chain}/${sample.mint}`} prefetch={false} className="inline-flex min-h-11 items-center text-sm font-medium text-acid hover:underline">Open report →</Link>
+          </div>
+          <details className="mt-1">
+            <summary className="min-h-11 cursor-pointer py-3 text-sm text-fg2 hover:text-fg">More example tokens</summary>
+            <ul className="divide-y divide-line border-t border-line">
+              {examples.map((token) => (
+                <li key={token.mint}>
+                  <Link href={`/token/${token.chain}/${token.mint}`} prefetch={false} className="drow flex min-h-11 items-center gap-3 px-2 py-2 text-sm">
+                    <strong className="text-fg">{token.symbol}</strong>
+                    <span className="min-w-0 flex-1 truncate text-fg3">{token.name}</span>
+                    <span className="whitespace-nowrap t-mono text-xs text-fg3">{fmtUsd(token.mcap)} · {token.score}/100</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </details>
+        </section>
+      )}
+      <p className="mt-4 t-xs text-fg3">If a lookup fails, risk remains unverified.</p>
     </div>
   );
 }

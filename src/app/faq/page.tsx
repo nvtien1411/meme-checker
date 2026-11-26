@@ -136,15 +136,16 @@ export default function MethodPage() {
         right={<Tag tone="neutral">{CHECKS.length} checks · 100 weight</Tag>}
       />
 
-      <div className="space-y-2.5 p-3 sm:p-4">
+      <div className="mx-auto max-w-5xl space-y-4 p-3 sm:p-4">
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(18rem,0.9fr)] lg:items-start">
         <Panel title="How the score works" note="three rules, and nothing hidden">
-          <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-3 lg:grid-cols-1">
             {[
               ["a floor, not an average", "One disqualifying finding sets the minimum. Three fails cannot be averaged away by five passes — which is why a score of 34 can still be high risk"],
               ["the band comes from counts", "The word next to the number is decided by how many checks failed, not by the number itself. Two fails is high risk whatever the arithmetic says"],
               ["unknown is not zero", "A check that could not run contributes nothing and is counted separately. It never silently becomes a pass, and it is never treated as a warning"],
             ].map(([k, v]) => (
-              <div key={k} className="border-b border-line pb-2 last:border-b-0 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-4 sm:last:border-r-0">
+              <div key={k} className="border-b border-line py-2 last:border-b-0 sm:border-b-0 sm:border-r sm:py-0 sm:pr-4 sm:last:border-r-0 lg:border-b lg:border-r-0 lg:py-2 lg:pr-0 lg:last:border-b-0">
                 <div className="t-xs font-semibold text-fg2">{k}</div>
                 <p className="mt-0.5 t-xs leading-relaxed text-fg4">{v}</p>
               </div>
@@ -155,13 +156,13 @@ export default function MethodPage() {
         <Panel title="Weights" note="what the score is made of" flush>
           <div className="px-3 py-2">
             {CHECKS.map((c) => (
-              <div key={c.id} className="border-b border-line py-1 last:border-b-0">
+              <div key={c.id} className="border-b border-line py-1.5 last:border-b-0">
                 <div className="flex items-baseline gap-2">
                   <span className="min-w-0 flex-1 truncate t-xs text-fg3">{c.q}</span>
                   {c.gate && <Tag tone="warn">gate</Tag>}
                   <span className="t-mono text-[10px] text-fg4">{c.weight}/{totalWeight}</span>
                 </div>
-                <div className="mt-1 h-[2px] w-full bg-surf3">
+                <div className="mt-1.5 h-[3px] w-full bg-surf3">
                   <div
                     className={c.gate ? "h-full bg-bad/70" : "h-full bg-acid/70"}
                     style={{ width: `${(c.weight / totalWeight) * 100}%` }}
@@ -170,15 +171,17 @@ export default function MethodPage() {
               </div>
             ))}
           </div>
-          <p className="border-t border-line px-3 py-1.5 t-xs text-fg4">
+          <p className="border-t border-line px-3 py-2 t-xs leading-relaxed text-fg4">
             A gate check failing changes the band directly, regardless of weight
           </p>
         </Panel>
 
+        </div>
+
         <MethodList checks={CHECKS} />
 
         <Panel title="What this tool will not do" note="stated once, clearly">
-          <ul className="space-y-1">
+          <ul className="space-y-2">
             {[
               "It will not tell you a token is safe. A clean score means the measured checks were inside their bands",
               "It will not predict a price. Nothing here is a forecast",
@@ -186,8 +189,8 @@ export default function MethodPage() {
               "It will not score a token on social hype alone, and a high follower count never improves a score",
               "It will not accuse anyone. A coordination signal is a count of observed behaviour",
             ].map((t) => (
-              <li key={t} className="flex items-start gap-1.5">
-                <span aria-hidden className="mt-[6px] h-[3px] w-[3px] shrink-0 bg-bad" />
+              <li key={t} className="flex items-start gap-2">
+                <span aria-hidden className="mt-[7px] h-[4px] w-[4px] shrink-0 bg-bad" />
                 <span className="t-xs leading-relaxed text-fg3">{t}</span>
               </li>
             ))}

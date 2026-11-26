@@ -72,8 +72,14 @@ export function Graph({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [selected, setSelected] = useState<string | null>(null);
-  const [hover, setHover] = useState<string | null>(null);
-  const [ready, setReady] = useState(false);
+  const interactionRef = useRef<{ selected: string | null; hover: string | null }>({
+    selected: null,
+    hover: null,
+  });
+
+  useEffect(() => {
+    interactionRef.current.selected = selected;
+  }, [selected]);
 
   // Positions are computed once from the discovery order, on a ring with the
   // earliest-discovered entity at the centre. A layout that settles differently
@@ -102,16 +108,16 @@ export function Graph({
     return byId;
   }, [nodes]);
 
-  const activeSet = useMemo(() => {
-    const focus = selected ?? hover;
-    if (!focus) return null;
-    const set = new Set<string>([focus]);
+  const neighborsById = useMemo(() => {
+    const byId = new Map<string, Set<string>>();
     for (const e of edges) {
-      if (e.from === focus) set.add(e.to);
-      if (e.to === focus) set.add(e.from);
+      if (!byId.has(e.from)) byId.set(e.from, new Set());
+      if (!byId.has(e.to)) byId.set(e.to, new Set());
+      byId.get(e.from)!.add(e.to);
+      byId.get(e.to)!.add(e.from);
     }
-    return set;
-  }, [selected, hover, edges]);
+    return byId;
+  }, [edges]);
 
   // ---- draw loop ---------------------------------------------------------
   useEffect(() => {
@@ -139,7 +145,7 @@ export function Graph({
     motionQuery.addEventListener("change", onMotionChange);
     let raf = 0;
     let visible = true;
-    let started = performance.now();
+    const started = performance.now();
     let w = 0;
     let h = 0;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -297,6 +303,9 @@ export function Graph({
     function draw(now: number) {
       if (!ctx) return;
       const t = now - started;
+      const { selected: selectedId, hover: hoveredId } = interactionRef.current;
+      const focus = selectedId ?? hoveredId;
+      const selectedNeighbors = selectedId ? neighborsById.get(selectedId) : null;
       ctx.clearRect(0, 0, w, h);
       const cx = w / 2;
       const cy = h / 2;
@@ -316,7 +325,6 @@ export function Graph({
 
       for (const g of geometry) {
         const e = g.edge;
-        const focus = selected ?? hover;
         const dim = focus !== null && !(e.from === focus || e.to === focus);
         const onPath = focus !== null && (e.from === focus || e.to === focus);
 
@@ -419,8 +427,9 @@ export function Graph({
         const k = Math.max(0, Math.min(1, (t - appear) / 380));
         if (k <= 0) continue;
 
-        const dim = activeSet ? !activeSet.has(n.id) : false;
-        const isFocus = (selected ?? hover) === n.id;
+        const dim = selectedId !== null && selectedId !== n.id && !selectedNeighbors?.has(n.id);
+        const isSelected = selectedId === n.id;
+        const isHovered = selectedId === null && hoveredId === n.id;
         const colour = KIND_COLOR[n.kind];
         const ease = 1 - Math.pow(1 - k, 3);
 
@@ -447,13 +456,13 @@ export function Graph({
         }
         const breathe = isHub && !reduce ? 1 + Math.sin(t / 680) * 0.06 : 1;
 
-        const radius = p.r * ease * breathe * (isFocus ? 1.35 : 1) * (1 + pulse * 0.12);
+        const radius = p.r * ease * breathe * (isSelected ? 1.35 : 1) * (1 + pulse * 0.12);
 
         ctx.save();
         ctx.globalAlpha = dim ? 0.12 : 1;
 
         // halo: focus wins, otherwise the arrival bloom
-        const halo = Math.max(isFocus ? 0.16 : 0, pulse * 0.18);
+        const halo = Math.max(isSelected ? 0.16 : 0, pulse * 0.18);
         if (halo > 0.005) {
           ctx.globalAlpha = dim ? 0.02 : halo;
           ctx.fillStyle = colour;
@@ -478,7 +487,7 @@ export function Graph({
           ctx.fillStyle = "#08090b";
           ctx.fillRect(cx + p.x - tw / 2 - 3, ly - 9, tw + 6, 13);
           ctx.globalAlpha = dim ? 0.15 : 1;
-          ctx.fillStyle = isFocus ? "#f1f3f2" : "#cdd5e0";
+          ctx.fillStyle = isSelected || isHovered ? "#f1f3f2" : "#cdd5e0";
           ctx.fillText(n.label, cx + p.x, ly);
         }
         ctx.restore();
@@ -498,7 +507,6 @@ export function Graph({
       raf = requestAnimationFrame(draw);
     }
 
-    started = performance.now();
     loop();
 
     return () => {
@@ -507,7 +515,7 @@ export function Graph({
       io.disconnect();
       motionQuery.removeEventListener("change", onMotionChange);
     };
-  }, [nodes, edges, layout, selected, hover, activeSet, height, ready]);
+  }, [nodes, edges, layout, neighborsById, height]);
 
   // ---- hit testing -------------------------------------------------------
   function hit(clientX: number, clientY: number): string | null {
@@ -543,15 +551,18 @@ export function Graph({
           ref={canvasRef}
           className="block"
           onMouseMove={(ev) => {
-            if (!ready) setReady(true);
             const id = hit(ev.clientX, ev.clientY);
-            setHover(id);
+            interactionRef.current.hover = id;
             if (canvasRef.current) canvasRef.current.style.cursor = id ? "pointer" : "default";
           }}
-          onMouseLeave={() => setHover(null)}
+          onMouseLeave={() => {
+            interactionRef.current.hover = null;
+          }}
           onClick={(ev) => {
             const id = hit(ev.clientX, ev.clientY);
-            setSelected(id && id !== selected ? id : null);
+            const next = id && id !== interactionRef.current.selected ? id : null;
+            interactionRef.current.selected = next;
+            setSelected(next);
           }}
           role="img"
           aria-label="Entity network: tokens, wallets, deployers and callers connected by recorded relationships"
@@ -579,7 +590,10 @@ export function Graph({
             )}
             <button
               type="button"
-              onClick={() => setSelected(null)}
+              onClick={() => {
+                interactionRef.current.selected = null;
+                setSelected(null);
+              }}
               className="font-mono text-[9px] uppercase tracking-[0.06em] text-fg4 hover:text-fg2"
             >
               clear

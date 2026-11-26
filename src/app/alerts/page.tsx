@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AlertsInbox } from "./AlertsInbox";
 import { PageHead } from "@/components/Shell";
 import { Demo, Gauge, Panel, ProReveal, Split, Tag } from "@/components/ui";
 import { AlertRuleExamples } from "@/components/Intelligence4";
@@ -109,12 +109,6 @@ const ALERTS: {
   },
 ];
 
-const SEV: Record<Sev, { label: string; cls: string; dot: string }> = {
-  critical: { label: "critical", cls: "text-bad", dot: "bg-bad" },
-  high: { label: "high", cls: "text-hot", dot: "bg-hot" },
-  medium: { label: "medium", cls: "text-warn", dot: "bg-warn" },
-};
-
 export default function AlertsPage() {
   const unread = ALERTS.filter((a) => a.unread).length;
 
@@ -122,17 +116,17 @@ export default function AlertsPage() {
     <div>
       <PageHead
         title="Alerts"
-        note="triggered by wallet behaviour, not by price"
+        note="Demo feed. Read the wallet move before the candle."
         right={
           <>
             <Demo />
-            <Tag tone="bad">{unread} unread</Tag>
+            <Tag tone="bad">{unread} new in demo</Tag>
           </>
         }
       />
 
       <div className="space-y-2.5 p-3 sm:p-4">
-        <Panel title="What these are" note="and what they deliberately are not">
+        <Panel title="What fires (and what doesn't)" note="no price pings, only wallet behaviour">
           <div className="grid grid-cols-1 gap-x-5 sm:grid-cols-2">
             <div>
               <div className="font-mono text-[9.5px] uppercase tracking-[0.08em] text-acid">fires on</div>
@@ -173,95 +167,22 @@ export default function AlertsPage() {
           </div>
         </Panel>
 
-        <Panel flush>
-          <div className="flex flex-wrap items-center gap-1.5 border-b border-line bg-surf2/40 px-3 py-1.5">
-            <span className="t-eyebrow mr-1">filter</span>
-            {["all", "critical", "high", "medium", "unread"].map((f, i) => (
-              <button
-                key={f}
-                type="button"
-                className={`border px-1.5 py-[2px] font-mono text-[9px] uppercase tracking-[0.05em] transition-colors ${
-                  i === 0
-                    ? "border-acid/40 bg-acid/10 text-acid"
-                    : "border-line text-fg4 hover:border-line2 hover:text-fg2"
-                }`}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
-
-          {ALERTS.map((a) => {
-            const sev = SEV[a.sev];
-            return (
-              <article key={a.id} className="border-b border-line last:border-b-0">
-                <div className="flex items-start gap-2 px-3 py-2">
-                  <span aria-hidden className={`mt-[5px] h-[5px] w-[5px] shrink-0 ${sev.dot}`} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-baseline gap-x-1.5">
-                      <span className={`font-mono text-[9px] uppercase tracking-[0.06em] ${sev.cls}`}>
-                        {sev.label}
-                      </span>
-                      <span className="font-mono text-[9px] uppercase tracking-[0.06em] text-fg4">
-                        {a.cat}
-                      </span>
-                      {a.unread && <Tag tone="acid">new</Tag>}
-                      <span className="ml-auto t-mono text-[9.5px] text-fg4">{a.at}</span>
-                    </div>
-
-                    <h3 className="mt-0.5 t-xs font-semibold text-fg">{a.headline}</h3>
-                    <p className="mt-0.5 t-xs leading-relaxed text-fg3">{a.detail}</p>
-
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                      <Link
-                        href={`/token/${a.chain}/${a.mint}`}
-                        className="border border-line px-1.5 py-[1px] font-mono text-[9px] uppercase tracking-[0.05em] text-fg3 hover:border-line2 hover:text-acid"
-                      >
-                        {a.token} →
-                      </Link>
-                      {a.cat === "deployer" && (
-                        <Link
-                          href="/deployers"
-                          className="border border-line px-1.5 py-[1px] font-mono text-[9px] uppercase tracking-[0.05em] text-fg3 hover:border-line2 hover:text-acid"
-                        >
-                          deployer record
-                        </Link>
-                      )}
-                      {a.cat === "caller activity" && (
-                        <Link
-                          href="/callers/cryptocole"
-                          className="border border-line px-1.5 py-[1px] font-mono text-[9px] uppercase tracking-[0.05em] text-fg3 hover:border-line2 hover:text-acid"
-                        >
-                          caller profile
-                        </Link>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </Panel>
+        <AlertsInbox alerts={ALERTS} />
 
         <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
-          <Panel title="Delivery" note="where an alert has to land to be useful">
+          <Panel title="Delivery preview" note="not connected in this build">
             <div className="space-y-1">
-              <Split label="in-app" tone="good">
-                on
-              </Split>
-              <Split label="telegram" tone="good">
-                connected
-              </Split>
-              <Split label="email digest">daily, 08:00 UTC</Split>
-              <Split label="quiet hours">23:00–07:00, critical only</Split>
+              <Split label="in-app">preview only</Split>
+              <Split label="telegram">not connected</Split>
+              <Split label="email digest">not configured</Split>
+              <Split label="quiet hours">not configured</Split>
             </div>
             <p className="mt-2 t-xs leading-relaxed text-fg4">
-              A wallet-movement alert is worthless six hours late. The threshold is set so that a
-              transfer of under 1% of supply never fires, because at that size it is noise
+              Delivery settings are examples only. No notification service is active here
             </p>
           </Panel>
 
-          <Panel title="Thresholds" note="what has to happen before this interrupts you">
+          <Panel title="Threshold preview" note="examples only · changes are not saved">
             <div className="space-y-2">
               {[
                 { label: "wallet moves % of supply", value: 2, max: 20 },
@@ -298,7 +219,7 @@ export default function AlertsPage() {
             "Caller rules: alert when a tracked caller posts and a known cluster buys within five minutes",
             "Delivery into a Telegram group, not a personal inbox",
           ]}
-          note="Free alerts on price. Price is what everyone already watches — these fire on the behaviour that moves it"
+          note="Preview only. No live rules or delivery channels are active in this build"
         >
           <AlertRuleExamples />
         </ProReveal>

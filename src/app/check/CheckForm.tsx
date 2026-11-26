@@ -1,76 +1,66 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState, useTransition } from "react";
 
-/* One input, one decision. The chain is inferred from the address shape and
- * shown before submit, so the user can catch a wrong guess before spending a
- * scan — which is the only failure this form can produce. */
+import { CHAINS, guessAddressKind, type ChainId } from "@/lib/chains";
 
-const SOLANA = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
-const EVM = /^0x[a-fA-F0-9]{40}$/;
-
-function detect(raw: string): { chain: string; valid: boolean; note: string } {
-  const v = raw.trim();
-  if (!v) return { chain: "", valid: false, note: "" };
-  if (EVM.test(v)) return { chain: "ethereum", valid: true, note: "EVM address — scanning as Ethereum" };
-  if (SOLANA.test(v)) return { chain: "solana", valid: true, note: "Solana address" };
-  if (v.startsWith("0x"))
-    return { chain: "", valid: false, note: `EVM addresses are 42 characters; this is ${v.length}` };
-  return {
-    chain: "",
-    valid: false,
-    note: `Not a valid address — Solana is 32–44 base58 characters, this is ${v.length}`,
-  };
-}
+const EVM_CHAINS = CHAINS.filter((chain) => chain.addressKind === "evm");
 
 export function CheckForm() {
   const router = useRouter();
   const [value, setValue] = useState("");
   const [touched, setTouched] = useState(false);
-  const d = detect(value);
+  const input = useRef<HTMLInputElement>(null);
+  const [network, setNetwork] = useState<ChainId>("ethereum");
+  const [pending, startTransition] = useTransition();
+  const kind = guessAddressKind(value)?.kind;
+  const note = kind === "solana" ? "Solana address detected." : kind === "evm" ? "EVM address detected. Select the network where this token trades." : !value.trim() ? touched ? "Enter a contract address to scan." : "Accepts Solana mint addresses and 0x token contracts." : value.trim().startsWith("0x") ? "Enter 0x followed by exactly 40 hexadecimal characters." : "Enter 32–44 base58 characters for a Solana mint address.";
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     setTouched(true);
-    if (!d.valid) return;
-    router.push(`/token/${d.chain}/${value.trim()}`);
+    if (!kind) { input.current?.focus(); return; }
+    startTransition(() => router.push(`/token/${kind === "solana" ? "solana" : network}/${value.trim()}`));
   };
 
   return (
-    <form onSubmit={submit} className="p-3">
-      <div className="flex items-stretch gap-1.5">
+    <form onSubmit={submit} aria-busy={pending} className="rounded-lg border border-line bg-surf p-3 sm:p-4">
+      <label htmlFor="scan-address" className="mb-2 block text-sm font-medium text-fg">Contract address</label>
+      <div className="flex min-w-0 gap-1 rounded-md border border-line2 bg-bg p-1 focus-within:border-acid">
         <input
           value={value}
           onChange={(e) => {
             setValue(e.target.value);
             setTouched(false);
           }}
-          autoFocus
+          ref={input}
+          id="scan-address"
+          aria-invalid={(touched && !kind) || undefined}
+          aria-describedby="scan-status"
+          autoCapitalize="none"
           spellCheck={false}
           autoComplete="off"
-          aria-label="Token contract address"
-          placeholder="paste CA — CwnbD9FpaFSNou634knczXVCRUjTqmzwCrs3AiQvpump"
-          className="min-w-0 flex-1 border border-line bg-bg px-2.5 py-2 font-mono text-[12px] text-fg placeholder:text-fg4 focus:border-acid/50 focus:outline-none"
+          placeholder="Paste token address"
+          className="min-h-11 min-w-0 flex-1 px-2 font-mono text-base text-fg placeholder:text-fg3 focus:outline-none sm:px-3 sm:text-sm"
         />
         <button
           type="submit"
-          className="shrink-0 border border-acid/50 bg-acid/10 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.06em] text-acid hover:bg-acid/15"
+          disabled={pending}
+          className="min-h-11 shrink-0 rounded bg-acid px-3 text-sm font-semibold text-[#111509] hover:brightness-110 disabled:opacity-60 sm:px-4"
         >
-          scan
+          {pending ? "Scanning…" : "Scan token"}
         </button>
       </div>
-
-      <p
-        aria-live="polite"
-        className={`mt-2 t-xs leading-relaxed ${
-          value === "" ? "text-fg4" : d.valid ? "text-acid/80" : touched ? "text-bad" : "text-warn"
-        }`}
-      >
-        {value === ""
-          ? "Solana addresses are 32–44 base58 characters. EVM addresses start 0x and are 42 characters"
-          : d.note}
-      </p>
+      <p id="scan-status" aria-live="polite" className={`mt-2.5 t-xs ${touched && !kind ? "text-bad" : "text-fg3"}`}>{note}</p>
+      {kind === "evm" && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <label htmlFor="scan-network" className="text-sm text-fg2">Network</label>
+          <select id="scan-network" value={network} onChange={(event) => setNetwork(event.target.value as ChainId)} className="min-h-11 max-w-full rounded-md border border-line2 bg-bg px-2 text-sm text-fg">
+            {EVM_CHAINS.map(({ id, label }) => <option key={id} value={id}>{label}</option>)}
+          </select>
+        </div>
+      )}
     </form>
   );
 }

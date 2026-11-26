@@ -5,206 +5,65 @@ import { NarrativeWalletGate } from "@/components/NarrativeGate";
 import { NarrativeTable } from "@/components/Intelligence2";
 import { NarrativeProRows } from "@/components/ProRows";
 import { DEMO_NARRATIVES, DEMO_TOKENS } from "@/lib/demo";
-import { allNarratives, narrativeAnalysis } from "@/lib/intel2";
+import { allNarratives } from "@/lib/intel2";
 import { fmtUsd } from "@/lib/http";
 import { NextSteps } from "@/components/NextSteps";
-
-/* ==================================================================== *
- * NARRATIVES
- *
- * The question is never "what is the story". It is "how many times has this
- * story already been tried, and how did the last ones end" — which is a
- * countable answer, so this page counts.
- * ==================================================================== */
 
 export const metadata = { title: "Meta Radar" };
 
 export default function NarrativesPage() {
+  const analyses = allNarratives();
+  const earlyCount = analyses.filter((n) => n.fit === "early").length;
+  const trackedTokens = DEMO_TOKENS.filter((t) => DEMO_NARRATIVES.some((n) => n.name === t.narrative)).length;
+
   return (
     <div>
-      <PageHead
-        title="Meta Radar"
-        note="every idea currently running, and what the last attempt did"
-        right={
-          <>
-            <Demo />
-            <Tag tone="neutral">{DEMO_NARRATIVES.length} tracked</Tag>
-          </>
-        }
-      />
-
-      <div className="space-y-2.5 p-3 sm:p-4">
-
-                {DEMO_NARRATIVES.map((n) => (
-          <Panel key={n.name} flush>
-            <div className="flex flex-wrap items-baseline gap-x-2.5 border-b border-line px-3 py-2">
-              <h2 className="t-section text-fg">{n.name}</h2>
-              <Tag
-                tone={
-                  n.trend === "rising" ? "good" : n.trend === "peaking" ? "warn" : n.trend === "cooling" ? "bad" : "neutral"
-                }
-              >
-                {n.trend}
-              </Tag>
-              <span className="t-mono text-[10px] text-fg4">{n.tokens} tokens</span>
-              <div className="ml-auto flex items-center gap-3">
-                <span className="t-mono text-[10.5px] text-fg3">{n.mindshare7d}% mindshare</span>
-                <span className="t-mono text-[10.5px] text-fg4">
-                  usual life{" "}
-                  {(() => {
-                    const closed = n.instances
-                      .map((i) => i.hoursToMinus90)
-                      .filter((h): h is number => h !== null)
-                      .sort((a, b) => a - b);
-                    if (closed.length === 0) return "unmeasured";
-                    const mid = Math.floor(closed.length / 2);
-                    const med =
-                      closed.length % 2 ? closed[mid] : (closed[mid - 1] + closed[mid]) / 2;
-                    return `${med}h`;
-                  })()}
-                </span>
+      <PageHead title="Narratives" note="See what’s already running—and how long it lasted." right={<Demo />} />
+      <div className="space-y-4 p-3 sm:p-4">
+        <section className="grid gap-3 sm:grid-cols-3" aria-label="Narrative overview">
+          {[
+            { label: "Tracked ideas", value: DEMO_NARRATIVES.length, detail: "in this demo set" },
+            { label: "Tokens on tracked ideas", value: trackedTokens, detail: "scanned examples" },
+            { label: "Low-copy, rising", value: earlyCount, detail: "fit classified early" },
+          ].map((stat) => <div key={stat.label} className="panel p-4"><div className="t-eyebrow">{stat.label}</div><div className="mt-1 font-mono text-3xl tabular-nums text-fg">{stat.value}</div><div className="mt-1 text-sm text-fg3">{stat.detail}</div></div>)}
+        </section>
+        <section aria-label="Tracked narratives" className="space-y-3">
+          {analyses.map((analysis) => {
+            const n = DEMO_NARRATIVES.find((item) => item.name === analysis.name)!;
+            const tokens = DEMO_TOKENS.filter((t) => t.narrative === n.name);
+            const closed = n.instances.filter((instance) => instance.hoursToMinus90 !== null);
+            const fitTone = analysis.fit === "early" ? "good" : analysis.fit === "crowded" ? "bad" : analysis.fit === "dying" ? "warn" : "neutral";
+            return <Panel key={n.name} flush className="overflow-hidden">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line px-4 py-3">
+                <div className="min-w-0 flex-1"><div className="t-eyebrow">{n.trend} attention · {n.tokens} attempts</div><h2 className="mt-1 text-xl font-semibold tracking-tight text-fg">{n.name}</h2></div>
+                <Tag tone={fitTone}>{analysis.fit}</Tag>
+                <div className="text-right"><div className="font-mono text-xl tabular-nums text-fg">{n.mindshare7d}%</div><div className="t-eyebrow">7d mindshare</div></div>
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 divide-y divide-line lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:divide-x lg:divide-y-0">
-              <div className="p-3">
-                <div className="flex items-baseline justify-between">
-                  <span className="t-eyebrow">mindshare, 7d</span>
-                  <span className="t-mono text-[10px] text-fg4">{n.mindshare7d}%</span>
+              <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)]">
+                <div>
+                  <div className="flex items-baseline justify-between"><span className="t-eyebrow">Attention share</span><span className="t-mono text-xs text-fg3">7 days</span></div>
+                  <div className="mt-2"><Gauge pct={n.mindshare7d * 3} tone={n.trend === "rising" ? "good" : n.trend === "cooling" ? "bad" : "acid"} height={7} /></div>
+                  <p className="mt-3 text-sm leading-relaxed text-fg2">{analysis.reason}</p>
+                  <div className="mt-4 space-y-1"><Split label="Prior runs that fell 90%">{closed.length} / {n.instances.length}</Split><Split label="Median time to −90%">{analysis.medianLifespanHours === null ? "Not measured" : `${analysis.medianLifespanHours}h`}</Split></div>
+                  <div className="mt-2 text-xs text-fg4">{closed.length} of {n.instances.length} tracked attempts have a measured cycle.</div>
                 </div>
-                <div className="mt-1.5">
-                  <Gauge
-                    pct={n.mindshare7d * 3}
-                    tone={n.trend === "rising" ? "good" : n.trend === "cooling" ? "bad" : "acid"}
-                    height={5}
-                  />
-                </div>
-
-                <div className="mt-3">
-                  <span className="t-eyebrow">survival, prior tokens</span>
-                  <div className="mt-1.5 space-y-0.5">
-                    {n.instances
-                      .filter((i) => i.hoursToMinus90 !== null)
-                      .map((i) => (
-                      <div key={i.symbol} className="flex items-baseline gap-2 border-b border-line py-1 last:border-b-0">
-                        <span className="t-xs font-semibold text-fg2">{i.symbol}</span>
-                        <span className="t-xs text-fg4">peak {fmtUsd(i.peakMc)}</span>
-                        <span className="t-xs text-fg4">after {i.hoursToPeak}h</span>
-                        <span className="ml-auto t-mono text-[10px] text-bad">
-                          −90% in {i.hoursToMinus90}h
-                        </span>
-                      </div>
-                    ))}
-                    {n.instances.every((i) => i.hoursToMinus90 === null) && (
-                      <p className="t-xs text-fg4">
-                        No prior token on this narrative has completed a cycle yet
-                      </p>
-                    )}
-                  </div>
+                <div>
+                  <div className="flex flex-wrap items-baseline justify-between gap-2"><h3 className="t-eyebrow">Tokens in the scan set</h3><span className="text-xs text-fg4">{tokens.length} tracked</span></div>
+                  {tokens.length ? <div className="mt-2 divide-y divide-line border-y border-line">{tokens.map((t) => <Link key={t.mint} href={`/token/${t.chain}/${t.mint}`} className="flex min-h-12 flex-wrap items-center gap-x-3 gap-y-1 py-2 hover:bg-surf2/50"><span className="font-semibold text-fg">{t.symbol}</span><Tag tone={t.copyIndex > 5 ? "bad" : t.copyIndex > 2 ? "warn" : "good"}>{t.copyIndex === 1 ? "original" : `copy #${t.copyIndex}`}</Tag><span className="t-mono text-xs text-fg3">{fmtUsd(t.mcap)}</span><span className="ml-auto text-xs text-fg4">{t.ageHours}h old <span aria-hidden>→</span></span></Link>)}</div> : <p className="mt-2 text-sm text-fg3">No scanned token is tagged with this narrative.</p>}
+                  <div className="mt-3"><Split label="Copy count">{n.tokens === 1 ? "First attempt" : `${n.tokens} attempts`}</Split><Split label="Recorded prior tokens">{analysis.priorRuns}</Split></div>
                 </div>
               </div>
-
-              <div className="p-3">
-                <span className="t-eyebrow">tokens on this narrative right now</span>
-                <div className="mt-1.5 space-y-0.5">
-                  {DEMO_TOKENS.filter((t) => t.narrative === n.name).map((t) => (
-                    <Link
-                      key={t.mint}
-                      href={`/token/${t.chain}/${t.mint}`}
-                      className="drow flex items-baseline gap-2 px-0 py-1"
-                    >
-                      <span className="t-xs font-semibold text-fg">{t.symbol}</span>
-                      <Tag tone={t.copyIndex > 5 ? "bad" : t.copyIndex > 2 ? "warn" : "good"}>
-                        {t.copyIndex === 1 ? "original" : `copy ${t.copyIndex}`}
-                      </Tag>
-                      <span className="t-xs text-fg4">{fmtUsd(t.mcap)}</span>
-                      <span className="ml-auto t-mono text-[10px] text-fg4">{t.ageHours}h old</span>
-                    </Link>
-                  ))}
-                  {DEMO_TOKENS.filter((t) => t.narrative === n.name).length === 0 && (
-                    <p className="t-xs text-fg4">No scanned token currently sits on this narrative</p>
-                  )}
-                </div>
-
-                <div className="mt-3 border-t border-line pt-2">
-                  <Split label="copy index of the newest">{n.tokens === 1 ? "original" : `#${n.tokens}`}</Split>
-                  <Split
-                    label="state"
-                    tone={
-                      narrativeAnalysis(n).fit === "early"
-                        ? "good"
-                        : narrativeAnalysis(n).fit === "crowded"
-                          ? "bad"
-                          : narrativeAnalysis(n).fit === "dying"
-                            ? "warn"
-                            : "default"
-                    }
-                  >
-                    {narrativeAnalysis(n).fit}
-                  </Split>
-                  <div className="pt-1.5 t-xs leading-relaxed text-fg4">
-                    {narrativeAnalysis(n).reason}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <NarrativeWalletGate narrative={n.name} />
-          </Panel>
-        ))}
-
-        <ProReveal
-          title="Every narrative side by side"
-          value={(() => {
-            const ns = allNarratives();
-            const crowded = ns.filter((n) => n.fit === "crowded").length;
-            return crowded > 0
-              ? `${crowded} of ${ns.length} narratives are already crowded — ${ns
-                  .filter((n) => n.fit === "crowded")
-                  .map((n) => n.name)
-                  .join(", ")}`
-              : `None of the ${ns.length} narratives is crowded yet`;
-          })()}
-          clip={5}
-          shown={2}
-          rows={[<NarrativeProRows key="n" />]}
-          more={[
-            "Copy count against attention for all tracked narratives at once",
-            "Which are early, crowded, recycled or dying, with the reason",
-            "Median lifespan of prior attempts on each idea",
-          ]}
-          note="The per-card section above answers one narrative. This is the same read across all of them"
-        >
-          <NarrativeTable />
-        </ProReveal>
-
-                <NextSteps
-          title="If one of these is early"
-          steps={[
-            {
-              from: "A narrative is early and not crowded",
-              to: "Scan the token that is running it now",
-              href: "/check",
-              tone: "acid",
-            },
-            {
-              from: "The copies keep coming from one wallet",
-              to: "That deployer's record",
-              href: "/deployers",
-            },
-            {
-              from: "A caller is pushing this narrative",
-              to: "What they did with their own position",
-              href: "/callers",
-              tone: "warn",
-            },
-            {
-              from: "You want to see what is moving right now",
-              to: "Trending, filtered by chain",
-              href: "/discover",
-            },
-          ]}
-        />
+              <NarrativeWalletGate narrative={n.name} />
+            </Panel>;
+          })}
+        </section>
+        <ProReveal title="Compare every narrative" value={`${analyses.filter((n) => n.fit === "crowded").length} crowded · ${earlyCount} classified early · ${analyses.length} tracked`} clip={5} shown={2} rows={[<NarrativeProRows key="n" />]} more={["Copy count against attention for all tracked narratives at once", "Which are early, crowded, recycled or dying, with the reason", "Median lifespan of prior attempts on each idea"]} note="Same read across all tracked ideas."><NarrativeTable /></ProReveal>
+        <NextSteps title="Follow the evidence" steps={[
+          { from: "An idea has a token in the scan set", to: "Check its current risk", href: "/check", tone: "acid" },
+          { from: "The same wallet keeps launching", to: "Review the deployer’s record", href: "/deployers" },
+          { from: "A caller is promoting the idea", to: "Check their call history", href: "/callers", tone: "warn" },
+          { from: "See what is moving now", to: "Browse trending tokens", href: "/discover" },
+        ]} />
       </div>
     </div>
   );

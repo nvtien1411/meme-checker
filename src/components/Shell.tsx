@@ -28,7 +28,7 @@ function G({ d }: { d: string }) {
   return (
     <svg
       viewBox="0 0 16 16"
-      className="navi-glyph h-[13px] w-[13px] shrink-0"
+      className="navi-glyph h-4 w-4 shrink-0"
       fill="none"
       stroke="currentColor"
       strokeWidth="1.35"
@@ -103,13 +103,13 @@ function RailBody({ pathname, collapsed }: { pathname: string; collapsed: boolea
 
   return (
     <>
-      <div className={`flex h-12 shrink-0 items-center border-b border-line ${collapsed ? "justify-center px-0" : "px-3"}`}>
+      <div className={`flex h-14 shrink-0 items-center border-b border-line ${collapsed ? "justify-center px-0" : "px-3"}`}>
         <Link href="/" className="flex items-center gap-2" aria-label="Meme Checker">
           <Mark />
           {!collapsed && (
             <span className="flex min-w-0 flex-col leading-none">
               <span
-                className="truncate text-[12.5px] font-semibold tracking-[-0.015em] text-fg"
+                className="truncate text-[14px] font-semibold tracking-[-0.015em] text-fg"
                 style={{ fontFamily: "var(--font-display)" }}
               >
                 Meme Checker
@@ -228,15 +228,15 @@ function TopStrip() {
   const spent = used !== null && used >= limit;
 
   return (
-    <div className="sticky top-0 z-20 hidden h-9 items-center gap-3 border-b border-line bg-bg/92 px-4 backdrop-blur-sm lg:flex">
-      <span className="truncate font-mono text-[9.5px] uppercase tracking-[0.12em] text-fg4">
+    <div className="sticky top-0 z-20 hidden h-14 items-center gap-3 border-b border-line bg-bg px-5 lg:flex">
+      <span className="truncate font-mono text-[10px] uppercase tracking-[0.12em] text-fg4">
         {crumb}
       </span>
 
       <div className="ml-auto flex items-center gap-2">
         <CommandPalette />
-        {/* the hero already carries the contract field on the home route */}
-        {pathname !== "/" && <QuickScan />}
+        {/* Home and the network-aware scanner each own their primary field */}
+        {!(["/", "/check"].includes(pathname)) && <QuickScan />}
         {pro ? (
           <Link
             href="/pricing"
@@ -272,14 +272,13 @@ function TopStrip() {
 
             <Link
               href="/pricing"
-              className="group flex items-center gap-1.5 border border-line px-2 py-[3px] transition-colors hover:border-acid/45 hover:bg-acid/[0.06]"
+              className="group inline-flex h-9 shrink-0 items-center gap-1 rounded-md border border-line2 bg-surf px-1 transition-colors hover:border-acid/50"
             >
-              <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-fg3 group-hover:text-fg2">
+              <span className="px-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-fg3">
                 free
               </span>
-              <span aria-hidden className="h-2.5 w-px bg-line" />
-              <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-fg2 group-hover:text-fg">
-                upgrade
+              <span className="inline-flex h-7 items-center gap-1 rounded-sm bg-acid px-2.5 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-bg transition-colors group-hover:bg-acid2">
+                upgrade <span aria-hidden>↗</span>
               </span>
             </Link>
           </>
@@ -299,7 +298,7 @@ function RailBodyIsland({ collapsed }: { collapsed: boolean }) {
 function RailBodySkeleton({ collapsed }: { collapsed: boolean }) {
   return (
     <div className="min-w-0 flex-1" aria-hidden>
-      <div className="h-12 border-b border-line" style={{ opacity: 0.4 }} />
+      <div className="h-14 border-b border-line" style={{ opacity: 0.4 }} />
       <div className="min-h-0 flex-1" />
       {collapsed ? null : null}
     </div>
@@ -313,7 +312,7 @@ function RailBodySkeleton({ collapsed }: { collapsed: boolean }) {
 function DrawerIsland({ onNavigate }: { onNavigate: () => void }) {
   const pathname = usePathname() ?? "";
   return (
-    <div onClick={onNavigate}>
+    <div onClick={(event) => { if ((event.target as HTMLElement).closest("a")) onNavigate(); }}>
       <RailBody pathname={pathname} collapsed={false} />
     </div>
   );
@@ -324,19 +323,16 @@ function MobilePlanChip() {
   return (
     <Link
       href="/pricing"
-      className={`ml-auto flex items-center gap-1 border px-2 py-[3px] font-mono text-[9px] uppercase tracking-[0.07em] ${
-        pro ? "border-acid/40 text-acid" : "border-line text-fg3"
+      className={`ml-auto inline-flex h-11 shrink-0 items-center gap-1 rounded-md border px-1 font-mono text-[10px] uppercase tracking-[0.08em] transition-colors ${
+        pro ? "border-acid/45 bg-acid/10 text-acid" : "border-line2 bg-surf"
       }`}
     >
-      <span aria-hidden className={`h-[4px] w-[4px] ${pro ? "bg-acid" : "bg-fg4"}`} />
-      <span className={pro ? "text-acid" : "text-fg4"}>{pro ? "pro" : "free"}</span>
+      <span aria-hidden className={`ml-1 h-[5px] w-[5px] shrink-0 rounded-full ${pro ? "bg-acid" : "bg-fg4"}`} />
+      <span className={`px-1 font-bold ${pro ? "text-acid" : "text-fg3"}`}>{pro ? "pro" : "free"}</span>
       {!pro && (
-        <>
-          <span aria-hidden className="text-line2">
-            ·
-          </span>
-          <span className="text-acid">upgrade</span>
-        </>
+        <span className="inline-flex h-9 items-center gap-1 rounded-sm bg-acid px-2.5 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-bg transition-colors hover:bg-acid2">
+          upgrade <span aria-hidden>↗</span>
+        </span>
       )}
     </Link>
   );
@@ -387,7 +383,7 @@ export function Shell({ children }: { children: ReactNode }) {
         type="button"
         onClick={() => setCollapsed((v) => !v)}
         aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
-        className="fixed bottom-3 z-30 hidden h-6 w-6 place-items-center border border-line bg-surf text-fg4 transition-colors hover:border-line2 hover:text-fg lg:grid"
+        className="fixed bottom-3 z-30 hidden h-7 w-7 place-items-center rounded-md border border-line bg-surf text-fg4 transition-colors hover:border-line2 hover:text-fg lg:grid"
         style={{ left: collapsed ? "calc(var(--rail-collapsed) + 6px)" : "calc(var(--rail) - 30px)" }}
       >
         <span aria-hidden className="font-mono text-[10px]">
@@ -396,22 +392,22 @@ export function Shell({ children }: { children: ReactNode }) {
       </button>
 
       {/* mobile bar */}
-      <div className="fixed inset-x-0 top-0 z-30 flex h-12 items-center gap-3 border-b border-line bg-bg/95 px-3 backdrop-blur-sm lg:hidden">
+      <div className="fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b border-line bg-bg px-4 lg:hidden">
         <button
           type="button"
           onClick={() => setDrawer(true)}
           aria-label="Open navigation"
           aria-expanded={drawer}
-          className="grid h-7 w-7 place-items-center border border-line text-fg3"
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-md border border-line text-fg3 transition-colors hover:border-line2 hover:text-fg"
         >
-          <svg viewBox="0 0 14 14" className="h-3 w-3" aria-hidden>
+          <svg viewBox="0 0 14 14" className="h-4 w-4" aria-hidden>
             <path d="M2 4h10M2 7h10M2 10h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
           </svg>
         </button>
         <Link href="/" className="flex items-center gap-2">
           <Mark />
           <span
-            className="text-[12.5px] font-semibold tracking-[-0.015em] text-fg"
+            className="text-[14px] font-semibold tracking-[-0.015em] text-fg"
             style={{ fontFamily: "var(--font-display)" }}
           >
             Meme Checker
@@ -434,7 +430,7 @@ export function Shell({ children }: { children: ReactNode }) {
             id="mobile-nav"
             className="absolute inset-y-0 left-0 flex w-[240px] flex-col border-r border-line bg-bg"
           >
-            <Suspense fallback={<div className="h-12 border-b border-line" />}>
+            <Suspense fallback={<div className="h-14 border-b border-line" />}>
               <DrawerIsland onNavigate={() => setDrawer(false)} />
             </Suspense>
             <RailFoot collapsed={false} />
@@ -442,7 +438,7 @@ export function Shell({ children }: { children: ReactNode }) {
         </div>
       )}
 
-      <main id="main" className="min-w-0 flex-1 pt-12 lg:pt-0">
+      <main id="main" className="min-w-0 flex-1 pt-14 lg:pt-0">
         <TopStrip />
         {children}
       </main>
@@ -531,15 +527,15 @@ export function PageHead({
   children?: ReactNode;
 }) {
   return (
-    <div className="border-b border-line px-3 py-3 sm:px-4">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+    <div className="mc-page-head">
+      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-2">
         {/* The title is the loudest thing on the page. It was set at the same
             size as section headings inside it, so nothing on a page announced
             itself first. A terminal still needs one element a reader's eye
             lands on before the data. */}
         <h1 className="t-page">{title}</h1>
         {note && (
-          <span className="hidden min-w-0 truncate text-[11.5px] text-fg4 sm:inline">{note}</span>
+          <span className="min-w-0 text-[13px] text-fg3">{note}</span>
         )}
         {right && <div className="ml-auto flex items-center gap-1.5">{right}</div>}
       </div>

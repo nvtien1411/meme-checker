@@ -61,8 +61,8 @@ export default function SmartFollowersPage() {
   return (
     <div>
       <PageHead
-        title="Smart Money"
-        note="who buys after a caller posts, and whether they are the exit"
+        title="Caller receipts"
+                note="See what callers did with their own bags. Follower PnL isn’t measured here."
         right={
           <>
             <Demo />
@@ -109,7 +109,7 @@ export default function SmartFollowersPage() {
         </div>
 
         {/* the boundary, stated in the place it matters */}
-        <Panel title="What this page can and cannot count" note="stated up front, because the difference decides the verdict">
+        <Panel title="What the receipts show" note="Caller-side history only · not follower returns">
           <p className="t-xs leading-relaxed text-fg3">
             Two things are measurable with the data behind this build: what each caller&apos;s own
             wallet did with their own call, and how the calls themselves resolved. What is{" "}
@@ -123,8 +123,8 @@ export default function SmartFollowersPage() {
 
         {/* caller-side evidence, real rows */}
         <Panel
-          title="Callers, worst first"
-          note="their own exit against the price of their own post"
+          title="Callers, biggest sell into their own call first"
+                    note="Own-wallet exits vs call price · not a copy-trade score"
           flush
         >
           <div className="grid grid-cols-[minmax(0,1fr)_52px_54px_48px_76px] items-baseline gap-x-2 border-b border-line bg-surf2/40 px-2.5 py-1.5 sm:grid-cols-[minmax(0,1fr)_56px_58px_52px_76px]">
@@ -228,7 +228,7 @@ export default function SmartFollowersPage() {
 
         {/* the tracked follower wallets — real profiles, no invented counts */}
         <Panel
-          title="Tracked buyer wallets"
+          title="Tracked wallets with launch history"
           note={`${followerRows.length} wallets in this dataset with a launch history`}
           flush
         >
@@ -267,7 +267,7 @@ export default function SmartFollowersPage() {
 
         {/* what the paid layer would add, with the honest reason it is empty */}
         <ProReveal
-          title="Follower-side matching"
+          title="Follower match · not measured"
           value={`${followerRows.length} buyer wallets have a launch history on record; the post-to-wallet match needs X ingestion`}
           clip={4}
           shown={2}

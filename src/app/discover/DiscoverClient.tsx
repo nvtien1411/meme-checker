@@ -4,37 +4,20 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Demo, Panel, RiskDot, Tag } from "@/components/ui";
 import { ScanInput } from "@/components/ScanInput";
+import { PageHead } from "@/components/Shell";
 import { Table, Flag } from "@/components/Table";
 import { NextSteps } from "@/components/NextSteps";
 import { DEMO_RUGS, DEMO_TOKENS } from "@/lib/demo";
 import { fmtAge, fmtUsd } from "@/lib/http";
-
-/* ==================================================================== *
- * DISCOVER — what to look at next
- *
- * The page used to be one table with a row of chips that were explicitly
- * labelled "filters illustrative" — decorative controls on a list of five
- * tokens. Every control here now does something, on the data that exists.
- *
- * Three views, because those are three different questions:
- *
- *   moving     what has volume against its liquidity right now
- *   new        what launched most recently
- *   dangerous  what carries bundle or insider weight
- *
- * Sorting and the chain filter apply to all three. When the tracked set is too
- * small for a filter to change anything, the page says so instead of pretending
- * the click did work.
- * ==================================================================== */
 
 type View = "moving" | "new" | "dangerous";
 type Chain = "all" | "solana" | "bsc" | "ethereum";
 type Sort = "default" | "mcap" | "liq" | "age" | "risk";
 
 const VIEWS: { id: View; label: string; note: string }[] = [
-  { id: "moving", label: "Moving", note: "volume against liquidity, highest first" },
-  { id: "new", label: "New", note: "newest first" },
-  { id: "dangerous", label: "Dangerous", note: "bundle and insider weight first" },
+  { id: "moving", label: "Moving", note: "24h volume ÷ liquidity. High turnover isn’t buy pressure." },
+  { id: "new", label: "New pairs", note: "Youngest pairs first." },
+  { id: "dangerous", label: "Bundle watch", note: "Retained = held ÷ bought for the same wallets. Partial bundle records show —." },
 ];
 
 const SORTS: { id: Sort; label: string }[] = [
@@ -45,6 +28,7 @@ const SORTS: { id: Sort; label: string }[] = [
   { id: "risk", label: "risk" },
 ];
 
+
 function danger(t: (typeof DEMO_TOKENS)[number]): number {
   return t.bundlePct + t.insiderPct * 2 + t.score / 10;
 }
@@ -52,10 +36,11 @@ function danger(t: (typeof DEMO_TOKENS)[number]): number {
 export function DiscoverClient() {
   const [view, setView] = useState<View>("moving");
   const [chain, setChain] = useState<Chain>("all");
+  const [query, setQuery] = useState("");
   const [sort, setSort] = useState<Sort>("default");
 
   const rows = useMemo(() => {
-    let pool = DEMO_TOKENS.filter((t) => chain === "all" || t.chain === chain);
+    let pool = DEMO_TOKENS.filter((t) => (chain === "all" || t.chain === chain) && [t.symbol, t.name, t.mint].some((value) => value.toLowerCase().includes(query.trim().toLowerCase())));
 
     if (view === "moving") pool = [...pool].sort((a, b) => b.vol24 / b.liq - a.vol24 / a.liq);
     else if (view === "new") pool = [...pool].sort((a, b) => a.ageHours - b.ageHours);
@@ -67,121 +52,62 @@ export function DiscoverClient() {
         liq: (a, b) => b.liq - a.liq,
         age: (a, b) => a.ageHours - b.ageHours,
         risk: (a, b) => b.score - a.score,
+
       };
       pool = [...pool].sort(by[sort]);
     }
     return pool;
-  }, [view, chain, sort]);
+  }, [view, chain, sort, query]);
 
   const activeView = VIEWS.find((v) => v.id === view)!;
-  // A filter that matches nothing in the tracked set is a dead end unless it
-  // says so. The set is five tokens; that is a fact about the demo, not a bug.
-  const empty = rows.length === 0;
-
   return (
     <div>
-      <div className="border-b border-line px-3 py-2.5 sm:px-4">
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h1 className="t-section text-fg">Discover</h1>
-          <span className="t-xs text-fg4">{activeView.note}</span>
-          <div className="ml-auto flex items-center gap-1.5">
-            <Demo />
-            <Tag tone="neutral">{DEMO_TOKENS.length} tracked</Tag>
-          </div>
-        </div>
-        <div className="mt-2 max-w-[520px]">
-          <ScanInput />
-        </div>
-      </div>
-
-      <div className="space-y-2.5 p-3 sm:p-4">
-        {/* ---------------- controls, all live ---------------- */}
-        <div className="panel">
-          <div className="flex flex-wrap items-center gap-1 border-b border-line px-2 py-1">
+      <PageHead title="Discover" note="What’s moving, and who still holds the supply?" right={<><Demo /><Tag tone="neutral">{DEMO_TOKENS.length} tracked</Tag></>}>
+        <div className="max-w-[520px]"><ScanInput /></div>
+      </PageHead>
+      <div className="mx-auto max-w-6xl space-y-4 p-3 sm:p-4">
+        <Panel flush>
+          <div className="flex flex-wrap items-center gap-x-4 border-b border-line px-3" role="group" aria-label="Token view">
             {VIEWS.map((v) => (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setView(v.id)}
-                aria-pressed={view === v.id}
-                className={`border px-2 py-[3px] font-mono text-[9.5px] uppercase tracking-[0.05em] transition-colors ${
-                  view === v.id
-                    ? "border-acid/45 bg-acid/10 text-acid"
-                    : "border-line text-fg4 hover:border-line2 hover:text-fg2"
-                }`}
-              >
+              <button key={v.id} type="button" title={v.note} onClick={() => { setView(v.id); setSort("default"); }} aria-pressed={view === v.id} className={`min-h-11 border-b-2 px-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-acid ${view === v.id ? "border-acid text-acid" : "border-transparent text-fg3 hover:text-fg"}`}>
                 {v.label}
               </button>
             ))}
-            <span className="ml-auto font-mono text-[9px] tabular-nums text-fg4">
-              {rows.length} shown
-            </span>
           </div>
-
-          <div className="flex flex-wrap items-center gap-1 px-2 py-1">
+          <div className="flex flex-wrap items-center gap-2 px-3 py-2.5">
+            <input type="search" aria-label="Filter tokens" placeholder="Ticker, name or contract" value={query} onChange={(e) => setQuery(e.target.value)} className="min-h-11 min-w-0 flex-1 rounded border border-line bg-bg px-3 text-sm text-fg placeholder:text-fg4 focus:border-acid focus:outline-none sm:max-w-64" />
             <span className="t-eyebrow mr-0.5">chain</span>
             {(["all", "solana", "bsc", "ethereum"] as Chain[]).map((c) => {
               const n = c === "all" ? DEMO_TOKENS.length : DEMO_TOKENS.filter((t) => t.chain === c).length;
-              return (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setChain(c)}
-                  aria-pressed={chain === c}
-                  title={n === 0 ? `No ${c} token in the tracked set` : `${n} tracked on ${c}`}
-                  className={`border px-1.5 py-[2px] font-mono text-[9px] uppercase tracking-[0.05em] transition-colors ${
-                    chain === c
-                      ? "border-acid/45 bg-acid/10 text-acid"
-                      : n === 0
-                        ? "border-line/60 text-fg4/40"
-                        : "border-line text-fg4 hover:border-line2 hover:text-fg2"
-                  }`}
-                >
-                  {c}
-                  <span className="ml-1 tabular-nums opacity-60">{n}</span>
-                </button>
-              );
+              return <button key={c} type="button" onClick={() => setChain(c)} aria-pressed={chain === c} title={n === 0 ? `No ${c} token in the tracked set` : `${n} tracked on ${c}`} className={`min-h-11 border px-2 font-mono text-[10px] uppercase tracking-[0.05em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-acid ${chain === c ? "border-acid/45 bg-acid/10 text-acid" : n === 0 ? "border-line/60 text-fg4/60" : "border-line text-fg4 hover:border-line2 hover:text-fg2"}`}>{c}<span className="ml-1 tabular-nums opacity-60">{n}</span></button>;
             })}
-
             <span aria-hidden className="mx-1 h-3 w-px bg-line" />
-
             <span className="t-eyebrow mr-0.5">sort</span>
-            {SORTS.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => setSort(s.id)}
-                aria-pressed={sort === s.id}
-                className={`border px-1.5 py-[2px] font-mono text-[9px] uppercase tracking-[0.05em] transition-colors ${
-                  sort === s.id
-                    ? "border-acid/45 bg-acid/10 text-acid"
-                    : "border-line text-fg4 hover:border-line2 hover:text-fg2"
-                }`}
-              >
-                {s.label}
-              </button>
-            ))}
-          </div>
-        </div>
+            {SORTS.map((s) => <button key={s.id} type="button" onClick={() => setSort(s.id)} aria-pressed={sort === s.id} className={`min-h-11 border px-2 font-mono text-[10px] uppercase tracking-[0.05em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-acid ${sort === s.id ? "border-acid/45 bg-acid/10 text-acid" : "border-line text-fg4 hover:border-line2 hover:text-fg2"}`}>{s.label}</button>)}
 
-        {/* ---------------- table ---------------- */}
-        <Panel flush>
+            <span role="status" className="ml-auto t-xs tabular-nums text-fg3">{rows.length} shown</span>
+          </div>
+          <div className="overflow-x-auto" role="region" aria-label="Token results" tabIndex={0}><div className={view === "dangerous" ? "min-w-[0px] sm:min-w-[730px]" : "min-w-[0px] sm:min-w-[590px]"}>
           <Table
             cols={[
               {
                 head: "token",
                 width: "minmax(0,1fr)",
                 render: (t) => (
-                  <span className="flex min-w-0 items-center gap-2">
-                    <span className="truncate t-strong text-fg">{t.symbol}</span>
-                    <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.04em] text-fg4">
-                      {t.chain}
+                  <span className="block min-w-0 py-1">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <strong className="truncate t-strong text-fg">{t.symbol}</strong>
+                      <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.04em] text-fg4">{t.chain}</span>
+                      {t.bundlePct > 15 && <Flag tone="bad">bundle</Flag>}
+                      {t.insiderPct > 8 && <Flag tone="hot">insider</Flag>}
                     </span>
-                    {t.bundlePct > 15 && <Flag tone="bad">bundle</Flag>}
-                    {t.insiderPct > 8 && <Flag tone="hot">insider</Flag>}
                   </span>
                 ),
               },
+              ...(view === "dangerous" ? [
+                { head: "Bundled", width: "68px", align: "right" as const, render: (t: (typeof DEMO_TOKENS)[number]) => <span className="t-mono tabular-nums text-fg2">{t.bundlePct}%</span> },
+                { head: "Retained", width: "76px", align: "right" as const, hint: "Supply held by the bundle wallets ÷ supply the same wallets bought at launch", render: () => <span className="t-mono tabular-nums text-fg2">—</span> },
+              ] : []),
               {
                 head: "mcap",
                 sortKey: "mcap",
@@ -249,22 +175,16 @@ export function DiscoverClient() {
             onSort={(k) => setSort(k as Sort)}
             rowKey={(t) => t.mint}
             href={(t) => `/token/${t.chain}/${t.mint}`}
-            empty={
-              empty
-                ? `Nothing in the tracked set matches ${
-                    chain === "all" ? "these filters" : `chain = ${chain}`
-                  } — the demo set holds ${DEMO_TOKENS.length} tokens across ${[
-                    ...new Set(DEMO_TOKENS.map((t) => t.chain)),
-                  ].join(", ")}`
-                : undefined
-            }
+            empty={rows.length === 0 ? `Nothing in the tracked set matches ${query.trim() ? `“${query.trim()}”` : "these filters"}${chain === "all" ? "" : ` on ${chain}`} — the demo set holds ${DEMO_TOKENS.length} tokens across ${[...new Set(DEMO_TOKENS.map((t) => t.chain))].join(", ")}` : undefined}
           />
+          </div></div>
+          <p className="border-t border-line px-3 py-2 t-xs text-fg3">{activeView.note}</p>
         </Panel>
 
         {/* ---------------- what broke ---------------- */}
         <Panel
           title="Recently flagged"
-          note="collapses with the signal that fired"
+          note="Signal and peak drawdown"
           flush
           right={
             <Link href="/rugs" className="text-fg3 hover:text-fg hover:underline">
@@ -291,33 +211,11 @@ export function DiscoverClient() {
 
         <NextSteps
           steps={[
-            {
-              from: "A token in this list looks worth a look",
-              to: "What is actually inside it?",
-              href: DEMO_TOKENS[0] ? `/token/${DEMO_TOKENS[0].chain}/${DEMO_TOKENS[0].mint}` : "/check",
-              tone: "acid",
-            },
-            {
-              from: "Something collapsed and you want the pattern",
-              to: "The deployer behind it",
-              href: "/deployers",
-              tone: "bad",
-            },
-            {
-              from: "A wallet keeps showing up across these",
-              to: "Who else bought with it?",
-              href: "/investigation",
-            },
-            {
-              from: "You want to know who called it first",
-              to: "Alpha Calls, ranked by exit behavior",
-              href: "/callers",
-            },
-            {
-              from: "The story behind the token",
-              to: "How many times this idea already ran",
-              href: "/narratives",
-            },
+            { from: "A token in this list looks worth a look", to: "What is actually inside it?", href: DEMO_TOKENS[0] ? `/token/${DEMO_TOKENS[0].chain}/${DEMO_TOKENS[0].mint}` : "/check", tone: "acid" },
+            { from: "Something collapsed and you want the pattern", to: "The deployer behind it", href: "/deployers", tone: "bad" },
+            { from: "A wallet keeps showing up across these", to: "Who else bought with it?", href: "/investigation" },
+            { from: "You want to know who called it first", to: "Alpha Calls, ranked by exit behavior", href: "/callers" },
+            { from: "The story behind the token", to: "How many times this idea already ran", href: "/narratives" },
           ]}
         />
       </div>

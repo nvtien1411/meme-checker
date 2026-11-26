@@ -61,11 +61,11 @@ export function WatchlistClient() {
 
   return (
     <div>
-      <div className="border-b border-line px-3 py-2.5 sm:px-4">
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h1 className="t-section text-fg">Watchlist</h1>
+      <div className="mc-page-head">
+        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-2">
+          <h1 className="t-page">Your watch pile</h1>
           <span className="t-xs text-fg4">
-            saved in this browser — no account, no sync
+            Keep tabs on the bags, wallets, and deployers you don’t trust yet. Browser-only save.
           </span>
           <div className="ml-auto flex items-center gap-1.5">
             <Tag tone="neutral">
@@ -78,7 +78,7 @@ export function WatchlistClient() {
       <div className="space-y-2.5 p-3 sm:p-4">
         {items !== null && items.length > 0 && (
           <div className="panel flex flex-wrap items-center gap-1 px-2 py-1">
-            <span className="t-eyebrow mr-0.5">show</span>
+            <span className="t-eyebrow mr-0.5">Filter your watch pile</span>
             {(["all", "token", "wallet", "deployer"] as const).map((k) => {
               const n = k === "all" ? items.length : items.filter((w) => w.kind === k).length;
               return (
@@ -111,7 +111,7 @@ export function WatchlistClient() {
         )}
 
         {items !== null && items.length === 0 && (
-          <Panel title="Nothing saved yet" note="the watch button is on every token header and wallet profile">
+          <Panel title="No bags on the radar yet" note="Save tokens, wallets, or deployers from their profile headers.">
             <p className="t-xs leading-relaxed text-fg3">
               Open a token, a wallet or a deployer and press <span className="text-acid">watch</span>{" "}
               in the header. It saves here, in this browser, with the time you added it

@@ -6,7 +6,7 @@ import type { AnalysisResult, CheckState } from "@/lib/types";
 import { CHAIN_BY_ID } from "@/lib/chains";
 import { fmtAge, fmtChange, fmtPct, fmtPrice, fmtUsd } from "@/lib/http";
 import { callerByHandle, shortAddr } from "@/lib/demo";
-import { Demo, Gauge, Panel, ProReveal, RiskDot, Split, Stat, Tag } from "./ui";
+import { Demo, Gauge, Panel, ProReveal, Split, Stat, Tag } from "./ui";
 import { BundleDeep, BundleFree } from "./BundleIntel";
 import { WalletNetworkView } from "./WalletWorkspace";
 import { WatchToggle } from "./WatchToggle";
@@ -29,24 +29,14 @@ import {
   type DemoToken,
 } from "@/lib/demo";
 
-/* ==================================================================== *
- * REPORT
- *
- * Nine layers, one tab strip. The order is the order a decision is made in:
- * verdict → who holds it → who bought the launch → who told you → the story →
- * what you can get out → everything else.
- *
- * Live data from /api/analyze always wins. The demo layer fills only what the
- * pipeline cannot answer yet, and every field taken from it is marked DEMO at
- * the point it appears — never as a footnote at the bottom.
- * ==================================================================== */
-
 const BAND = {
-  avoid: { word: "Critical", range: "75–100", cls: "text-bad", wash: "rgba(255,77,94,0.22)", dot: "bg-bad" },
-  risky: { word: "High risk", range: "45–74", cls: "text-hot", wash: "rgba(255,138,61,0.20)", dot: "bg-hot" },
-  watch: { word: "Moderate", range: "22–44", cls: "text-warn", wash: "rgba(247,193,74,0.18)", dot: "bg-warn" },
-  clean: { word: "Low risk", range: "0–21", cls: "text-good", wash: "rgba(52,224,161,0.16)", dot: "bg-good" },
+  avoid: { word: "Avoid", cls: "text-bad" },
+  risky: { word: "High risk", cls: "text-hot" },
+  watch: { word: "Watch", cls: "text-warn" },
+  clean: { word: "No elevated verdict", cls: "text-fg" },
 } as const;
+
+const CHECK_LABEL: Record<CheckState, string> = { pass: "Passed", fail: "Failed", warn: "Warning", unknown: "Unverified" };
 
 const GLYPH: Record<CheckState, string> = { pass: "✓", fail: "✕", warn: "!", unknown: "?" };
 const TONE: Record<CheckState, string> = {
@@ -57,13 +47,13 @@ const TONE: Record<CheckState, string> = {
 };
 
 const TABS = [
-  { id: "verdict", label: "Verdict" },
+  { id: "verdict", label: "Overview" },
+  { id: "checks", label: "All checks" },
+  { id: "exit", label: "Exit" },
   { id: "holders", label: "Holders" },
-  { id: "wallets", label: "Wallets", hint: "bundle, snipers, insiders, fresh" },
+  { id: "wallets", label: "Wallets", hint: "Bundle, snipers, insiders, fresh wallets" },
   { id: "callers", label: "Callers" },
   { id: "narrative", label: "Narrative" },
-  { id: "exit", label: "Exit" },
-  { id: "checks", label: "All checks" },
   { id: "sources", label: "Sources" },
 ];
 
@@ -71,11 +61,9 @@ const TABS = [
  * Identity strip
  * ------------------------------------------------------------------ */
 
-export function IdentityBar({ data, demo }: { data: AnalysisResult; demo: DemoToken | null }) {
+function MarketSnapshot({ data }: { data: AnalysisResult }) {
   const m = data.market;
   const ch = fmtChange(m.priceChange24h, m.ageHours);
-  const risk = data.verdict.band === "avoid" ? "critical" : data.verdict.band === "risky" ? "high" : data.verdict.band === "watch" ? "moderate" : "low";
-
   const cells = [
     {
       label: "price",
@@ -95,24 +83,6 @@ export function IdentityBar({ data, demo }: { data: AnalysisResult; demo: DemoTo
     },
     { label: "age", value: fmtAge(m.ageHours) },
     {
-      // The number that decides whether a position is a trade or a donation.
-      // It was buried three rows into "what fired"; a degen needs it next to
-      // liquidity, because liquidity alone does not say what you can get out.
-      label: "exit at 5%",
-      value:
-        data.exit.available && data.exit.maxSellUsd.slip5 !== null
-          ? fmtUsd(data.exit.maxSellUsd.slip5)
-          : "—",
-      sub:
-        data.exit.available && data.exit.maxSellUsd.slip5 !== null && data.exit.maxSellUsd.slip5 < 2000
-          ? "tiny"
-          : undefined,
-      tone:
-        data.exit.available && data.exit.maxSellUsd.slip5 !== null && data.exit.maxSellUsd.slip5 < 2000
-          ? "bad"
-          : undefined,
-    },
-    {
       label: "top 10",
       value: data.holders.meaningful ? fmtPct(data.holders.effectiveTop10Pct) : "—",
       tone: data.holders.meaningful && (data.holders.effectiveTop10Pct ?? 0) >= 30 ? "bad" : undefined,
@@ -124,85 +94,72 @@ export function IdentityBar({ data, demo }: { data: AnalysisResult; demo: DemoTo
   ] as { label: string; value: string; sub?: string; tone?: "good" | "bad" }[];
 
   return (
-    <div className="panel">
-      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 px-3 py-2">
-        {data.token.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={data.token.imageUrl}
-            alt=""
-            className="h-7 w-7 shrink-0 border border-line object-cover"
-          />
-        ) : (
-          <div className="grid h-7 w-7 shrink-0 place-items-center border border-line bg-surf2 font-mono text-[9px] text-fg4">
-            {(data.token.symbol ?? "?").slice(0, 2).toUpperCase()}
-          </div>
-        )}
-
-        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
-          <h1 className="truncate t-display text-fg">{data.token.name ?? "Unknown token"}</h1>
-          {data.token.symbol && (
-            <span className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-fg3">
-              {data.token.symbol}
-            </span>
-          )}
-          <Tag tone="neutral">{CHAIN_BY_ID[data.token.chain].label}</Tag>
-          <span className="flex items-center gap-1.5">
-            <RiskDot risk={risk} />
-            <span className={`t-mono text-[10.5px] ${BAND[data.verdict.band].cls}`}>
-              {BAND[data.verdict.band].word}
-            </span>
-          </span>
-          {demo && <Demo />}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
-          {/* save and compare sit with the identity, because both are things you
-              decide the moment you look at a token, not after reading it */}
-          <WatchToggle
-            kind="token"
-            id={data.token.address}
-            label={data.token.symbol ?? `${data.token.address.slice(0, 6)}…`}
-            href={`/token/${data.token.chain}/${data.token.address}`}
-          />
-          <Link
-            href={`/compare?left=${data.token.address}`}
-            className="shrink-0 border border-line px-1.5 py-[2px] font-mono text-[9px] uppercase tracking-[0.04em] text-fg4 transition-colors hover:border-fg4 hover:text-fg2"
-            title="Compare this token against another"
-          >
-            compare
-          </Link>
-          <CopyAddr addr={data.token.address} />
-          <a
-            href={data.token.explorerUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="t-xs text-fg4 transition-colors hover:text-fg2"
-          >
-            explorer ↗
-          </a>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-1.5 border-t border-line p-2 sm:grid-cols-4 lg:grid-cols-8">
-        {cells.map((c) => (
-          <div
-            key={c.label}
-            className="rounded-[3px] border border-line/70 bg-surf2/60 px-2 py-1.5 transition-colors hover:border-line2 hover:bg-surf2"
-          >
-            <Stat
-              label={c.label}
-              value={c.value}
-              sub={c.sub}
-              size="sm"
-              tone={
-                c.tone === "bad" ? "bad" : c.tone === "good" ? "good" : "default"
-              }
-            />
+    <Panel title="Market snapshot" flush>
+      <div className="grid grid-cols-2 gap-px bg-line sm:grid-cols-4 xl:grid-cols-7">
+        {cells.map((cell) => (
+          <div key={cell.label} className="min-w-0 break-words bg-surf px-3 py-2.5">
+            <Stat label={cell.label} value={cell.value} sub={cell.sub} size="sm" tone={cell.tone ?? "default"} />
           </div>
         ))}
       </div>
-    </div>
+    </Panel>
+  );
+}
+
+function IdentityBar({ data, hasDemo }: { data: AnalysisResult; hasDemo: boolean }) {
+  return (
+    <header className="panel flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3">
+      {data.token.imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={data.token.imageUrl}
+          alt=""
+          className="h-9 w-9 shrink-0 rounded-md border border-line object-cover"
+        />
+      ) : (
+        <div className="grid h-9 w-9 shrink-0 rounded-md place-items-center border border-line bg-surf2 font-mono text-[9px] text-fg4">
+          {(data.token.symbol ?? "?").slice(0, 2).toUpperCase()}
+        </div>
+      )}
+
+      <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+        <h1 className="min-w-0 break-all t-display text-fg">{data.token.name ?? "Unknown token"}</h1>
+        {data.token.symbol && (
+          <span className="font-mono text-[10.5px] uppercase tracking-[0.06em] text-fg3">
+            {data.token.symbol}
+          </span>
+        )}
+        <Tag tone="neutral">{CHAIN_BY_ID[data.token.chain].label}</Tag>
+        {hasDemo && <Demo what="includes demo modules" />}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+        {/* save and compare sit with the identity, because both are things you
+            decide the moment you look at a token, not after reading it */}
+        <WatchToggle
+          kind="token"
+          id={data.token.address}
+          label={data.token.symbol ?? `${data.token.address.slice(0, 6)}…`}
+          href={`/token/${data.token.chain}/${data.token.address}`}
+        />
+        <Link
+          href={`/compare?left=${data.token.address}`}
+          className="shrink-0 border border-line px-1.5 py-[2px] font-mono text-[9px] uppercase tracking-[0.04em] text-fg4 transition-colors hover:border-fg4 hover:text-fg2"
+          title="Compare this token against another"
+        >
+          compare
+        </Link>
+        <CopyAddr addr={data.token.address} />
+        <a
+          href={data.token.explorerUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="t-xs text-fg4 transition-colors hover:text-fg2"
+        >
+          explorer ↗
+        </a>
+      </div>
+    </header>
   );
 }
 
@@ -221,6 +178,7 @@ function CopyAddr({ addr }: { addr: string }) {
         }
       }}
       title={addr}
+      aria-label={done ? "Contract address copied" : `Copy contract address ${addr}`}
       className="font-mono text-[10.5px] text-fg4 transition-colors hover:text-acid"
     >
       {done ? "copied ✓" : `${addr.slice(0, 4)}…${addr.slice(-4)}`}
@@ -232,30 +190,24 @@ function CopyAddr({ addr }: { addr: string }) {
  * Report shell
  * ------------------------------------------------------------------ */
 
-/** The band word names a severity; a reader wants an instruction. */
-function verdictWord(v: { band: string }): string {
-  return v.band === "avoid"
-    ? "Do not touch"
-    : v.band === "risky"
-      ? "High risk"
-      : v.band === "watch"
-        ? "Watch only"
-        : "Nothing fired";
-}
-
 export function ReportConsole({ data }: { data: AnalysisResult }) {
   const [tab, setTab] = useState("verdict");
-  const demo = tokenByMint(data.token.address);
+  const matched = tokenByMint(data.token.address);
+  const demo = matched?.chain === data.token.chain ? matched : null;
+  const selectTab = (id: string) => {
+    setTab(id);
+    document.getElementById(`tab-${id}`)?.focus();
+  };
 
   return (
-    <div className="space-y-2.5">
-      <IdentityBar data={data} demo={demo} />
+    <div className="mx-auto max-w-[1400px] space-y-3">
+      <IdentityBar data={data} hasDemo={!!demo} />
 
       <div className="panel">
         <TabBar tabs={TABS} active={tab} onChange={setTab} />
         <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="fade-up">
           <div className="space-y-2.5 p-2.5">
-            {tab === "verdict" && <VerdictTab data={data} demo={demo} />}
+            {tab === "verdict" && <VerdictTab data={data} onTab={selectTab} />}
             {tab === "holders" && <HoldersTab data={data} />}
             {tab === "wallets" && <WalletsTab demo={demo} />}
             {tab === "callers" && <CallersTab data={data} demo={demo} />}
@@ -274,162 +226,76 @@ export function ReportConsole({ data }: { data: AnalysisResult }) {
  * VERDICT
  * ==================================================================== */
 
-function VerdictTab({ data, demo }: { data: AnalysisResult; demo: DemoToken | null }) {
+const CHECK_ORDER: Record<CheckState, number> = { fail: 0, warn: 1, unknown: 2, pass: 3 };
+
+function VerdictTab({ data, onTab }: { data: AnalysisResult; onTab: (id: string) => void }) {
   const v = data.verdict;
   const band = BAND[v.band];
-  const ordered = [...data.checks].sort((a, b) => {
-    const rank: Record<CheckState, number> = { fail: 0, warn: 1, unknown: 2, pass: 3 };
-    return rank[a.state] - rank[b.state];
-  });
-  const finds = ordered.filter((c) => c.state !== "pass").slice(0, 4);
+  const findings = data.checks.filter((c) => c.state !== "pass").sort((a, b) => CHECK_ORDER[a.state] - CHECK_ORDER[b.state]);
+  const shown = findings.slice(0, 5);
   const largest = data.holders.rows.reduce((m, r) => Math.max(m, r.pct ?? 0), 0);
 
   return (
-    <>
-      {/* the score, then the reasons, side by side */}
-      <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-[268px_minmax(0,1fr)]">
-        <section
-          className="score-wash flex flex-col border border-line bg-surf p-4"
-          style={{ "--wash": band.wash } as React.CSSProperties}
-        >
-          <div className="flex items-center justify-between">
-            <span className="t-eyebrow">verdict</span>
-            <span aria-hidden className={`h-[5px] w-[5px] ${band.dot}`} />
-          </div>
-
-          {/* The answer, at the size of an answer. The score used to sit where
-              this is — a 56 in 120px type above a smaller "Critical" — and a
-              56/100 reads as "roughly half risky" when the band actually means
-              do-not-touch. A degen scanning for three seconds reads the largest
-              word first, so the largest word has to be the verdict. */}
-          <div
-            className={`mt-2 text-[30px] font-semibold leading-[1.02] tracking-[-0.035em] ${band.cls}`}
-            style={{ fontFamily: "var(--font-display)" }}
-          >
-            {verdictWord(v)}
-          </div>
-
-          <div className="mt-2 flex items-baseline gap-1">
-            <span
-              className={`t-mono text-[24px] leading-none tabular-nums tracking-[-0.03em] ${band.cls}`}
-            >
-              {v.score}
-            </span>
-            <span className="t-mono text-[10px] text-fg4">/100</span>
-            <span className="ml-1 t-mono text-[8.5px] uppercase leading-tight tracking-[0.04em] text-fg4">
-              risk score
-              <br />
-              <span className={band.cls}>{band.range} = {band.word.toLowerCase()}</span>
-            </span>
-          </div>
-
-          <div className="mt-auto grid grid-cols-4 border-t border-line pt-2">
-            {(
-              [
-                [v.fails, "fail", "text-bad"],
-                [v.warns, "watch", "text-warn"],
-                [v.unknowns, "unk", "text-fg3"],
-                [v.passes, "pass", "text-good"],
-              ] as const
-            ).map(([n, label, cls]) => (
-              <div
-                key={label}
-                className="py-1.5 text-center [&:not(:first-child)]:border-l [&:not(:first-child)]:border-line"
-              >
-                <div className={`t-mono text-[14px] tabular-nums ${n > 0 ? cls : "text-fg4"}`}>{n}</div>
-                <div className="t-eyebrow">{label}</div>
+    <div className="space-y-3">
+      <div className="grid gap-3 lg:grid-cols-[minmax(200px,1fr)_minmax(0,2fr)]">
+        <section className="rounded-md border border-line bg-surf px-4 py-4 sm:px-5" aria-labelledby="risk-verdict">
+          <p className="t-eyebrow text-fg3">Risk verdict</p>
+          <h2 id="risk-verdict" className={`mt-2 text-3xl leading-tight font-semibold tracking-tight ${band.cls}`}>{band.word}</h2>
+          <p className="mt-2 t-body text-fg2">{v.tldr}</p>
+          <dl className="mt-4 grid grid-cols-4 gap-2 border-t border-line pt-3">
+            {([
+              [v.fails, "Failed", "text-bad"], [v.warns, "Warnings", "text-warn"],
+              [v.unknowns, "Unknown", "text-fg2"], [v.passes, "Passed", "text-good"],
+            ] as const).map(([count, label, tone]) => (
+              <div key={label}>
+                <dt className="t-xs text-fg3">{label}</dt>
+                <dd className={`t-mono text-lg tabular-nums ${count ? tone : "text-fg3"}`}>{count}</dd>
               </div>
             ))}
-          </div>
-
-          <p className="mt-2 border-t border-line pt-2 t-xs leading-relaxed text-fg2">{v.tldr}</p>
-          <p className="mt-1.5 t-xs leading-relaxed text-fg4">
-            Failed checks set the band; the score is held inside it, so a single
-            disqualifying finding cannot be averaged away by passes
+          </dl>
+          <p className="mt-3 border-t border-line pt-3 t-xs text-fg3">
+            <strong className="text-fg2">Score {v.score}/100.</strong> Check outcomes determine the verdict; the verdict sets a minimum score, not a score range.
           </p>
         </section>
 
-        <div className="space-y-2.5">
-          <Panel
-            title="What fired"
-            note={finds.length === 0 ? "nothing worse than a pass" : "worst first, with the number behind it"}
-            flush
-          >
-            {finds.length === 0 && (
-              <p className="px-3 py-3 t-xs leading-relaxed text-fg3">
-                Every check the pipeline could run came back inside its band. That is not a verdict
-                that a token is safe — only that nothing it could measure was out of range
-              </p>
-            )}
-            {finds.map((c) => (
-              <div key={c.id} className="flex items-start gap-2 border-b border-line px-3 py-2 last:border-b-0">
-                <span
-                  aria-hidden
-                  className={`mt-[1px] grid h-[15px] w-[15px] shrink-0 place-items-center border font-mono text-[8.5px] leading-none ${TONE[c.state]}`}
-                >
-                  {GLYPH[c.state]}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-baseline gap-x-2">
-                    <span className="t-xs font-semibold text-fg">{c.label}</span>
-                    <span className="t-mono text-[10.5px] text-fg2">{c.reading}</span>
+        <Panel title="Risk evidence" note="Failed checks first, then warnings and unverified results" flush>
+          {shown.length === 0 ? (
+            <p className="px-4 py-4 t-body text-fg3">{data.checks.length ? "No failed, warning or unverified results in this scan. Passing checks do not establish safety." : "No checks were returned. Risk could not be verified."}</p>
+          ) : (
+            <ul className="divide-y divide-line">
+              {shown.map((check) => (
+                <li key={check.id} className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-2.5 px-4 py-2.5">
+                  <span aria-hidden className={`mt-0.5 grid h-5 w-5 place-items-center rounded border font-mono text-xs ${TONE[check.state]}`}>{GLYPH[check.state]}</span>
+                  <div className="min-w-0 break-words">
+                    <div className="flex flex-wrap items-baseline gap-x-2">
+                      <span className="t-body font-semibold text-fg">{check.label}</span>
+                      <span className="t-mono text-xs text-fg2">{check.reading}</span>
+                    </div>
+                    <p className="mt-0.5 t-xs text-fg3">{CHECK_LABEL[check.state]} · {check.source} · {check.quality}</p>
                   </div>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-x-2">
-                    <span className="font-mono text-[8.5px] uppercase tracking-[0.06em] text-fg4">
-                      {c.source}
-                    </span>
-                    <span className="t-xs text-fg4">· {c.quality}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </Panel>
-
-          {demo && (
-            <Panel title="The layer this tool exists for" note="what the contract checks cannot see" flush>
-              <div className="grid grid-cols-2 divide-x divide-line sm:grid-cols-4">
-                {[
-                  { label: "bundle", value: demo.bundleCount, sub: `${demo.bundlePct.toFixed(1)}% supply`, tone: demo.bundlePct > 10 ? "bad" : "default" },
-                  { label: "snipers", value: demo.sniperCount, sub: `${demo.sniperPct.toFixed(1)}% supply`, tone: demo.sniperPct > 8 ? "hot" : "default" },
-                  { label: "insiders", value: `${demo.insiderPct.toFixed(1)}%`, sub: "supply handed out", tone: demo.insiderPct > 5 ? "hot" : "default" },
-                  { label: "exit window", value: `${demo.exitWindowSec}s`, sub: "sell to −50%", tone: demo.exitWindowSec < 30 ? "bad" : "default" },
-                ].map((c) => (
-                  <div key={c.label} className="px-2.5 py-2">
-                    <Stat
-                      label={c.label}
-                      value={c.value}
-                      sub={c.sub}
-                      size="sm"
-                      tone={c.tone === "bad" ? "bad" : c.tone === "hot" ? "hot" : "default"}
-                    />
-                  </div>
-                ))}
-              </div>
-              <div className="border-t border-line px-2.5 py-1.5">
-                <Demo />
-                <span className="ml-1.5 t-xs text-fg4">
-                  These four modules are not wired to the pipeline yet
-                </span>
-              </div>
-            </Panel>
+                </li>
+              ))}
+            </ul>
           )}
-        </div>
+          <div className="border-t border-line px-4 py-2">
+            <button type="button" onClick={() => onTab("checks")} className="min-h-9 text-sm font-medium text-acid hover:underline">
+              Open all checks{findings.length > shown.length ? ` (${findings.length - shown.length} more flagged)` : ""} →
+            </button>
+          </div>
+        </Panel>
       </div>
 
-      <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
-        <Panel title="Supply concentration" note="pools, burns and curves removed">
-          <DistributionBar
-            largest={data.holders.meaningful ? largest : null}
-            top10={data.holders.meaningful ? data.holders.effectiveTop10Pct : null}
-            linked={data.clusters.linkedSupplyPct}
-          />
+      <ExitSize exit={data.exit} onDetails={() => onTab("exit")} />
+      <MarketSnapshot data={data} />
+      <div className="grid gap-3 lg:grid-cols-2">
+        <Panel title="Supply concentration" note="Pools, burns and curves removed">
+          <DistributionBar largest={data.holders.meaningful ? largest : null} top10={data.holders.meaningful ? data.holders.effectiveTop10Pct : null} linked={data.clusters.linkedSupplyPct} />
         </Panel>
-
-        <Panel title="Deployer" note="what the creator did with its own supply">
+        <Panel title="Deployer" note="What the creator did with its own supply">
           <DeployerBlock data={data} />
         </Panel>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -598,6 +464,32 @@ function WalletsTab({ demo }: { demo: DemoToken | null }) {
         </span>
       </div>
 
+      <Panel title="Launch overview" note="Illustrative values only" flush>
+        <div className="grid grid-cols-2 divide-x divide-line sm:grid-cols-4">
+          {[
+            { label: "bundle", value: demo.bundleCount, sub: `${demo.bundlePct.toFixed(1)}% supply`, tone: demo.bundlePct > 10 ? "bad" : "default" },
+            { label: "snipers", value: demo.sniperCount, sub: `${demo.sniperPct.toFixed(1)}% supply`, tone: demo.sniperPct > 8 ? "hot" : "default" },
+            { label: "insiders", value: `${demo.insiderPct.toFixed(1)}%`, sub: "supply handed out", tone: demo.insiderPct > 5 ? "hot" : "default" },
+            { label: "exit window", value: `${demo.exitWindowSec}s`, sub: "sell to −50%", tone: demo.exitWindowSec < 30 ? "bad" : "default" },
+          ].map((c) => (
+            <div key={c.label} className="px-2.5 py-2">
+              <Stat
+                label={c.label}
+                value={c.value}
+                sub={c.sub}
+                size="sm"
+                tone={c.tone === "bad" ? "bad" : c.tone === "hot" ? "hot" : "default"}
+              />
+            </div>
+          ))}
+        </div>
+        <div className="border-t border-line px-2.5 py-1.5">
+          <Demo />
+          <span className="ml-1.5 t-xs text-fg4">
+            These four modules are not wired to the pipeline yet
+          </span>
+        </div>
+      </Panel>
       <BundleFree demo={demo} />
       <BundleDeep demo={demo} />
 
@@ -798,7 +690,7 @@ function WalletList({ wallets }: { wallets: DemoToken["wallets"] }) {
  * ==================================================================== */
 
 function CallersTab({ data, demo }: { data: AnalysisResult; demo: DemoToken | null }) {
-  const calls = callersForMint(data.token.address);
+  const calls = demo ? callersForMint(data.token.address) : [];
   const [open, setOpen] = useState<string | null>(calls[0]?.handle ?? null);
 
   const beforeBars = [
@@ -827,6 +719,7 @@ function CallersTab({ data, demo }: { data: AnalysisResult; demo: DemoToken | nu
 
   return (
     <>
+      <div className="flex flex-wrap items-center gap-2"><Demo /><span className="t-xs text-fg3">Caller matches, timelines and coordination signals are illustrative.</span></div>
       <Panel
         title="Called this contract"
         note="every account that posted it, and what each did with their own position"
@@ -899,13 +792,6 @@ function CallersTab({ data, demo }: { data: AnalysisResult; demo: DemoToken | nu
         <Panel title="The sequence" note="minute by minute, relative to the post">
           <Timeline events={DEMO_TIMELINE} />
         </Panel>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-1.5">
-        <Demo />
-        <span className="t-xs text-fg4">
-          caller matching and follower tracking are not wired to the pipeline yet
-        </span>
       </div>
 
       <ProReveal
@@ -1049,7 +935,8 @@ function NarrativeTab({ data, demo }: { data: AnalysisResult; demo: DemoToken | 
         </Panel>
 
         {demo && (
-          <Panel title="Narrative position" note="where this idea sits in its own cycle">
+          <Panel title="Narrative position" note="Illustrative, not measured or forecast">
+            <Demo />
             <div className="grid grid-cols-2 gap-x-3">
               <Split label="narrative">{demo.narrative}</Split>
               <Split label="copies in 7d" tone={demo.copyIndex > 3 ? "bad" : "default"}>
@@ -1079,7 +966,7 @@ function NarrativeTab({ data, demo }: { data: AnalysisResult; demo: DemoToken | 
       </div>
 
       {demo && demo.copyIndex > 3 && (
-        <Panel title="This idea has already run" note={`copy #${demo.copyIndex} in seven days`} flush>
+        <Panel title="Illustrative prior runs" note={`Demo · copy #${demo.copyIndex} in seven days`} flush>
           {[
             { symbol: "RATIO", peak: 4200000, toPeak: 6, toZero: 34 },
             { symbol: "MICE", peak: 890000, toPeak: 3, toZero: 12 },
@@ -1108,12 +995,64 @@ function NarrativeTab({ data, demo }: { data: AnalysisResult; demo: DemoToken | 
  * EXIT
  * ==================================================================== */
 
+function ExitSize({ exit, onDetails }: { exit: AnalysisResult["exit"]; onDetails?: () => void }) {
+  const [amount, setAmount] = useState("");
+  const [tolerance, setTolerance] = useState<1 | 5 | 10>(5);
+  const levels = [
+    { pct: 1, limit: exit.maxSellUsd.slip1 },
+    { pct: 5, limit: exit.maxSellUsd.slip5 },
+    { pct: 10, limit: exit.maxSellUsd.slip10 },
+  ] as const;
+  const limit = levels.find(({ pct }) => pct === tolerance)?.limit;
+  const hasLimit = exit.available && limit != null && Number.isFinite(limit) && limit > 0;
+  const value = Number(amount);
+  const valid = /^\d+(\.\d+)?$|^\.\d+$/.test(amount.trim()) && Number.isFinite(value) && value > 0;
+  const over = hasLimit && valid && value > limit;
+
+  return (
+    <Panel title="Check exit size" note="Compare a planned sell with estimated pool depth">
+      {!hasLimit && !exit.available ? (
+        <p className="t-body text-fg3">{exit.note ?? "Pool depth was not available. A sell-size estimate cannot be calculated."}</p>
+      ) : (
+        <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <fieldset className="min-w-0">
+            <legend className="mb-1.5 t-xs text-fg3">Price-impact threshold · estimated max sell</legend>
+            <div className="grid grid-cols-3 gap-1.5">
+              {levels.map(({ pct, limit: max }) => (
+                <label key={pct} className="min-w-0 cursor-pointer">
+                  <input type="radio" name="exit-tolerance" checked={tolerance === pct} onChange={() => setTolerance(pct)} className="peer sr-only" />
+                  <span className="block min-h-11 break-words rounded-md border border-line bg-surf px-2 py-1.5 text-sm text-fg2 peer-checked:border-acid peer-focus-visible:outline-2 peer-focus-visible:outline-acid">
+                    <span className="block t-xs text-fg3">{pct}%</span>
+                    <strong className="font-mono text-fg">{max != null && Number.isFinite(max) && max > 0 ? `≈ ${fmtUsd(max)}` : "—"}</strong>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <div className="min-w-0">
+            <label htmlFor="exit-amount" className="mb-1.5 block t-xs text-fg3">Planned sell (USD)</label>
+            <input id="exit-amount" type="text" inputMode="decimal" autoComplete="off" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 250" aria-describedby="exit-feedback" className="min-h-11 w-full rounded-md border border-line2 bg-bg px-3 font-mono text-sm text-fg placeholder:text-fg3 focus:border-acid focus:outline-none" />
+            <p id="exit-feedback" aria-live="polite" className={`mt-1.5 t-xs ${over ? "text-warn" : "text-fg2"}`}>
+              {!hasLimit ? "No estimate for this threshold." : !amount.trim() ? "Enter an amount to compare it with the selected threshold." : !valid ? "Enter a positive USD amount without currency symbols or separators." : over ? `Above the modeled ${tolerance}% threshold. Try a smaller amount and verify with a live quote.` : `Within the modeled ${tolerance}% threshold. Verify with a live quote before relying on it.`}
+            </p>
+          </div>
+        </div>
+      )}
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2">
+        <p className="t-xs text-fg3">Single-pool estimate, not a quote. Fees, routing, and changing liquidity are not included.</p>
+        {onDetails && <button type="button" onClick={onDetails} className="min-h-9 text-sm font-medium text-acid hover:underline">Exit and trade flow →</button>}
+      </div>
+    </Panel>
+  );
+}
+
 function ExitTab({ data }: { data: AnalysisResult }) {
   const e = data.exit;
   const f = data.flow;
 
   return (
-    <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+      <div className="lg:col-span-2"><ExitSize exit={e} /></div>
       <Panel title="What you can sell" note="estimated from pool reserves, not a quote">
         <ExitCurve
           maxSell5pct={e.maxSellUsd.slip5}
@@ -1155,10 +1094,7 @@ function ExitTab({ data }: { data: AnalysisResult }) {
 
 function ChecksTab({ data }: { data: AnalysisResult }) {
   const [open, setOpen] = useState<string | null>(null);
-  const ordered = [...data.checks].sort((a, b) => {
-    const rank: Record<CheckState, number> = { fail: 0, warn: 1, unknown: 2, pass: 3 };
-    return rank[a.state] - rank[b.state];
-  });
+  const ordered = [...data.checks].sort((a, b) => CHECK_ORDER[a.state] - CHECK_ORDER[b.state]);
 
   return (
     <Panel title="Every check" note="worst first — open a row for the number behind it" flush>
